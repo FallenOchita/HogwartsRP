@@ -6,6 +6,7 @@ All notable HogwartsRP changes are recorded here.
 
 ### Added
 
+- A harmless UE4SS Lua diagnostic mod for the Steam PC version, with installation and log-verification instructions.
 - Core-owned player sessions with server-generated IDs, single-use join tickets, and per-resource client-event validation.
 - A WebSocket server transport with bounded JSON messages and authenticated server-to-client delivery.
 - A replaceable client network adapter and launcher credential-provider interface.
