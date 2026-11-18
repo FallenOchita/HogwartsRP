@@ -1,26 +1,24 @@
 # Detailed Updates
 
-## 2026-11-18 — Authenticated character submission endpoint
+## 2026-11-18 — Launcher character submission client
 
 ### Added
 
-- Added a `submit_character` WebSocket message for already-authenticated launcher/server sessions.
-- The server derives character ownership from the authenticated session's account ID and passes the submission through the existing server-side validation service.
-- Added correlated `character_submission_result` responses using the client request ID.
-- Wired `JsonCharacterRepository` and `CharacterSubmissionService` into server startup.
-- Added the `Storage:CharactersPath` setting; the default store is `data/characters.json` under the application base directory.
-- Documented the message contract and configuration.
+- Added `SubmitCharacterAsync` to the networking-client contract and launcher connection service.
+- Implemented the `submit_character` WebSocket request with a generated correlation ID and typed character submission payload.
+- Routed `character_submission_result` messages to the matching pending request, allowing the launcher to receive server validation/persistence outcomes without confusing concurrent submissions.
+- Added cleanup for pending submissions when the socket closes; callers can cancel while sending or awaiting the result.
+- Updated launcher and protocol documentation, `CHANGELOG.md`, and this update log.
 
 ### Security and scope
 
-- A client cannot choose or override the owner account ID.
-- The submission remains subject to the WebSocket frame limit and existing character validation.
-- This stores roleplay character data on the server only. It does not create a character in Hogwarts Legacy or implement in-game multiplayer.
+- The launcher submits only character fields. The server continues to derive ownership from the authenticated session and performs authoritative validation.
+- This is server-side roleplay-character registration only. It does not write character data into Hogwarts Legacy or provide in-game multiplayer.
 
 ### Validation status
 
-- Source changes are committed to `feature/character-submission-endpoint`.
-- Hosted Windows and Ubuntu CI must pass before this branch is considered verified.
+- PR #10 was merged after its Windows and Ubuntu CI runs completed successfully.
+- This branch's CI is pending; the client implementation is not yet considered verified until both runners pass.
 
 
 ## 2026-11-18 — PR #9 build correction

@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using System.Net.WebSockets;
+using HogwartsRP.GameIntegration.Abstractions;
 using System.Text.Json;
 using HogwartsRP.Networking.Abstractions;
 
@@ -11,6 +13,7 @@ public sealed class WebSocketPlayerNetworkClient : IPlayerNetworkClientAdapter
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly SemaphoreSlim _lifecycle = new(1, 1);
     private readonly SemaphoreSlim _sendLock = new(1, 1);
+    private readonly ConcurrentDictionary<string, TaskCompletionSource<CharacterSubmissionResult>> _pendingSubmissions = new(StringComparer.Ordinal);
     private ClientWebSocket? _socket;
     private CancellationTokenSource? _receiveLifetime;
     private Task? _receiveLoop;
@@ -82,6 +85,36 @@ public sealed class WebSocketPlayerNetworkClient : IPlayerNetworkClientAdapter
         finally { _sendLock.Release(); }
     }
 
+    /// <summary>Submits a character draft and awaits its correlated server-side validation/persistence result.</summary>
+    public async ValueTask<CharacterSubmissionResult> SubmitCharacterAsync(CharacterSubmission submission, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(submission);
+        var socket = Volatile.Read(ref _socket);
+        if (socket?.State != WebSocketState.Open) throw new InvalidOperationException("The client is not connected.");
+
+        var requestId = Guid.NewGuid().ToString("N");
+        var completion = new TaskCompletionSource<CharacterSubmissionResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!_pendingSubmissions.TryAdd(requestId, completion))
+            throw new InvalidOperationException("Could not allocate a character submission request.");
+
+        try
+        {
+            await _sendLock.WaitAsync(cancellationToken);
+            try
+            {
+                if (socket.State != WebSocketState.Open) throw new InvalidOperationException("The client is no longer connected.");
+                await SendMessageAsync(socket, new WireMessage("submit_character", RequestId: requestId, Submission: submission), cancellationToken);
+            }
+            finally { _sendLock.Release(); }
+
+            return await completion.Task.WaitAsync(cancellationToken);
+        }
+        finally
+        {
+            _pendingSubmissions.TryRemove(requestId, out _);
+        }
+    }
+
     public async ValueTask DisconnectAsync(CancellationToken cancellationToken = default)
     {
         await _lifecycle.WaitAsync(cancellationToken);
@@ -127,6 +160,20 @@ public sealed class WebSocketPlayerNetworkClient : IPlayerNetworkClientAdapter
                 if (bytes is null) break;
                 var message = JsonSerializer.Deserialize<WireMessage>(bytes, JsonOptions)
                     ?? throw new InvalidDataException("The server returned an empty network message.");
+                if (message.Type == "character_submission_result")
+                {
+                    if (string.IsNullOrWhiteSpace(message.RequestId) || message.RequestId.Length > 64 ||
+                        !_pendingSubmissions.TryRemove(message.RequestId, out var pending))
+                    {
+                        RaiseStatus("Ignored an unmatched character submission response.");
+                        continue;
+                    }
+                    if (message.SubmissionResult is null)
+                        pending.TrySetException(new InvalidDataException("The server returned an empty character submission result."));
+                    else
+                        pending.TrySetResult(message.SubmissionResult);
+                    continue;
+                }
                 if (message.Type == "event" && !string.IsNullOrWhiteSpace(message.Name))
                 {
                     ValidateEventName(message.Name);
@@ -146,6 +193,11 @@ public sealed class WebSocketPlayerNetworkClient : IPlayerNetworkClientAdapter
         catch (Exception exception) { RaiseStatus($"Network protocol error: {exception.Message}"); }
         finally
         {
+            foreach (var pending in _pendingSubmissions.ToArray())
+            {
+                if (_pendingSubmissions.TryRemove(pending.Key, out var completion))
+                    completion.TrySetException(new IOException("The server connection closed before the character submission completed."));
+            }
             if (ReferenceEquals(Interlocked.CompareExchange(ref _socket, null, socket), socket))
             {
                 Session = null;
@@ -273,5 +325,8 @@ public sealed class WebSocketPlayerNetworkClient : IPlayerNetworkClientAdapter
         object?[]? Arguments = null,
         string? PlayerId = null,
         string? DisplayName = null,
-        string? Error = null);
+        string? Error = null,
+        string? RequestId = null,
+        CharacterSubmission? Submission = null,
+        CharacterSubmissionResult? SubmissionResult = null);
 }
