@@ -1,5 +1,24 @@
 # Detailed Updates
 
+## 2026-11-18 — Sanitized UE4SS diagnostic report helper
+
+### Added
+
+- Added `tools/diagnostics/Get-HogwartsRPDiagnosticReport.ps1` to inspect the last 5,000 lines of a supplied `UE4SS.log`.
+- The helper reports whether both HogwartsRP diagnostic markers are present, the executable product/file version when discoverable, and the UE4SS version reported by the diagnostic mod.
+- It includes only `[HogwartsRPDiagnostics]` log lines, omits the log path and unrelated log content, and performs no network requests or uploads.
+- Added usage instructions to `mod/ue4ss/README.md`, including optional output to a sanitized text report.
+
+### Validation boundary
+
+- This helper has been added to the repository but has not been run against the user's actual UE4SS log or game installation.
+- A `PASS` means only that the Lua diagnostic loaded and completed; it is not evidence of player discovery, game networking, or multiplayer.
+
+### Next step
+
+Run the diagnostic mod on the Steam installation, then use the PowerShell helper to produce a report for review. Confirm the report contains no unintended personal information before sharing it.
+
+
 ## 2026-11-18 — Steam UE4SS diagnostic mod (PR #6 merged)
 
 ### Delivered
