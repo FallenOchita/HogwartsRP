@@ -87,15 +87,17 @@ The next gate is a real UE4SS log showing that this script loaded with the insta
 After launching the game once with the diagnostic mod enabled, run the report helper from PowerShell:
 
 ```powershell
-.\tools\diagnostics\Get-HogwartsRPDiagnosticReport.ps1 -LogPath "C:\Path\To\Hogwarts Legacy\Phoenix\Binaries\Win64\UE4SS.log"
+.\\tools\\diagnostics\\Get-HogwartsRPDiagnosticReport.ps1 -LogPath "C:\\Path\\To\\Hogwarts Legacy\\Phoenix\\Binaries\\Win64\\UE4SS.log"
 ```
 
-The helper reads only the last 5,000 log lines and prints:
-- whether both diagnostic success markers were found;
-- the Hogwarts Legacy executable version, if the executable is beside the log;
-- the UE4SS version reported by the diagnostic mod;
-- only lines tagged `[HogwartsRPDiagnostics]`.
+The helper reads only the last 5,000 log lines and emits normalized versions of recognized diagnostic markers. It never echoes arbitrary tagged log lines or unrelated log content. Version values are restricted to a short version-token format, and the log path is omitted.
 
-It does not upload anything, print the log path, or include unrelated log content. To save the same sanitized report to a text file, add `-OutputPath ".\HogwartsRP-diagnostic-report.txt"`. Review the report before sharing it. If your log or executable is in a different location, provide the appropriate paths with `-LogPath` and `-GameExecutablePath`.
+To save the same sanitized report to a text file, add `-OutputPath ".\\HogwartsRP-diagnostic-report.txt"`. If your log or executable is in a different location, provide the appropriate paths with `-LogPath` and `-GameExecutablePath`.
 
-A `PASS` result confirms only that the diagnostic Lua mod loaded and completed its smoke test. It does not prove game object access or multiplayer.
+Run the regression tests from the repository root:
+
+```powershell
+pwsh -NoProfile -File .\\tools\\diagnostics\\Test-HogwartsRPDiagnosticReport.ps1
+```
+
+The tests cover PASS, PARTIAL, NOT VERIFIED, missing-log handling, optional report output, and exclusion of arbitrary log payloads. A `PASS` result confirms only that the diagnostic Lua mod loaded and completed its smoke test. It does not prove game object access or multiplayer.
