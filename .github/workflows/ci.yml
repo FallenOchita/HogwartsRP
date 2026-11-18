@@ -14,3 +14,6 @@ jobs:
       - run: dotnet restore HogwartsRP.slnx
       - run: dotnet build HogwartsRP.slnx --no-restore
       - run: dotnet test HogwartsRP.slnx --no-build
+      - name: Test sanitized UE4SS diagnostic report
+        shell: pwsh
+        run: ./tools/diagnostics/Test-HogwartsRPDiagnosticReport.ps1
