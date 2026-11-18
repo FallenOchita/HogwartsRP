@@ -1,5 +1,27 @@
 # Detailed Updates
 
+## 2026-11-18 — Steam UE4SS diagnostic mod (PR #6 merged)
+
+### Delivered
+
+- Added `mod/ue4ss/HogwartsRPDiagnostics/scripts/main.lua`, a minimal UE4SS Lua smoke-test mod.
+- The script logs a successful load message, reports `UE4SS.GetVersion()` when available, and confirms that diagnostic mode did not access or modify gameplay objects.
+- Added `mod/ue4ss/README.md` with Steam installation locations, `mods.txt` activation, log-verification steps, rollback guidance, and compatibility cautions.
+- Updated `docs/GAME_CAPABILITIES.md` and the Continue project rules/prompt to make Steam PC the target and identify live UE4SS verification as the next gate.
+- Pull request [#6 — Add Steam UE4SS diagnostic mod](https://github.com/FallenOchita/HogwartsRP/pull/6) was merged into `main` in commit `e71e4420fda0ae24591000b59b54f16f37381df1`.
+
+### Verification status and limits
+
+- The diagnostic script is committed but has **not** been verified in the user's live Hogwarts Legacy installation.
+- No game objects, player state, networking, or multiplayer behavior are implemented by this diagnostic.
+- No automated build or test run was performed for this Lua/documentation-only PR; the PR description records this explicitly.
+- Do not combine this UE4SS diagnostic setup with HogWarp; the published HogWarp setup guidance reports incompatibility.
+
+### Next milestone
+
+Obtain a real UE4SS log from the user's Steam installation showing the `[HogwartsRPDiagnostics]` messages, and record the exact Hogwarts Legacy and UE4SS builds. Only after that compatibility gate passes should game-facing discovery or adapter work begin.
+
+
 This file records implementation details and milestone status. For user-facing feature summaries, see [CHANGELOG.md](CHANGELOG.md).
 
 ## 2026-11-18 — Provider-neutral OIDC join authentication
