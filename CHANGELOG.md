@@ -32,8 +32,9 @@ All notable HogwartsRP changes are recorded here.
 ### Limitations
 
 - The JSON character repository is a single-server persistence adapter; it is not a multi-instance database or backup system.
-- Character persistence is implemented as a repository component but is not yet connected to a live character-submission network endpoint.
+- Character submission is available through the authenticated launcher/server WebSocket protocol and JSON repository, but it does not create or modify a character inside Hogwarts Legacy.
 - When OIDC is not configured, the console launcher uses a development-ticket prompt for loopback servers only.
 - OIDC sign-in requires issuer and public-client configuration on both launcher and server; RS256 is the only currently accepted ID-token signing algorithm.
 - The launcher owns the current network session. Hogwarts Legacy itself has no compatible multiplayer adapter yet.
 - Direct character-creation entry, game-client event transport, and in-game multiplayer remain unavailable.
+
