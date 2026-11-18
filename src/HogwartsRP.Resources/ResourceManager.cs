@@ -29,12 +29,18 @@ public sealed class ResourceManager(string resourcesDirectory, Func<string, ILua
             var info = new ResourceInfo(manifest, dir, ResourceState.Starting);
             try
             {
-                foreach (var script in manifest.ServerScripts.Concat(manifest.SharedScripts))
+                var scripts = manifest.ServerScripts.Concat(manifest.SharedScripts).ToArray();
+                if (scripts.Length > 0)
                 {
-                    var fullPath = Path.GetFullPath(Path.Combine(dir, script));
-                    if (!fullPath.StartsWith(Path.GetFullPath(dir) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Script path escapes the resource directory.");
-                    var runtime = runtimeFactory(manifest.Name); runtimes.Add(runtime); configure?.Invoke(runtime, manifest.Name);
-                    runtime.Execute(await File.ReadAllTextAsync(fullPath), script);
+                    var runtime = runtimeFactory(manifest.Name);
+                    runtimes.Add(runtime);
+                    configure?.Invoke(runtime, manifest.Name);
+                    foreach (var script in scripts)
+                    {
+                        var fullPath = Path.GetFullPath(Path.Combine(dir, script));
+                        if (!fullPath.StartsWith(Path.GetFullPath(dir) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Script path escapes the resource directory.");
+                        runtime.Execute(await File.ReadAllTextAsync(fullPath), script);
+                    }
                 }
                 _running[manifest.Name] = new(new(manifest, dir, ResourceState.Started), runtimes);
             }

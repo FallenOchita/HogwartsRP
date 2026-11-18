@@ -2,11 +2,13 @@
 
 HogwartsRP is a .NET 10 server host with dependency-inverted networking and game integration contracts. There is no multiplayer transport or Hogwarts Legacy adapter in this milestone. The local host and examples are framework demonstrations only.
 
-The server discovers resource folders, parses the restricted manifest grammar without executing manifests, sorts dependencies deterministically, and creates a separate scripting state per server/shared Lua file. Resource script paths are constrained to their resource folder. Core framework assemblies are never reloaded.
+The server discovers resource folders, parses the restricted manifest grammar without executing manifests, sorts dependencies deterministically, and starts one Lua worker process and state per resource. Server/shared scripts within a resource share that resource's state. Resource script paths are constrained to their resource folder. Core framework assemblies are never reloaded.
 
 ## Runtime status
 
-The scripting host uses NLua 1.7.9 with KeraLua's Lua 5.4 native runtime (MIT licensed). Each script receives its own Lua state. The host removes OS, IO, package, debug, coroutine, CLR bridge, dynamic loader, and protected-call globals before resource code runs, then installs an instruction-count hook that fails over-budget scripts. Script input length is capped. This is state and library isolation inside the server process, not an OS security boundary; memory use is not hard-capped. Untrusted public resources should run in separate restricted worker processes before production.
+The scripting host uses NLua 1.7.9 with KeraLua's Lua 5.4 native runtime (MIT licensed). Each resource runs in its own worker process. The host removes OS, IO, package, debug, coroutine, CLR bridge, dynamic loader, and protected-call globals before resource code runs, then installs an instruction-count hook that fails over-budget scripts. The parent also enforces request timeouts and monitors worker private memory, terminating a worker that exceeds its configured limit. A worker still runs as the same OS user and is not protected by a restricted token, container, or OS sandbox; the memory monitor is supervisory rather than a kernel-enforced cap. Treat resource code as trusted until OS-level worker restrictions are added.
+
+Resource-local events stay inside the worker. Command registration is relayed to the server and invocations route back to the owning worker. Cross-resource event routing is not implemented yet.
 
 ## Security and actual game integration
 

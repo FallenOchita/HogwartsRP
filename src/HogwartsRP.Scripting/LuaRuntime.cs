@@ -98,7 +98,7 @@ public sealed class NativeLua54Runtime : ILuaRuntime
     }
 }
 
-public sealed class ResourceApi(EventBus events, CommandRegistry commands, PermissionPrincipal principal)
+public sealed class ResourceApi(EventBus events, CommandRegistry commands, PermissionPrincipal principal, Action<string, object?[]>? crossResourceEvent = null)
 {
     public void RegisterInto(ILuaRuntime runtime)
     {
@@ -122,5 +122,11 @@ public sealed class ResourceApi(EventBus events, CommandRegistry commands, Permi
     }
 
     private void TriggerLocalEvent(string name, params object?[] arguments) =>
-        events.PublishAsync(name, arguments).AsTask().GetAwaiter().GetResult();
+        TriggerEventAsync(name, arguments).AsTask().GetAwaiter().GetResult();
+
+    private async ValueTask TriggerEventAsync(string name, object?[] arguments)
+    {
+        await events.PublishAsync(name, arguments);
+        crossResourceEvent?.Invoke(name, arguments);
+    }
 }

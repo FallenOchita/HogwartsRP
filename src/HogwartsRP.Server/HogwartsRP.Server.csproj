@@ -12,6 +12,7 @@
     <ProjectReference Include="..\HogwartsRP.Core\HogwartsRP.Core.csproj" />
     <ProjectReference Include="..\HogwartsRP.Scripting\HogwartsRP.Scripting.csproj" />
     <ProjectReference Include="..\HogwartsRP.Resources\HogwartsRP.Resources.csproj" />
+    <ProjectReference Include="..\HogwartsRP.LuaWorker\HogwartsRP.LuaWorker.csproj" />
   </ItemGroup>
 
 </Project>

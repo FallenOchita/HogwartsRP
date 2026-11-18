@@ -4,6 +4,7 @@
     <Project Path="src/HogwartsRP.GameIntegration.Abstractions/HogwartsRP.GameIntegration.Abstractions.csproj" />
     <Project Path="src/HogwartsRP.Launcher.App/HogwartsRP.Launcher.App.csproj" />
     <Project Path="src/HogwartsRP.Launcher/HogwartsRP.Launcher.csproj" />
+    <Project Path="src/HogwartsRP.LuaWorker/HogwartsRP.LuaWorker.csproj" />
     <Project Path="src/HogwartsRP.Networking.Abstractions/HogwartsRP.Networking.Abstractions.csproj" />
     <Project Path="src/HogwartsRP.Resources/HogwartsRP.Resources.csproj" />
     <Project Path="src/HogwartsRP.Scripting/HogwartsRP.Scripting.csproj" />

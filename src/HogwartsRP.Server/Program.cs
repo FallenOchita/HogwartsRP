@@ -1,6 +1,7 @@
 using HogwartsRP.Core;
 using HogwartsRP.Resources;
 using HogwartsRP.Scripting;
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -9,11 +10,33 @@ using var loggerFactory = LoggerFactory.Create(logging => logging.AddSimpleConso
 var logger = loggerFactory.CreateLogger("HogwartsRP.Server");
 var permissions = new PermissionService();
 var commands = new CommandRegistry(permissions);
-var events = new EventBus();
 var principal = new PermissionPrincipal("console", new HashSet<string>(["*"]));
 commands.Register("status", "server.status", (_, _) => { Console.WriteLine("HogwartsRP framework ready"); return ValueTask.FromResult<string?>("ok"); });
 var root = Path.GetFullPath(builder.Configuration["Resources:Path"] ?? Path.Combine(AppContext.BaseDirectory, "resources"));
-var resources = new ResourceManager(root, _ => new NativeLua54Runtime(), (runtime, _) => new ResourceApi(events, commands, principal).RegisterInto(runtime));
+var workerAssembly = typeof(WorkerAssemblyMarker).Assembly.Location;
+var resourceWorkers = new ConcurrentDictionary<string, LuaWorkerProcessRuntime>(StringComparer.OrdinalIgnoreCase);
+var resources = new ResourceManager(root, resourceName =>
+{
+    var worker = new LuaWorkerProcessRuntime(workerAssembly);
+    worker.CommandRegistered += name => commands.Register(name, "command." + name,
+        async (_, commandArgs) => await worker.InvokeCommandAsync(name, commandArgs));
+    worker.EventRaised += (sourceWorker, eventName, eventArguments) =>
+    {
+        foreach (var target in resourceWorkers.Values)
+        {
+            if (ReferenceEquals(sourceWorker, target)) continue;
+            _ = RelayEventAsync(target, eventName, eventArguments);
+        }
+    };
+    resourceWorkers.TryAdd(resourceName, worker);
+    return worker;
+});
+
+async Task RelayEventAsync(LuaWorkerProcessRuntime target, string eventName, object?[] arguments)
+{
+    try { await target.DispatchEventAsync(eventName, arguments); }
+    catch (Exception ex) { logger.LogWarning("Cross-resource Lua event {EventName} failed in worker {WorkerId}: {Message}", eventName, target.WorkerProcessId, ex.Message); }
+}
 
 try
 {
