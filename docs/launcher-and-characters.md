@@ -25,7 +25,7 @@ var characterRepository = new JsonCharacterRepository(
 
 The repository loads existing records on first use, serializes writes within the process, writes to a temporary file in the same directory, and replaces the data file after the write completes. It rejects duplicate character IDs and exposes owner-filtered retrieval through `GetByOwnerAsync`. If the JSON file is corrupt, it throws `InvalidDataException` and leaves the existing file untouched.
 
-This adapter is intended for one server process. It does not provide cross-process locking, multi-server coordination, encryption at rest, backups, or a production database. It is not yet wired to a live character-submission network endpoint; the current server has no such endpoint.
+This adapter is intended for one server process. It does not provide cross-process locking, multi-server coordination, encryption at rest, backups, or a production database. The server exposes an authenticated WebSocket submission endpoint. The launcher network client now has a matching submission method that awaits the correlated server response.
 
 No real game installation or integration has been tested in this environment. There is no claim that direct character creation or in-game multiplayer works.
 
@@ -49,3 +49,8 @@ After authenticating the WebSocket connection, a client may submit a character u
 ```
 
 The server responds with `type: "character_submission_result"`, echoing the request ID and including a `submissionResult` object. The authenticated account ID is taken from the server-created session, never from the client payload. Configure the server's `Storage:CharactersPath` setting to choose the JSON repository file. The endpoint stores roleplay profile data on the server; it does not apply appearance, house, wand, or character data to the game.
+
+
+## Launcher character submission client
+
+The authenticated launcher connection exposes `SubmitCharacterAsync(CharacterSubmission)`. It sends a `submit_character` message with a generated request ID and waits for the matching `character_submission_result`. The network receive loop routes results by request ID, so an unrelated or late response cannot complete a different submission. If the connection closes before a result arrives, pending submissions fail rather than hanging. Cancellation is supported while sending or waiting. The server remains authoritative for validation and ownership; the launcher does not send an account/owner identifier. This flow persists roleplay character data only and does not apply the data to Hogwarts Legacy.
