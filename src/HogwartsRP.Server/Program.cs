@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using HogwartsRP.Core;
+using HogwartsRP.GameIntegration.Abstractions;
 using HogwartsRP.Networking.Abstractions;
 using HogwartsRP.Resources;
 using HogwartsRP.Scripting;
@@ -20,6 +21,9 @@ commands.Register("status", "server.status", (_, _) =>
 });
 
 var joinTickets = new OneTimeJoinTicketStore();
+var characterDataPath = Path.GetFullPath(builder.Configuration["Storage:CharactersPath"] ?? Path.Combine(AppContext.BaseDirectory, "data", "characters.json"));
+var characterRepository = new JsonCharacterRepository(characterDataPath);
+ICharacterSubmissionService characterSubmissions = new CharacterSubmissionService(characterRepository);
 var listenUrl = builder.Configuration["Networking:ListenUrl"] ?? "http://127.0.0.1:7777";
 if (Uri.TryCreate(listenUrl, UriKind.Absolute, out var configuredListenUri) && configuredListenUri.IsLoopback)
 {
@@ -52,7 +56,7 @@ using var oidcTicketExchange = string.IsNullOrWhiteSpace(oidcAuthority)
 
 var eventPolicy = new NetworkEventPolicy();
 var sessions = new PlayerSessionRegistry();
-await using var networking = new WebSocketNetworkingAdapter(listenUrl, joinTickets, eventPolicy, sessions, loggerFactory, oidcTicketExchange);
+await using var networking = new WebSocketNetworkingAdapter(listenUrl, joinTickets, eventPolicy, sessions, loggerFactory, oidcTicketExchange, characterSubmissions);
 networking.PlayerConnected += session =>
     logger.LogInformation("Player {DisplayName} connected with session {SessionId}", session.DisplayName, session.Id);
 networking.PlayerDisconnected += session =>
