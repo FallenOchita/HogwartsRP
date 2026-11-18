@@ -1,3 +1,5 @@
+using HogwartsRP.GameIntegration.Abstractions;
+
 namespace HogwartsRP.Networking.Abstractions;
 
 /// <summary>An account identity established by a trusted authentication provider.</summary>
@@ -27,6 +29,7 @@ public interface IPlayerNetworkClientAdapter : IAsyncDisposable
     bool IsConnected { get; }
     ValueTask<PlayerSession> ConnectAsync(Uri serverEndpoint, string credential, CancellationToken cancellationToken = default);
     ValueTask SendEventAsync(string eventName, IReadOnlyList<object?> arguments, CancellationToken cancellationToken = default);
+    ValueTask<CharacterSubmissionResult> SubmitCharacterAsync(CharacterSubmission submission, CancellationToken cancellationToken = default);
     ValueTask DisconnectAsync(CancellationToken cancellationToken = default);
 
     event Action<ServerNetworkEvent>? ServerEventReceived;
