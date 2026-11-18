@@ -1,12 +1,32 @@
 # Detailed Updates
 
+## 2026-11-18 — Hardened UE4SS diagnostic report and regression tests
+
+### Added and changed
+
+- Hardened `tools/diagnostics/Get-HogwartsRPDiagnosticReport.ps1` so it no longer echoes arbitrary tagged log lines.
+- The report now emits only recognized startup, version, unavailable-version, and completion markers. Version values are restricted to a short safe token.
+- Added `tools/diagnostics/Test-HogwartsRPDiagnosticReport.ps1` with checks for PASS, PARTIAL, NOT VERIFIED, missing-log handling, optional report output, and exclusion of unrelated or injected log content.
+- Updated GitHub Actions to run the PowerShell test script on both Windows and Ubuntu runners.
+- Updated `mod/ue4ss/README.md` and `docs/GAME_CAPABILITIES.md` with the hardened behavior and current validation boundary.
+
+### Validation status
+
+- The test harness and workflow have been committed to this branch, but hosted CI has not yet reported results.
+- These tests use synthetic logs and do not require Hogwarts Legacy or UE4SS to be installed.
+- The live Steam UE4SS diagnostic remains **NOT VERIFIED**. Passing the helper tests does not establish game compatibility or multiplayer.
+
+### Next step
+
+Wait for the branch's GitHub Actions results, review any failures, then merge only after checks pass and the changes are reviewed.
+
 ## 2026-11-18 — Sanitized UE4SS diagnostic report helper
 
 ### Added
 
 - Added `tools/diagnostics/Get-HogwartsRPDiagnosticReport.ps1` to inspect the last 5,000 lines of a supplied `UE4SS.log`.
 - The helper reports whether both HogwartsRP diagnostic markers are present, the executable product/file version when discoverable, and the UE4SS version reported by the diagnostic mod.
-- It includes only `[HogwartsRPDiagnostics]` log lines, omits the log path and unrelated log content, and performs no network requests or uploads.
+- It includes only recognized diagnostic output, omits the log path and unrelated log content, and performs no network requests or uploads.
 - Added usage instructions to `mod/ue4ss/README.md`, including optional output to a sanitized text report.
 
 ### Validation boundary
