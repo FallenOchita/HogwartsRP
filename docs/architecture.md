@@ -6,7 +6,7 @@ The server discovers resource folders, parses the restricted manifest grammar wi
 
 ## Runtime status
 
-MoonSharp is MIT licensed but implements Lua 5.2, not the required Lua 5.4. It is used as a replaceable interim adapter to run basic sample scripts; it does not satisfy Lua 5.4 compatibility. Its standard library selection omits operating system, IO, package, debug, and coroutine modules. This is an in-process sandbox, not a security boundary against hostile code, and this milestone does not set hard CPU/memory quotas. A production host must use native Lua 5.4 in a constrained process or equivalent isolation.
+The scripting host uses NLua 1.7.9 with KeraLua's Lua 5.4 native runtime (MIT licensed). Each script receives its own Lua state. The host removes OS, IO, package, debug, coroutine, CLR bridge, dynamic loader, and protected-call globals before resource code runs, then installs an instruction-count hook that fails over-budget scripts. Script input length is capped. This is state and library isolation inside the server process, not an OS security boundary; memory use is not hard-capped. Untrusted public resources should run in separate restricted worker processes before production.
 
 ## Security and actual game integration
 

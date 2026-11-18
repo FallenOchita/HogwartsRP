@@ -13,7 +13,7 @@ var events = new EventBus();
 var principal = new PermissionPrincipal("console", new HashSet<string>(["*"]));
 commands.Register("status", "server.status", (_, _) => { Console.WriteLine("HogwartsRP framework ready"); return ValueTask.FromResult<string?>("ok"); });
 var root = Path.GetFullPath(builder.Configuration["Resources:Path"] ?? Path.Combine(AppContext.BaseDirectory, "resources"));
-var resources = new ResourceManager(root, _ => new MoonSharpRuntime(), (runtime, _) => new ResourceApi(events, commands, principal).RegisterInto(runtime));
+var resources = new ResourceManager(root, _ => new NativeLua54Runtime(), (runtime, _) => new ResourceApi(events, commands, principal).RegisterInto(runtime));
 
 try
 {
