@@ -29,3 +29,12 @@ This file records implementation details and milestone status. For user-facing f
 - The launcher remains a console preview. The game itself still has no compatible multiplayer adapter, and the signed-in launcher session is not an in-game session.
 - Direct Hogwarts Legacy character-creation entry remains unavailable. The existing character integration contracts still require a supported game adapter.
 - No external identity provider or live game installation has been configured in this milestone.
+
+## 2026-11-18 — OIDC mock-provider verification
+
+- Added `HogwartsRP.Server.Tests` to the solution. Tests use an in-memory HTTP handler and a generated RSA signing key; they make no requests to a real identity provider.
+- Verified accepted tokens produce server-owned hashed account IDs and one-use join tickets.
+- Verified rejection for invalid issuer, audience, nonce, expiry, and signature.
+- Verified expired challenges are rejected before provider metadata or keys are requested, and that a challenge cannot be replayed.
+- The existing GitHub Actions workflow already restores, builds, and tests the full solution on Windows and Ubuntu, so the new project is included automatically through `HogwartsRP.slnx`.
+- Local result: all 21 tests passed across the four test projects. The six existing NU1900 warnings are vulnerability-feed connectivity warnings from nuget.org.
