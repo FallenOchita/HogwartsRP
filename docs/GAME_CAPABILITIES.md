@@ -108,7 +108,7 @@ Do not add transform sync, remote player spawning, spells, flying, animations or
 - Server-side Lua 5.4 worker runtime: IMPLEMENTED.
 - Launcher-owned authenticated connection: IMPLEMENTED.
 - Game-owned authenticated connection: NOT IMPLEMENTED.
-- UE4SS diagnostic mod: NOT IMPLEMENTED.
+- UE4SS diagnostic mod: IMPLEMENTED, LIVE LOAD NOT VERIFIED.
 - Native networking bridge: NOT IMPLEMENTED.
 - Local player transform read/apply: NOT VERIFIED.
 - Remote player entity creation: NOT VERIFIED.
@@ -123,6 +123,8 @@ A first harmless UE4SS diagnostic mod has now been added at:
 - Installation and verification notes: `mod/ue4ss/README.md`
 
 The script only logs that it loaded and calls the documented `UE4SS.GetVersion()` API when present. It does not inspect game objects, change game state, or connect to a network. It is authored but **not yet verified in the user's live Steam installation**.
+
+A local report helper is also available at `tools/diagnostics/Get-HogwartsRPDiagnosticReport.ps1`. It extracts only tagged diagnostic lines and version metadata from a supplied log; it does not upload log data. See `mod/ue4ss/README.md` for usage.
 
 The usual Steam game root is `<SteamLibrary>\\steamapps\\common\\Hogwarts Legacy`; UE4SS mod files are placed under the loader's `Phoenix\\Binaries\\Win64\\Mods` directory for the documented setup. Confirm the actual loader layout before copying files.
 
