@@ -45,12 +45,15 @@ public sealed class JsonCharacterRepositoryTests
             await repository.RegisterAsync(Character(id, "player-one", "Ada"));
 
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-                await repository.RegisterAsync(Character(id, "player-two", "Different")));
+            {
+                await repository.RegisterAsync(Character(id, "player-two", "Different"));
+            });
 
             Assert.Contains("already registered", exception.Message);
-            var stored = Assert.Single(await new JsonCharacterRepository(path).GetByOwnerAsync("player-one"));
+            var reloaded = new JsonCharacterRepository(path);
+            var stored = Assert.Single(await reloaded.GetByOwnerAsync("player-one"));
             Assert.Equal("Ada", stored.Name);
-            Assert.Empty(await new JsonCharacterRepository(path).GetByOwnerAsync("player-two"));
+            Assert.Empty(await reloaded.GetByOwnerAsync("player-two"));
         }
         finally
         {
@@ -70,7 +73,9 @@ public sealed class JsonCharacterRepositoryTests
             var repository = new JsonCharacterRepository(path);
 
             await Assert.ThrowsAsync<InvalidDataException>(async () =>
-                await repository.GetByOwnerAsync("player-one"));
+            {
+                await repository.GetByOwnerAsync("player-one");
+            });
 
             Assert.Equal(corrupt, await File.ReadAllTextAsync(path));
         }
