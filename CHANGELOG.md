@@ -8,6 +8,7 @@ All notable HogwartsRP changes are recorded here.
 
 - A harmless UE4SS Lua diagnostic mod for the Steam PC version, with installation and log-verification instructions.
 - A local PowerShell helper that produces a sanitized UE4SS diagnostic report without uploading or exposing unrelated log content.
+- Regression tests for sanitized UE4SS reports, including status detection, missing logs, optional report output, and exclusion of arbitrary log payloads.
 - Core-owned player sessions with server-generated IDs, single-use join tickets, and per-resource client-event validation.
 - A WebSocket server transport with bounded JSON messages and authenticated server-to-client delivery.
 - A replaceable client network adapter and launcher credential-provider interface.
@@ -16,6 +17,11 @@ All notable HogwartsRP changes are recorded here.
 - A loopback-only operator development-ticket command for local protocol work.
 - A preview launcher flow that authenticates to the selected server, requests Hogwarts Legacy launch, and keeps the protocol session open until the launcher exits.
 - Lua resource APIs for registering client-to-server events and sending events to authenticated players.
+
+### Changed
+
+- The diagnostic report helper now emits only normalized known markers and constrained version tokens instead of echoing arbitrary log lines.
+- CI now runs the PowerShell diagnostic-report regression tests on Windows and Ubuntu.
 
 ### Limitations
 
