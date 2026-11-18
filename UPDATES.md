@@ -1,5 +1,19 @@
 # Detailed Updates
 
+## 2026-11-18 — PR #9 build correction
+
+### Fixed
+
+- Investigated the Ubuntu CI compiler errors for `HogwartsRP.GameIntegration.Abstractions`, `ICharacterRepository`, and `RegisteredCharacter`.
+- Confirmed that the contract and record types are declared in `src/HogwartsRP.GameIntegration.Abstractions/CharacterCreation.cs`.
+- Added an explicit project reference from `HogwartsRP.Server.csproj` to `HogwartsRP.GameIntegration.Abstractions.csproj`. This makes the contract assembly available when compiling `JsonCharacterRepository`.
+- Recorded the correction in `CHANGELOG.md`.
+
+### Validation status
+
+- The source-level cause of the reported compile errors has been corrected on the existing PR #9 branch.
+- GitHub Actions must complete on the new branch head before this change can be called CI-verified. No merge has been performed.
+
 ## 2026-11-18 — JSON-backed character persistence adapter
 
 ### Added
