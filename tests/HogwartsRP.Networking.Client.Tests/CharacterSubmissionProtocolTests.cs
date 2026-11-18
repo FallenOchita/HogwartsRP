@@ -1,14 +1,13 @@
 using System.Net.WebSockets;
-using System.Text;
 using System.Text.Json;
 using HogwartsRP.GameIntegration.Abstractions;
 using HogwartsRP.Networking.Client;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace HogwartsRP.Networking.Client.Tests;
 
