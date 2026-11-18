@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\HogwartsRP.GameIntegration.Abstractions\HogwartsRP.GameIntegration.Abstractions.csproj" />
+  </ItemGroup>
+
 </Project>
