@@ -1,5 +1,45 @@
 # Detailed Updates
 
+## 2026-11-18 — PR #9 build correction
+
+### Fixed
+
+- Investigated the Ubuntu CI compiler errors for `HogwartsRP.GameIntegration.Abstractions`, `ICharacterRepository`, and `RegisteredCharacter`.
+- Confirmed that the contract and record types are declared in `src/HogwartsRP.GameIntegration.Abstractions/CharacterCreation.cs`.
+- Added an explicit project reference from `HogwartsRP.Server.csproj` to `HogwartsRP.GameIntegration.Abstractions.csproj`. This makes the contract assembly available when compiling `JsonCharacterRepository`.
+- Recorded the correction in `CHANGELOG.md`.
+
+### Validation status
+
+- The source-level cause of the reported compile errors has been corrected on the existing PR #9 branch.
+- GitHub Actions must complete on the new branch head before this change can be called CI-verified. No merge has been performed.
+
+## 2026-11-18 — JSON-backed character persistence adapter
+
+### Added
+
+- Added `JsonCharacterRepository` in `src/HogwartsRP.Server/JsonCharacterRepository.cs`, implementing the existing `ICharacterRepository` contract.
+- Character records are stored as JSON and loaded lazily when the repository is first used.
+- Writes are serialized within the repository instance and committed through a temporary file in the same directory, followed by an atomic replacement.
+- Duplicate character IDs are rejected. Reads can be filtered by the authenticated owner ID, and corrupt JSON is reported without overwriting the existing data file.
+- Added server tests for persistence across repository instances, owner filtering, duplicate-ID rejection, and corrupt-store preservation.
+
+### Configuration and limitations
+
+- Construct the repository with a configured data path, for example `new JsonCharacterRepository("data/characters.json")`.
+- The component is not yet wired to a live character-submission endpoint; the current server does not expose that endpoint.
+- The file adapter is intended for a single server process. It does not coordinate writes across multiple server instances and does not replace backups or a production database.
+- The repository contract's `RegisterAsync` operation remains the persistence entry point; the concrete adapter also exposes owner-filtered retrieval.
+
+### Validation status
+
+- Regression tests have been added, but this branch has not yet run through hosted GitHub Actions.
+- No live game or multiplayer behavior is involved in this change.
+
+### Next step
+
+Run the Windows and Ubuntu CI matrix, review any failures, and merge only after the checks pass.
+
 ## 2026-11-18 — Hardened UE4SS diagnostic report and regression tests
 
 ### Added and changed
@@ -32,12 +72,11 @@ Wait for the branch's GitHub Actions results, review any failures, then merge on
 ### Validation boundary
 
 - This helper has been added to the repository but has not been run against the user's actual UE4SS log or game installation.
-- A `PASS` means only that the Lua diagnostic loaded and completed; it is not evidence of player discovery, game networking, or multiplayer.
+- A `PASS` means only that the diagnostic Lua mod loaded and completed; it is not evidence of player discovery, game networking, or multiplayer.
 
 ### Next step
 
 Run the diagnostic mod on the Steam installation, then use the PowerShell helper to produce a report for review. Confirm the report contains no unintended personal information before sharing it.
-
 
 ## 2026-11-18 — Steam UE4SS diagnostic mod (PR #6 merged)
 
@@ -59,7 +98,6 @@ Run the diagnostic mod on the Steam installation, then use the PowerShell helper
 ### Next milestone
 
 Obtain a real UE4SS log from the user's Steam installation showing the `[HogwartsRPDiagnostics]` messages, and record the exact Hogwarts Legacy and UE4SS builds. Only after that compatibility gate passes should game-facing discovery or adapter work begin.
-
 
 This file records implementation details and milestone status. For user-facing feature summaries, see [CHANGELOG.md](CHANGELOG.md).
 

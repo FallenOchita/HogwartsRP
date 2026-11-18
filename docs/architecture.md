@@ -10,6 +10,12 @@ The scripting host uses NLua 1.7.9 with KeraLua's Lua 5.4 native runtime (MIT li
 
 Resource-local events stay inside the worker. Command registration is relayed to the server and invocations route back to the owning worker. The Core networking policy records client events explicitly registered by Lua resources; accepted messages carry the server-created player session ID and authenticated display name into the owning resource workers. Server resources can send events to authenticated sessions through the transport contract.
 
+## Persistence
+
+Character submissions are validated by `CharacterSubmissionService`, which derives ownership from the authenticated player session. The server project provides `JsonCharacterRepository` as a simple single-process implementation of `ICharacterRepository`. It loads records from a JSON file, serializes writes within its process, and replaces the data file through a same-directory temporary file. It rejects duplicate IDs and can retrieve records by owner. Corrupt JSON is surfaced as an error rather than silently resetting the store.
+
+This is a persistence adapter only. The current server does not expose a character-submission endpoint or register the repository in a running request pipeline. Multi-process deployments, shared storage, backups, and encryption at rest require a stronger persistence solution.
+
 ## Security and actual game integration
 
 Permission checks default to deny. WebSocket clients must present a single-use, short-lived join ticket. Tickets are stored as hashes, consumed once, and never establish permission claims. When configured, the server accepts an OIDC ID token only after validating its RS256 signature, issuer, audience, time claims, and a one-use server nonce; it then derives account identity from the signed issuer and subject. The `issue-ticket` operator command is disabled for non-loopback listeners. Remote listeners require HTTPS, while the default HTTP listener binds to loopback. Client events must be registered by a server resource and carry only bounded primitive JSON values. Clients cannot grant permissions or choose their server-owned session ID. Game character/house and character persistence interfaces are contracts only, and return unavailable until a real adapter is supplied. No game files, platform authentication, anti-cheat, or DRM are accessed or bypassed.

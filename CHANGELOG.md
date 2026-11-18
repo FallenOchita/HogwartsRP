@@ -9,6 +9,8 @@ All notable HogwartsRP changes are recorded here.
 - A harmless UE4SS Lua diagnostic mod for the Steam PC version, with installation and log-verification instructions.
 - A local PowerShell helper that produces a sanitized UE4SS diagnostic report without uploading or exposing unrelated log content.
 - Regression tests for sanitized UE4SS reports, including status detection, missing logs, optional report output, and exclusion of arbitrary log payloads.
+- A JSON-backed character repository with atomic file replacement, duplicate-ID protection, and owner-filtered retrieval.
+- Regression tests for character persistence across repository instances, owner isolation, duplicate IDs, and corrupt-store preservation.
 - Core-owned player sessions with server-generated IDs, single-use join tickets, and per-resource client-event validation.
 - A WebSocket server transport with bounded JSON messages and authenticated server-to-client delivery.
 - A replaceable client network adapter and launcher credential-provider interface.
@@ -20,11 +22,14 @@ All notable HogwartsRP changes are recorded here.
 
 ### Changed
 
+- Added the missing `HogwartsRP.GameIntegration.Abstractions` project reference to `HogwartsRP.Server`, resolving the character repository contract types during compilation.
 - The diagnostic report helper now emits only normalized known markers and constrained version tokens instead of echoing arbitrary log lines.
 - CI now runs the PowerShell diagnostic-report regression tests on Windows and Ubuntu.
 
 ### Limitations
 
+- The JSON character repository is a single-server persistence adapter; it is not a multi-instance database or backup system.
+- Character persistence is implemented as a repository component but is not yet connected to a live character-submission network endpoint.
 - When OIDC is not configured, the console launcher uses a development-ticket prompt for loopback servers only.
 - OIDC sign-in requires issuer and public-client configuration on both launcher and server; RS256 is the only currently accepted ID-token signing algorithm.
 - The launcher owns the current network session. Hogwarts Legacy itself has no compatible multiplayer adapter yet.
