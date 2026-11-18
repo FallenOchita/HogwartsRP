@@ -33,6 +33,7 @@ public static class LuaWorkerHost
             if (request.Type == "stop") break;
             try
             {
+                LinuxWorkerLimits.ResetCpuBudgetForRequest();
                 switch (request.Type)
                 {
                     case "execute":

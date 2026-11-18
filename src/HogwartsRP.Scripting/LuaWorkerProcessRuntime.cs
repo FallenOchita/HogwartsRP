@@ -9,6 +9,7 @@ public sealed class LuaWorkerProcessRuntime : ILuaRuntime
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly Process _process;
+    private readonly WindowsWorkerJob? _windowsJob;
     private readonly ConcurrentDictionary<string, TaskCompletionSource<LuaWorkerResponse>> _pending = new();
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -31,6 +32,7 @@ public sealed class LuaWorkerProcessRuntime : ILuaRuntime
         if (maxPrivateMemoryBytes < 64L * 1024 * 1024) throw new ArgumentOutOfRangeException(nameof(maxPrivateMemoryBytes));
         _requestTimeout = requestTimeout ?? TimeSpan.FromSeconds(30);
         _maxPrivateMemoryBytes = maxPrivateMemoryBytes;
+        _windowsJob = OperatingSystem.IsWindows() ? WindowsWorkerJob.Create(maxPrivateMemoryBytes) : null;
         var start = new ProcessStartInfo(Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") ?? "dotnet")
         {
             UseShellExecute = false,
@@ -49,7 +51,18 @@ public sealed class LuaWorkerProcessRuntime : ILuaRuntime
             WorkerOutput?.Invoke(e.Data);
             Console.Error.WriteLine($"[LuaWorker:{_process.Id}] {e.Data}");
         };
-        if (!_process.Start()) throw new InvalidOperationException("Unable to start Lua worker process.");
+        try
+        {
+            if (!_process.Start()) throw new InvalidOperationException("Unable to start Lua worker process.");
+            _windowsJob?.Assign(_process);
+        }
+        catch
+        {
+            TerminateWorker();
+            _windowsJob?.Dispose();
+            _process.Dispose();
+            throw;
+        }
         _process.BeginErrorReadLine();
         _stdoutPump = PumpOutputAsync();
         _memoryMonitor = MonitorMemoryAsync(_lifetime.Token);
@@ -191,6 +204,7 @@ public sealed class LuaWorkerProcessRuntime : ILuaRuntime
         try { _stdoutPump.Wait(TimeSpan.FromSeconds(2)); } catch { }
         try { _memoryMonitor.Wait(TimeSpan.FromSeconds(1)); } catch { }
         _process.Dispose();
+        _windowsJob?.Dispose();
         _lifetime.Dispose();
         _writeLock.Dispose();
     }
