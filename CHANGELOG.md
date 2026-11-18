@@ -22,6 +22,7 @@ All notable HogwartsRP changes are recorded here.
 
 ### Changed
 
+- Added the missing `HogwartsRP.GameIntegration.Abstractions` project reference to `HogwartsRP.Server`, resolving the character repository contract types during compilation.
 - The diagnostic report helper now emits only normalized known markers and constrained version tokens instead of echoing arbitrary log lines.
 - CI now runs the PowerShell diagnostic-report regression tests on Windows and Ubuntu.
 
