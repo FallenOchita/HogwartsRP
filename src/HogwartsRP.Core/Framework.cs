@@ -93,10 +93,12 @@ public sealed class CommandRegistry(PermissionService permissions)
 {
     private sealed record Entry(string Permission, Func<PermissionPrincipal, string[], ValueTask<string?>> Handler);
     private readonly ConcurrentDictionary<string, Entry> _commands = new(StringComparer.OrdinalIgnoreCase);
+    public event Action<string>? CommandRegistered;
     public void Register(string name, string permission, Func<PermissionPrincipal, string[], ValueTask<string?>> handler)
     {
         if (!Regex.IsMatch(name, "^[a-zA-Z][a-zA-Z0-9_-]{0,31}$")) throw new ArgumentException("Invalid command name.");
         if (!_commands.TryAdd(name, new(permission, handler))) throw new InvalidOperationException($"Command '{name}' already exists.");
+        CommandRegistered?.Invoke(name);
     }
     public async ValueTask<string?> ExecuteAsync(PermissionPrincipal principal, string name, string[] args)
     {

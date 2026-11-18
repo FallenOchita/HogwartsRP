@@ -1,6 +1,6 @@
 # HogwartsRP
 
-An independent, modular roleplay framework foundation for eventual Hogwarts Legacy integration. The current milestone is a runnable server framework prototype with resource discovery, a restricted manifest parser, dependency ordering, command permissions, a local event bus, and an interim managed Lua adapter.
+An independent, modular roleplay framework foundation for eventual Hogwarts Legacy integration. The current milestone is a runnable server framework prototype with resource discovery, a restricted manifest parser, dependency ordering, command permissions, Lua 5.4 resource workers, and a WebSocket protocol preview.
 
 ## Quick start
 
@@ -8,4 +8,4 @@ Install .NET 10, then run `dotnet run --project src/HogwartsRP.Server -- --Resou
 
 ## Status
 
-Resource startup and stop, manifest parsing, local commands/events, default-deny command checks, a configurable installation detector, platform-launch abstraction, and server-side character submission validation are implemented. The Steam launcher uses the Steam app URI to preserve platform ownership/authentication. The character creation bridge is an interface with no real game adapter. No supported direct character-creation entry API was found in official modding material; launch falls back to normal game startup. Lua runtime is MoonSharp and therefore Lua 5.2, not Lua 5.4. Network/game APIs are interfaces without a compatible multiplayer adapter. Client Lua execution, persistence, and resource hot reload are not implemented. Do not infer actual in-game behavior from the local demo.
+Resource lifecycle, Lua resource scripts, default-deny command checks, and server-validated character submissions are implemented. Lua remains the resource language and runs as native Lua 5.4 in a separate worker process per resource, with restricted libraries, OS resource limits, request timeouts, source limits, and instruction budgets. Core owns authenticated server sessions and bounded events over the WebSocket server transport. The preview launcher connects through a replaceable client adapter and credential-provider interface; its ticket prompt accepts operator-issued one-time development credentials, not account logins. No account provider or Hogwarts Legacy multiplayer adapter is connected, so the launcher session is not an in-game session. No supported direct character-creation entry API was found in official modding material. Workers still run as the server OS user without filesystem/network ACLs; client Lua execution, persistence, and resource hot reload are not implemented.
