@@ -1,3 +1,4 @@
+using HogwartsRP.GameIntegration.Abstractions;
 using HogwartsRP.Networking.Abstractions;
 
 namespace HogwartsRP.Launcher;
@@ -39,6 +40,14 @@ public sealed class ServerConnectionService(IPlayerNetworkClientAdapter client, 
 
     public ValueTask SendEventAsync(string eventName, IReadOnlyList<object?> arguments, CancellationToken cancellationToken = default) =>
         client.SendEventAsync(eventName, arguments, cancellationToken);
+
+    /// <summary>Submits a validated roleplay-character draft to the authenticated server session.</summary>
+    public ValueTask<CharacterSubmissionResult> SubmitCharacterAsync(CharacterSubmission submission, CancellationToken cancellationToken = default)
+    {
+        if (!IsConnected) throw new InvalidOperationException("Connect to a server before submitting a character.");
+        ArgumentNullException.ThrowIfNull(submission);
+        return client.SubmitCharacterAsync(submission, cancellationToken);
+    }
 
     public ValueTask DisconnectAsync(CancellationToken cancellationToken = default) =>
         client.DisconnectAsync(cancellationToken);
