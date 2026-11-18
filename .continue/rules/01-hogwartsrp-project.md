@@ -43,4 +43,7 @@ name: HogwartsRP Project Rules
 - Finish with changed files, exact test results, limitations, and next task.
 
 ## Immediate project priority
+- The user confirmed Steam PC. The initial UE4SS diagnostic mod is in `mod/ue4ss/HogwartsRPDiagnostics/`; see its README and `docs/GAME_CAPABILITIES.md`.
+- The immediate milestone is to get a real UE4SS log proving the diagnostic mod loads on the user's exact Steam game build. Do not claim success based on source code alone.
+- Do not combine the diagnostic UE4SS setup with HogWarp; its published setup guidance says they are incompatible.
 The next milestone is the UE4SS compatibility and diagnostic smoke test described in docs/GAME_CAPABILITIES.md. Verify the exact installed game and UE4SS builds before writing game-facing code. Do not treat third-party reverse-engineering notes as supported APIs.
