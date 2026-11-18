@@ -3,7 +3,7 @@
 **Research date:** 2026-11-18  
 **Repository:** FallenOchita/HogwartsRP  
 **Target platform:** Steam PC  
-**Branch:** feature/steam-ue4ss-diagnostic
+**Branch:** test/harden-ue4ss-diagnostic-report
 
 ## Executive decision
 
@@ -109,6 +109,7 @@ Do not add transform sync, remote player spawning, spells, flying, animations or
 - Launcher-owned authenticated connection: IMPLEMENTED.
 - Game-owned authenticated connection: NOT IMPLEMENTED.
 - UE4SS diagnostic mod: IMPLEMENTED, LIVE LOAD NOT VERIFIED.
+- Sanitized diagnostic report helper: IMPLEMENTED, regression tests added; CI validation pending.
 - Native networking bridge: NOT IMPLEMENTED.
 - Local player transform read/apply: NOT VERIFIED.
 - Remote player entity creation: NOT VERIFIED.
@@ -124,7 +125,7 @@ A first harmless UE4SS diagnostic mod has now been added at:
 
 The script only logs that it loaded and calls the documented `UE4SS.GetVersion()` API when present. It does not inspect game objects, change game state, or connect to a network. It is authored but **not yet verified in the user's live Steam installation**.
 
-A local report helper is also available at `tools/diagnostics/Get-HogwartsRPDiagnosticReport.ps1`. It extracts only tagged diagnostic lines and version metadata from a supplied log; it does not upload log data. See `mod/ue4ss/README.md` for usage.
+A local report helper is available at `tools/diagnostics/Get-HogwartsRPDiagnosticReport.ps1`. It emits only normalized recognized diagnostic markers and safe version tokens from a supplied log; arbitrary tagged log payloads and unrelated content are excluded. Regression tests are in `tools/diagnostics/Test-HogwartsRPDiagnosticReport.ps1` and run in CI.
 
 The usual Steam game root is `<SteamLibrary>\\steamapps\\common\\Hogwarts Legacy`; UE4SS mod files are placed under the loader's `Phoenix\\Binaries\\Win64\\Mods` directory for the documented setup. Confirm the actual loader layout before copying files.
 
