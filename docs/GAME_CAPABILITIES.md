@@ -2,7 +2,8 @@
 
 **Research date:** 2026-11-18  
 **Repository:** FallenOchita/HogwartsRP  
-**Branch:** feature/game-adapter-feasibility
+**Target platform:** Steam PC  
+**Branch:** feature/steam-ue4ss-diagnostic
 
 ## Executive decision
 
@@ -113,6 +114,20 @@ Do not add transform sync, remote player spawning, spells, flying, animations or
 - Remote player entity creation: NOT VERIFIED.
 - Two-client game test: NOT PERFORMED.
 
+## Steam-specific diagnostic progress
+
+The user confirmed that their Hogwarts Legacy installation is the **Steam PC version**.
+
+A first harmless UE4SS diagnostic mod has now been added at:
+- `mod/ue4ss/HogwartsRPDiagnostics/scripts/main.lua`
+- Installation and verification notes: `mod/ue4ss/README.md`
+
+The script only logs that it loaded and calls the documented `UE4SS.GetVersion()` API when present. It does not inspect game objects, change game state, or connect to a network. It is authored but **not yet verified in the user's live Steam installation**.
+
+The usual Steam game root is `<SteamLibrary>\\steamapps\\common\\Hogwarts Legacy`; UE4SS mod files are placed under the loader's `Phoenix\\Binaries\\Win64\\Mods` directory for the documented setup. Confirm the actual loader layout before copying files.
+
+**Compatibility caution:** HogWarp setup guidance states that UE4SS is incompatible with its loader setup. HogwartsRP is developing an independent client adapter; do not install or run the diagnostic mod alongside HogWarp. This caution is about coexistence, not a dependency on HogWarp.
+
 ## Decision
 
-Proceed with a UE4SS compatibility and diagnostic smoke test as the next task. The public UE4SS Lua/C++ extension model is the most concrete candidate found, but no game-specific adapter code should be merged until the exact installed game build and UE4SS build pass that smoke test.
+Proceed with the UE4SS compatibility and diagnostic smoke test as the next task. The diagnostic script is ready for a manual load test, but no game-specific adapter code should be merged until the exact installed Steam game build and UE4SS build pass that smoke test.
