@@ -16,5 +16,6 @@
     <Project Path="tests/HogwartsRP.Resources.Tests/HogwartsRP.Resources.Tests.csproj" />
     <Project Path="tests/HogwartsRP.Scripting.Tests/HogwartsRP.Scripting.Tests.csproj" />
     <Project Path="tests/HogwartsRP.Server.Tests/HogwartsRP.Server.Tests.csproj" />
+    <Project Path="tests/HogwartsRP.Networking.Client.Tests/HogwartsRP.Networking.Client.Tests.csproj" />
   </Folder>
 </Solution>
