@@ -10,6 +10,7 @@ All notable HogwartsRP changes are recorded here.
 - A WebSocket server transport with bounded JSON messages and authenticated server-to-client delivery.
 - A replaceable client network adapter and launcher credential-provider interface.
 - Optional OIDC browser sign-in with PKCE, server-issued replay-resistant challenges, server-side ID-token validation, and short-lived join tickets.
+- Mock-provider tests for OIDC signature and claim validation, challenge expiry, and single-use ticket issuance.
 - A loopback-only operator development-ticket command for local protocol work.
 - A preview launcher flow that authenticates to the selected server, requests Hogwarts Legacy launch, and keeps the protocol session open until the launcher exits.
 - Lua resource APIs for registering client-to-server events and sending events to authenticated players.

@@ -40,7 +40,8 @@ public sealed class OidcTicketExchange : IJoinTicketExchange, IDisposable
         string issuer,
         string clientId,
         OneTimeJoinTicketStore tickets,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        HttpMessageHandler? httpMessageHandler = null)
     {
         _issuer = ValidateIssuer(issuer);
         _clientId = string.IsNullOrWhiteSpace(clientId) || clientId.Trim().Length > 512 || clientId.Any(char.IsControl)
@@ -48,7 +49,7 @@ public sealed class OidcTicketExchange : IJoinTicketExchange, IDisposable
             : clientId.Trim();
         _tickets = tickets ?? throw new ArgumentNullException(nameof(tickets));
         _timeProvider = timeProvider ?? TimeProvider.System;
-        _httpClient = new HttpClient(new SocketsHttpHandler { AllowAutoRedirect = false });
+        _httpClient = new HttpClient(httpMessageHandler ?? new SocketsHttpHandler { AllowAutoRedirect = false });
         _httpClient.Timeout = TimeSpan.FromSeconds(15);
     }
 
