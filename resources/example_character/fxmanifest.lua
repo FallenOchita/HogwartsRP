@@ -1,0 +1,7 @@
+fx_version 'cerulean'
+game 'hogwartslegacy'
+name 'example_character'
+author 'HogwartsRP'
+description 'Demonstrates a server resource command.'
+version '0.1.0'
+server_script 'server.lua'
