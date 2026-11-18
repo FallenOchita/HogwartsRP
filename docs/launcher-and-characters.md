@@ -28,3 +28,24 @@ The repository loads existing records on first use, serializes writes within the
 This adapter is intended for one server process. It does not provide cross-process locking, multi-server coordination, encryption at rest, backups, or a production database. It is not yet wired to a live character-submission network endpoint; the current server has no such endpoint.
 
 No real game installation or integration has been tested in this environment. There is no claim that direct character creation or in-game multiplayer works.
+
+## Character submission protocol
+
+After authenticating the WebSocket connection, a client may submit a character using a message shaped like:
+
+```json
+{
+  "type": "submit_character",
+  "requestId": "client-generated-correlation-id",
+  "submission": {
+    "name": "Ada",
+    "appearanceJson": null,
+    "house": "Ravenclaw",
+    "wand": { "wood": "Oak", "core": "Phoenix feather", "length": 11, "flexibility": "Supple" },
+    "background": "Scholar",
+    "roleplayProfile": { "background": "Student", "biography": "A curious student." }
+  }
+}
+```
+
+The server responds with `type: "character_submission_result"`, echoing the request ID and including a `submissionResult` object. The authenticated account ID is taken from the server-created session, never from the client payload. Configure the server's `Storage:CharactersPath` setting to choose the JSON repository file. The endpoint stores roleplay profile data on the server; it does not apply appearance, house, wand, or character data to the game.

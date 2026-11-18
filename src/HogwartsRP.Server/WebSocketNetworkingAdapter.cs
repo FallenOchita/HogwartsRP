@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text.Json;
 using HogwartsRP.Core;
+using HogwartsRP.GameIntegration.Abstractions;
 using HogwartsRP.Networking.Abstractions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -24,6 +25,7 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
     private readonly NetworkEventPolicy _eventPolicy;
     private readonly PlayerSessionRegistry _sessions;
     private readonly ILogger _logger;
+    private readonly ICharacterSubmissionService _characterSubmissions;
     private readonly ConcurrentDictionary<string, ClientConnection> _clients = new(StringComparer.Ordinal);
     private WebApplication? _application;
 
@@ -33,11 +35,13 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
         NetworkEventPolicy eventPolicy,
         PlayerSessionRegistry sessions,
         ILoggerFactory loggerFactory,
-        IJoinTicketExchange? ticketExchange = null)
+        IJoinTicketExchange? ticketExchange = null,
+        ICharacterSubmissionService? characterSubmissions = null)
     {
         _listenUrl = ValidateListenUrl(listenUrl);
         _credentials = credentials;
         _ticketExchange = ticketExchange;
+        _characterSubmissions = characterSubmissions ?? new UnavailableCharacterSubmissionService();
         _eventPolicy = eventPolicy;
         _sessions = sessions;
         _logger = loggerFactory.CreateLogger<WebSocketNetworkingAdapter>();
@@ -259,9 +263,31 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
             var bytes = await ReceiveTextMessageAsync(client.Socket, cancellationToken);
             if (bytes is null) return;
             var message = JsonSerializer.Deserialize<WireMessage>(bytes, JsonOptions);
+            if (message?.Type == "submit_character")
+            {
+                if (message.Submission is null || string.IsNullOrWhiteSpace(message.RequestId) || message.RequestId.Length > 64)
+                {
+                    await SendMessageAsync(client, new WireMessage("character_submission_result", RequestId: message?.RequestId, SubmissionResult: new(false, Error: "A valid request ID and character submission are required.")), cancellationToken);
+                    continue;
+                }
+
+                try
+                {
+                    var result = await _characterSubmissions.SubmitAsync(client.Session.AccountId, message.Submission, cancellationToken);
+                    await SendMessageAsync(client, new WireMessage("character_submission_result", RequestId: message.RequestId, SubmissionResult: result), cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+                catch (Exception exception)
+                {
+                    _logger.LogWarning("Character submission failed for account {AccountId}: {Message}", client.Session.AccountId, exception.Message);
+                    await SendMessageAsync(client, new WireMessage("character_submission_result", RequestId: message.RequestId, SubmissionResult: new(false, Error: "The server could not save this character. Please try again.")), cancellationToken);
+                }
+                continue;
+            }
+
             if (message?.Type != "event" || string.IsNullOrWhiteSpace(message.Name))
             {
-                await RejectAsync(client.Socket, "Expected a client event message.", WebSocketCloseStatus.ProtocolError);
+                await RejectAsync(client.Socket, "Expected a client event or character submission message.", WebSocketCloseStatus.ProtocolError);
                 return;
             }
 
@@ -387,7 +413,16 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
         object?[]? Arguments = null,
         string? PlayerId = null,
         string? DisplayName = null,
-        string? Error = null);
+        string? Error = null,
+        string? RequestId = null,
+        CharacterSubmission? Submission = null,
+        CharacterSubmissionResult? SubmissionResult = null);
+
+    private sealed class UnavailableCharacterSubmissionService : ICharacterSubmissionService
+    {
+        public ValueTask<CharacterSubmissionResult> SubmitAsync(string authenticatedPlayerId, CharacterSubmission submission, CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult(new CharacterSubmissionResult(false, Error: "Character submission is not configured on this server."));
+    }
 
     private sealed class ClientConnection(PlayerSession session, WebSocket socket) : IDisposable
     {

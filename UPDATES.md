@@ -1,5 +1,28 @@
 # Detailed Updates
 
+## 2026-11-18 — Authenticated character submission endpoint
+
+### Added
+
+- Added a `submit_character` WebSocket message for already-authenticated launcher/server sessions.
+- The server derives character ownership from the authenticated session's account ID and passes the submission through the existing server-side validation service.
+- Added correlated `character_submission_result` responses using the client request ID.
+- Wired `JsonCharacterRepository` and `CharacterSubmissionService` into server startup.
+- Added the `Storage:CharactersPath` setting; the default store is `data/characters.json` under the application base directory.
+- Documented the message contract and configuration.
+
+### Security and scope
+
+- A client cannot choose or override the owner account ID.
+- The submission remains subject to the WebSocket frame limit and existing character validation.
+- This stores roleplay character data on the server only. It does not create a character in Hogwarts Legacy or implement in-game multiplayer.
+
+### Validation status
+
+- Source changes are committed to `feature/character-submission-endpoint`.
+- Hosted Windows and Ubuntu CI must pass before this branch is considered verified.
+
+
 ## 2026-11-18 — PR #9 build correction
 
 ### Fixed

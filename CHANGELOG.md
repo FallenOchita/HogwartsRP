@@ -6,6 +6,9 @@ All notable HogwartsRP changes are recorded here.
 
 ### Added
 
+- Added authenticated WebSocket character submissions backed by the JSON character repository, with server-derived account ownership and correlated results.
+- Wired the character repository into server startup with a configurable `Storage:CharactersPath`.
+
 - A harmless UE4SS Lua diagnostic mod for the Steam PC version, with installation and log-verification instructions.
 - A local PowerShell helper that produces a sanitized UE4SS diagnostic report without uploading or exposing unrelated log content.
 - Regression tests for sanitized UE4SS reports, including status detection, missing logs, optional report output, and exclusion of arbitrary log payloads.
