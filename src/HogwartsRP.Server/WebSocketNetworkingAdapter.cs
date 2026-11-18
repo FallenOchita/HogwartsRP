@@ -20,6 +20,7 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly string _listenUrl;
     private readonly IPlayerCredentialValidator _credentials;
+    private readonly IJoinTicketExchange? _ticketExchange;
     private readonly NetworkEventPolicy _eventPolicy;
     private readonly PlayerSessionRegistry _sessions;
     private readonly ILogger _logger;
@@ -31,10 +32,12 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
         IPlayerCredentialValidator credentials,
         NetworkEventPolicy eventPolicy,
         PlayerSessionRegistry sessions,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        IJoinTicketExchange? ticketExchange = null)
     {
         _listenUrl = ValidateListenUrl(listenUrl);
         _credentials = credentials;
+        _ticketExchange = ticketExchange;
         _eventPolicy = eventPolicy;
         _sessions = sessions;
         _logger = loggerFactory.CreateLogger<WebSocketNetworkingAdapter>();
@@ -54,6 +57,8 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
         var application = builder.Build();
         application.UseWebSockets();
         application.MapGet("/health", () => Results.Ok(new { status = "ready" }));
+        application.MapGet("/auth/oidc/challenge", (Delegate)HandleOidcChallengeAsync);
+        application.MapPost("/auth/tickets", (Delegate)HandleOidcTicketExchangeAsync);
         application.MapGet("/connect", HandleConnectionAsync);
         _application = application;
         try
@@ -92,6 +97,77 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
     }
 
     public async ValueTask DisposeAsync() => await StopAsync();
+
+    private async Task<IResult> HandleOidcChallengeAsync(HttpContext context)
+    {
+        SetNoStoreHeaders(context);
+        if (_ticketExchange is null) return Results.Problem("OIDC sign-in is not configured on this server.", statusCode: StatusCodes.Status503ServiceUnavailable);
+        try
+        {
+            var challenge = await _ticketExchange.CreateChallengeAsync(context.RequestAborted);
+            return Results.Json(challenge);
+        }
+        catch (InvalidOperationException exception)
+        {
+            _logger.LogWarning("Could not create an OIDC challenge: {Message}", exception.Message);
+            return Results.Problem("The server cannot create a sign-in challenge right now.", statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+    }
+
+    private async Task<IResult> HandleOidcTicketExchangeAsync(HttpContext context)
+    {
+        SetNoStoreHeaders(context);
+        if (_ticketExchange is null) return Results.Problem("OIDC sign-in is not configured on this server.", statusCode: StatusCodes.Status503ServiceUnavailable);
+        if (context.Request.ContentLength is > 20_000)
+            return Results.Problem("The sign-in request is too large.", statusCode: StatusCodes.Status413PayloadTooLarge);
+
+        OidcJoinTicketRequest? request;
+        try
+        {
+            using var body = new MemoryStream();
+            var buffer = new byte[4096];
+            while (true)
+            {
+                var read = await context.Request.Body.ReadAsync(buffer, context.RequestAborted);
+                if (read == 0) break;
+                if (body.Length + read > 20_000)
+                    return Results.Problem("The sign-in request is too large.", statusCode: StatusCodes.Status413PayloadTooLarge);
+                body.Write(buffer, 0, read);
+            }
+            request = JsonSerializer.Deserialize<OidcJoinTicketRequest>(body.ToArray(), JsonOptions);
+        }
+        catch (JsonException)
+        {
+            return Results.BadRequest(new { error = "Invalid sign-in request." });
+        }
+
+        if (request is null || string.IsNullOrWhiteSpace(request.ChallengeId) || string.IsNullOrWhiteSpace(request.IdToken))
+            return Results.BadRequest(new { error = "A challenge ID and OIDC ID token are required." });
+
+        try
+        {
+            var ticket = await _ticketExchange.ExchangeAsync(request, context.RequestAborted);
+            return ticket is null
+                ? Results.Unauthorized()
+                : Results.Json(ticket);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException)
+        {
+            _logger.LogWarning("OIDC provider validation is unavailable: {Message}", exception.Message);
+            return Results.Problem("The identity provider could not be reached to validate sign-in.", statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+        catch (InvalidOperationException exception)
+        {
+            _logger.LogWarning("OIDC provider configuration is invalid: {Message}", exception.Message);
+            return Results.Problem("The server's identity provider configuration is invalid.", statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+    }
+
+    private static void SetNoStoreHeaders(HttpContext context)
+    {
+        context.Response.Headers.CacheControl = "no-store";
+        context.Response.Headers.Pragma = "no-cache";
+    }
 
     private async Task HandleConnectionAsync(HttpContext context)
     {

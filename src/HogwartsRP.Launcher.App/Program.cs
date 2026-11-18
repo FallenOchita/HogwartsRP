@@ -16,7 +16,28 @@ if (string.IsNullOrWhiteSpace(name) || !Uri.TryCreate(address, UriKind.Absolute,
 
 var server = new ServerSelection(Guid.NewGuid().ToString("N"), name, endpoint);
 await using var networkClient = new WebSocketPlayerNetworkClient();
-var connection = new ServerConnectionService(networkClient, new ConsoleJoinCredentialProvider());
+var oidcIssuer = Environment.GetEnvironmentVariable("HogwartsRP__Oidc__Authority");
+var oidcClientId = Environment.GetEnvironmentVariable("HogwartsRP__Oidc__ClientId");
+if (string.IsNullOrWhiteSpace(oidcIssuer) != string.IsNullOrWhiteSpace(oidcClientId))
+{
+    Console.Error.WriteLine("Set both HogwartsRP__Oidc__Authority and HogwartsRP__Oidc__ClientId to enable OIDC sign-in.");
+    return 2;
+}
+
+using var oidcCredentialProvider = string.IsNullOrWhiteSpace(oidcIssuer)
+    ? null
+    : new OidcJoinCredentialProvider(oidcIssuer, oidcClientId!, new Progress<string>(message => Console.WriteLine($"[auth] {message}")));
+if (oidcCredentialProvider is null && !endpoint.IsLoopback)
+{
+    Console.Error.WriteLine("OIDC sign-in must be configured before connecting to a remote server.");
+    return 2;
+}
+IJoinCredentialProvider credentialProvider = oidcCredentialProvider is null
+    ? new ConsoleJoinCredentialProvider()
+    : oidcCredentialProvider;
+if (oidcCredentialProvider is null)
+    Console.WriteLine("OIDC is not configured; the local development ticket prompt will be used.");
+var connection = new ServerConnectionService(networkClient, credentialProvider);
 connection.StatusMessage += message => Console.WriteLine($"[network] {message}");
 connection.ServerEventReceived += networkEvent =>
     Console.WriteLine($"[server event] {networkEvent.Name} ({networkEvent.Arguments.Count} arguments)");

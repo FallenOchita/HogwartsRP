@@ -20,27 +20,39 @@ commands.Register("status", "server.status", (_, _) =>
 });
 
 var joinTickets = new OneTimeJoinTicketStore();
-commands.Register("issue-ticket", "server.auth.issue", (_, commandArgs) =>
+var listenUrl = builder.Configuration["Networking:ListenUrl"] ?? "http://127.0.0.1:7777";
+if (Uri.TryCreate(listenUrl, UriKind.Absolute, out var configuredListenUri) && configuredListenUri.IsLoopback)
 {
-    if (commandArgs.Length < 2)
+    commands.Register("issue-ticket", "server.auth.issue", (_, commandArgs) =>
     {
-        Console.WriteLine("Usage: issue-ticket <account-id> <display name>");
-        return ValueTask.FromResult<string?>(null);
-    }
+        if (commandArgs.Length < 2)
+        {
+            Console.WriteLine("Usage: issue-ticket <account-id> <display name>");
+            return ValueTask.FromResult<string?>(null);
+        }
 
-    try
-    {
-        var credential = joinTickets.Issue(new AuthenticatedPlayer(commandArgs[0], string.Join(' ', commandArgs.Skip(1))));
-        Console.WriteLine($"One-time join credential (expires in 2 minutes): {credential}");
-    }
-    catch (ArgumentException exception) { Console.WriteLine(exception.Message); }
-    return ValueTask.FromResult<string?>(null);
-});
+        try
+        {
+            var credential = joinTickets.Issue(new AuthenticatedPlayer(commandArgs[0], string.Join(' ', commandArgs.Skip(1))));
+            Console.WriteLine($"One-time development credential (expires in 2 minutes): {credential}");
+        }
+        catch (ArgumentException exception) { Console.WriteLine(exception.Message); }
+        return ValueTask.FromResult<string?>(null);
+    });
+}
+else logger.LogWarning("The issue-ticket development command is disabled because the server listener is not loopback.");
+
+var oidcAuthority = builder.Configuration["Authentication:Oidc:Authority"];
+var oidcClientId = builder.Configuration["Authentication:Oidc:ClientId"];
+if (string.IsNullOrWhiteSpace(oidcAuthority) != string.IsNullOrWhiteSpace(oidcClientId))
+    throw new InvalidOperationException("Configure both Authentication:Oidc:Authority and Authentication:Oidc:ClientId to enable OIDC sign-in.");
+using var oidcTicketExchange = string.IsNullOrWhiteSpace(oidcAuthority)
+    ? null
+    : new OidcTicketExchange(oidcAuthority, oidcClientId!, joinTickets);
 
 var eventPolicy = new NetworkEventPolicy();
 var sessions = new PlayerSessionRegistry();
-var listenUrl = builder.Configuration["Networking:ListenUrl"] ?? "http://127.0.0.1:7777";
-await using var networking = new WebSocketNetworkingAdapter(listenUrl, joinTickets, eventPolicy, sessions, loggerFactory);
+await using var networking = new WebSocketNetworkingAdapter(listenUrl, joinTickets, eventPolicy, sessions, loggerFactory, oidcTicketExchange);
 networking.PlayerConnected += session =>
     logger.LogInformation("Player {DisplayName} connected with session {SessionId}", session.DisplayName, session.Id);
 networking.PlayerDisconnected += session =>
