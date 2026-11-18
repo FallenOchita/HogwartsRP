@@ -81,3 +81,21 @@ Do not combine this diagnostic UE4SS setup with HogWarp. HogWarp's published set
 **Diagnostic script authored; not yet verified in the user's live Steam installation.**
 
 The next gate is a real UE4SS log showing that this script loaded with the installed game build. Do not add player-object access, hooks, networking, or transform synchronization until this gate passes.
+
+## Create a sanitized diagnostic report
+
+After launching the game once with the diagnostic mod enabled, run the report helper from PowerShell:
+
+```powershell
+.\tools\diagnostics\Get-HogwartsRPDiagnosticReport.ps1 -LogPath "C:\Path\To\Hogwarts Legacy\Phoenix\Binaries\Win64\UE4SS.log"
+```
+
+The helper reads only the last 5,000 log lines and prints:
+- whether both diagnostic success markers were found;
+- the Hogwarts Legacy executable version, if the executable is beside the log;
+- the UE4SS version reported by the diagnostic mod;
+- only lines tagged `[HogwartsRPDiagnostics]`.
+
+It does not upload anything, print the log path, or include unrelated log content. To save the same sanitized report to a text file, add `-OutputPath ".\HogwartsRP-diagnostic-report.txt"`. Review the report before sharing it. If your log or executable is in a different location, provide the appropriate paths with `-LogPath` and `-GameExecutablePath`.
+
+A `PASS` result confirms only that the diagnostic Lua mod loaded and completed its smoke test. It does not prove game object access or multiplayer.
