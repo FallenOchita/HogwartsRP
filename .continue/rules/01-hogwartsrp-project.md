@@ -11,7 +11,7 @@ name: HogwartsRP Project Rules
 - A minimal native bridge may be required for verified game integration. Do not assume undocumented game APIs exist.
 
 ## Required context
-- Before significant work, read `docs/CONTINUE_HANDOFF.md` and `docs/COPILOT_HANDOFF.md`.
+- Before significant work, read docs/COPILOT_HANDOFF.md and docs/GAME_CAPABILITIES.md.
 - Inspect the live repository, current branch, git status, solution, tests, and existing implementations. Handoff documents can become stale.
 - Reuse existing Core, session, authentication, WebSocket, resource, and game-integration abstractions instead of creating parallel systems.
 
@@ -29,18 +29,18 @@ name: HogwartsRP Project Rules
 - Use bounded, versioned messages, authentication, rate limits, and short-lived credentials.
 - Never embed permanent server secrets in a game plugin or client binary.
 - Do not log credentials or tokens.
-- Do not bypass DRM, platform authentication, access controls, or game security protections.
+- Do not bypass DRM, platform authentication, access controls, anti-cheat, or game security protections.
 - Review third-party dependency licenses and redistribution restrictions before adoption.
 
 ## Development workflow
-- Inspect `git status` and preserve uncommitted user changes.
-- Start from the latest `main` and create a focused feature branch.
+- Inspect git status and preserve uncommitted user changes.
+- Start from the latest main and create a focused feature branch.
 - Make small changes with automated tests.
 - Keep CI tests runnable without Hogwarts Legacy installed; document manual game tests separately.
 - Run restore, build, and all tests; fix regressions before declaring completion.
-- Update docs and the Continue handoff when architecture, capabilities, tests, or next steps change.
+- Update docs and .continue rules/prompts when architecture, capabilities, tests, or next steps change.
 - Do not merge, force-push, or deploy without explicit user authorization.
 - Finish with changed files, exact test results, limitations, and next task.
 
 ## Immediate project priority
-The next milestone is the Game Adapter Feasibility and Client Integration Spike described in `docs/CONTINUE_HANDOFF.md`. Verify supported game integration APIs and licenses first. Only then build the smallest viable client adapter and prove an authenticated client connection. Player transform synchronization comes after that.
+The next milestone is the UE4SS compatibility and diagnostic smoke test described in docs/GAME_CAPABILITIES.md. Verify the exact installed game and UE4SS builds before writing game-facing code. Do not treat third-party reverse-engineering notes as supported APIs.
