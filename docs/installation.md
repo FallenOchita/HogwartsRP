@@ -9,6 +9,8 @@ dotnet test HogwartsRP.slnx
 dotnet run --project src/HogwartsRP.Server -- --Resources:Path=resources
 ```
 
-Enter `status` to see resource state and `quit` to stop cleanly. This launches the framework prototype only; no game or network integration is provided.
+Enter `status` to see resource state and `quit` to stop cleanly. The server listens on `http://127.0.0.1:7777` for local development. This is a protocol preview, not a Hogwarts Legacy multiplayer server.
 
-Run `dotnet run --project src/HogwartsRP.Launcher.App` to open the preview console launcher, enter a secure server address, and request launch. It currently detects conventional Steam/Epic installation paths but can launch only through Steam. It is not a packaged desktop UI. Direct character-creation is not supported and normal startup is used. See [launcher and character creation](launcher-and-characters.md).
+For a local protocol session, enter `issue-ticket <account-id> <display name>` in the server console and copy the one-time credential. Then run `dotnet run --project src/HogwartsRP.Launcher.App`, select that server, and paste the ticket when prompted. Tickets expire after two minutes and can be used once. Remote servers require HTTPS/WSS plus an operator or upstream identity provider that issues a trusted credential.
+
+The preview launcher authenticates a network session and asks Steam to start Hogwarts Legacy; it keeps the session open until you type `quit`. The game itself is not connected to the session because no compatible Hogwarts Legacy multiplayer adapter exists. The launcher detects conventional Steam/Epic installation paths but can launch only through Steam. It is not a packaged desktop UI. Direct character-creation is not supported and normal startup is used. See [launcher and character creation](launcher-and-characters.md).

@@ -63,8 +63,9 @@ public sealed class LauncherService(IGameInstallationDetector detector, IPlatfor
     public async ValueTask<LaunchStatus> PlayAsync(ServerSelection server, CancellationToken cancellationToken = default)
     {
         if (Status.State is LaunchState.Launching or LaunchState.LaunchRequested or LaunchState.Running) return Status;
-        if (!Uri.TryCreate(server.Endpoint.ToString(), UriKind.Absolute, out var uri) || uri.Scheme is not ("https" or "wss"))
-            return Publish(new(LaunchState.Failed, "Server endpoint must use HTTPS or WSS.", Server: server));
+        if (!Uri.TryCreate(server.Endpoint.ToString(), UriKind.Absolute, out var uri) ||
+            !((uri.Scheme is "https" or "wss") || (uri.IsLoopback && (uri.Scheme is "http" or "ws"))))
+            return Publish(new(LaunchState.Failed, "Server endpoint must use HTTPS/WSS, or HTTP/WS on loopback for local development.", Server: server));
         if (!await _gate.WaitAsync(0, cancellationToken)) return Status;
         try
         {

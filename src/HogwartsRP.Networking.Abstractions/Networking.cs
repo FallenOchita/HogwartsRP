@@ -12,11 +12,25 @@ public sealed record PlayerSession(string Id, string DisplayName)
 
 /// <summary>A client event accepted by the server's event policy and tied to its authenticated session.</summary>
 public sealed record ValidatedNetworkEvent(string Name, PlayerSession Player, IReadOnlyList<object?> Arguments);
+public sealed record ServerNetworkEvent(string Name, IReadOnlyList<object?> Arguments);
 
 /// <summary>Validates short-lived credentials issued after an upstream identity check.</summary>
 public interface IPlayerCredentialValidator
 {
     ValueTask<AuthenticatedPlayer?> ValidateCredentialAsync(string credential, CancellationToken cancellationToken = default);
+}
+
+/// <summary>Client-side protocol contract implemented by a replaceable transport adapter.</summary>
+public interface IPlayerNetworkClientAdapter : IAsyncDisposable
+{
+    PlayerSession? Session { get; }
+    bool IsConnected { get; }
+    ValueTask<PlayerSession> ConnectAsync(Uri serverEndpoint, string credential, CancellationToken cancellationToken = default);
+    ValueTask SendEventAsync(string eventName, IReadOnlyList<object?> arguments, CancellationToken cancellationToken = default);
+    ValueTask DisconnectAsync(CancellationToken cancellationToken = default);
+
+    event Action<ServerNetworkEvent>? ServerEventReceived;
+    event Action<string>? StatusMessage;
 }
 
 /// <summary>Transport-independent multiplayer contract owned by HogwartsRP Core.</summary>
