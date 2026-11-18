@@ -98,7 +98,13 @@ public sealed class NativeLua54Runtime : ILuaRuntime
     }
 }
 
-public sealed class ResourceApi(EventBus events, CommandRegistry commands, PermissionPrincipal principal, Action<string, object?[]>? crossResourceEvent = null)
+public sealed class ResourceApi(
+    EventBus events,
+    CommandRegistry commands,
+    PermissionPrincipal principal,
+    Action<string, object?[]>? crossResourceEvent = null,
+    Action<string>? networkEventRegistered = null,
+    Action<string, string, object?[]>? clientEventRequested = null)
 {
     public void RegisterInto(ILuaRuntime runtime)
     {
@@ -115,14 +121,27 @@ public sealed class ResourceApi(EventBus events, CommandRegistry commands, Permi
             await ValueTask.CompletedTask;
             return null;
         })));
-        runtime.Register("RegisterNetEvent", (Action<string>)(_ => { }));
-        runtime.Register("TriggerClientEvent", (Action<string, string>)((_, _) => throw new InvalidOperationException("No networking adapter is installed.")));
+        runtime.Register("RegisterNetEvent", (Action<string>)(name =>
+        {
+            NetworkEventPolicy.ValidateEventName(name);
+            (networkEventRegistered ?? throw new InvalidOperationException("No networking adapter is installed."))(name);
+        }));
+        runtime.Register("TriggerClientEvent", new Action<string, string, object?[]>(TriggerClientEvent));
         runtime.Register("TriggerServerEvent", (Action<string>)((_) => throw new InvalidOperationException("No networking adapter is installed.")));
         runtime.Register("GetPlayerName", (Func<string, string>)(id => id == principal.Id ? principal.Id : ""));
     }
 
     private void TriggerLocalEvent(string name, params object?[] arguments) =>
         TriggerEventAsync(name, arguments).AsTask().GetAwaiter().GetResult();
+
+    private void TriggerClientEvent(string name, string playerId, params object?[] arguments)
+    {
+        NetworkEventPolicy.ValidateEventName(name);
+        if (string.IsNullOrWhiteSpace(playerId) || playerId.Length > 64)
+            throw new ArgumentException("A server-issued player session ID is required.", nameof(playerId));
+        var values = NetworkEventPolicy.ValidateArguments(arguments);
+        (clientEventRequested ?? throw new InvalidOperationException("No networking adapter is installed."))(name, playerId, values);
+    }
 
     private async ValueTask TriggerEventAsync(string name, object?[] arguments)
     {

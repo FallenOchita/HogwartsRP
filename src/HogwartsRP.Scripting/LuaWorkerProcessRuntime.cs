@@ -23,6 +23,8 @@ public sealed class LuaWorkerProcessRuntime : ILuaRuntime
     public int WorkerProcessId => _process.Id;
     public event Action<string>? CommandRegistered;
     public event Action<LuaWorkerProcessRuntime, string, object?[]>? EventRaised;
+    public event Action<string>? NetworkEventRegistered;
+    public event Action<LuaWorkerProcessRuntime, string, string, object?[]>? ClientEventRequested;
     public event Action<string>? WorkerOutput;
 
     public LuaWorkerProcessRuntime(string workerAssemblyPath, TimeSpan? requestTimeout = null, long maxPrivateMemoryBytes = 512L * 1024 * 1024)
@@ -129,6 +131,18 @@ public sealed class LuaWorkerProcessRuntime : ILuaRuntime
                 if (response is null) continue;
                 if (response.Type == "ready") { _ready.TrySetResult(); continue; }
                 if (response.Type == "command_registered" && response.Name is not null) { CommandRegistered?.Invoke(response.Name); continue; }
+                if (response.Type == "network_event_registered" && response.Name is not null)
+                {
+                    try { NetworkEventRegistered?.Invoke(response.Name); }
+                    catch (Exception ex) { Console.Error.WriteLine($"[LuaWorker:{_process.Id}] Network event registration failed: {ex.Message}"); }
+                    continue;
+                }
+                if (response.Type == "client_event_requested" && response.EventName is not null && response.PlayerId is not null)
+                {
+                    try { ClientEventRequested?.Invoke(this, response.PlayerId, response.EventName, (response.EventArguments ?? []).Select(ConvertJsonValue).ToArray()); }
+                    catch (Exception ex) { Console.Error.WriteLine($"[LuaWorker:{_process.Id}] Client event request failed: {ex.Message}"); }
+                    continue;
+                }
                 if (response.Type == "event_raised" && response.EventName is not null)
                 {
                     try { EventRaised?.Invoke(this, response.EventName, (response.EventArguments ?? []).Select(ConvertJsonValue).ToArray()); }

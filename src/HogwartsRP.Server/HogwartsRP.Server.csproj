@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -10,6 +10,7 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <ProjectReference Include="..\HogwartsRP.Core\HogwartsRP.Core.csproj" />
+    <ProjectReference Include="..\HogwartsRP.Networking.Abstractions\HogwartsRP.Networking.Abstractions.csproj" />
     <ProjectReference Include="..\HogwartsRP.Scripting\HogwartsRP.Scripting.csproj" />
     <ProjectReference Include="..\HogwartsRP.Resources\HogwartsRP.Resources.csproj" />
     <ProjectReference Include="..\HogwartsRP.LuaWorker\HogwartsRP.LuaWorker.csproj" />

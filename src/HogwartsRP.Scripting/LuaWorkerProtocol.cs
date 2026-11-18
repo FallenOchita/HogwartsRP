@@ -4,7 +4,7 @@ using HogwartsRP.Core;
 namespace HogwartsRP.Scripting;
 
 public sealed record LuaWorkerRequest(string Type, string? Id = null, string? Script = null, string? ChunkName = null, string? Name = null, string[]? Arguments = null, string? EventName = null, object?[]? EventArguments = null);
-public sealed record LuaWorkerResponse(string Type, string? Id = null, string? Name = null, string? Result = null, string? Error = null, string? EventName = null, object?[]? EventArguments = null);
+public sealed record LuaWorkerResponse(string Type, string? Id = null, string? Name = null, string? Result = null, string? Error = null, string? EventName = null, object?[]? EventArguments = null, string? PlayerId = null);
 
 /// <summary>Worker-side line protocol. Lua executes only in the worker; stdout is reserved for protocol messages.</summary>
 public static class LuaWorkerHost
@@ -18,7 +18,14 @@ public static class LuaWorkerHost
         var commands = new CommandRegistry(new PermissionService());
         var console = new PermissionPrincipal("console", new HashSet<string> { "*" });
         runtime.Register("print", new Action<object?[]>(WritePrint));
-        new ResourceApi(events, commands, console, (name, args) => Write(new LuaWorkerResponse("event_raised", EventName: name, EventArguments: ValidateEventArguments(args)))).RegisterInto(runtime);
+        new ResourceApi(
+            events,
+            commands,
+            console,
+            (name, args) => Write(new LuaWorkerResponse("event_raised", EventName: name, EventArguments: ValidateEventArguments(args))),
+            name => Write(new LuaWorkerResponse("network_event_registered", Name: name)),
+            (name, playerId, args) => Write(new LuaWorkerResponse("client_event_requested", EventName: name, PlayerId: playerId, EventArguments: ValidateEventArguments(args))))
+            .RegisterInto(runtime);
         commands.CommandRegistered += name => Write(new LuaWorkerResponse("command_registered", Name: name));
         Write(new LuaWorkerResponse("ready"));
 
