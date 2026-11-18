@@ -11,6 +11,16 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Get-SafeVersionToken {
+    param([string]$Value)
+
+    if ($Value -match '^\s*([A-Za-z0-9][A-Za-z0-9._+-]{0,63})(?:\s|$)') {
+        return $Matches[1]
+    }
+
+    return "Not detected"
+}
+
 if (-not (Test-Path -LiteralPath $LogPath -PathType Leaf)) {
     throw "UE4SS log file was not found. Supply the path to UE4SS.log with -LogPath."
 }
@@ -27,35 +37,37 @@ $gameVersion = "Not detected"
 if (Test-Path -LiteralPath $GameExecutablePath -PathType Leaf) {
     $versionInfo = (Get-Item -LiteralPath $GameExecutablePath).VersionInfo
     if (-not [string]::IsNullOrWhiteSpace($versionInfo.ProductVersion)) {
-        $gameVersion = $versionInfo.ProductVersion
+        $gameVersion = Get-SafeVersionToken $versionInfo.ProductVersion
     }
     elseif (-not [string]::IsNullOrWhiteSpace($versionInfo.FileVersion)) {
-        $gameVersion = $versionInfo.FileVersion
+        $gameVersion = Get-SafeVersionToken $versionInfo.FileVersion
     }
 }
 
-$diagnosticLines = @(
-    $logLines |
-        Where-Object { $_ -match '\[HogwartsRPDiagnostics\]' } |
-        Select-Object -Last 25
+# Parse known diagnostic messages, but never echo arbitrary log lines into the report.
+$taggedLines = @(
+    $logLines | Where-Object { $_ -match '\[HogwartsRPDiagnostics\]' }
 )
 
-$loaded = [bool]($diagnosticLines | Where-Object {
+$loaded = [bool]($taggedLines | Where-Object {
     $_ -match '\[HogwartsRPDiagnostics\]\s+Loaded successfully\.'
 })
-$completed = [bool]($diagnosticLines | Where-Object {
+$completed = [bool]($taggedLines | Where-Object {
     $_ -match '\[HogwartsRPDiagnostics\]\s+Smoke test complete\.'
+})
+$unavailable = [bool]($taggedLines | Where-Object {
+    $_ -match '\[HogwartsRPDiagnostics\]\s+UE4SS\.GetVersion\(\) is unavailable'
 })
 
 $ue4ssVersion = "Not reported by diagnostic mod"
-$versionLine = $diagnosticLines | Where-Object {
+$versionLine = $taggedLines | Where-Object {
     $_ -match '\[HogwartsRPDiagnostics\]\s+UE4SS version:'
 } | Select-Object -Last 1
 
 if ($versionLine -match 'UE4SS version:\s*(.+)$') {
-    $ue4ssVersion = $Matches[1].Trim()
+    $ue4ssVersion = Get-SafeVersionToken $Matches[1]
 }
-elseif ($diagnosticLines -match 'UE4SS.GetVersion\(\) is unavailable') {
+elseif ($unavailable) {
     $ue4ssVersion = "GetVersion API unavailable in this loader build"
 }
 
@@ -73,19 +85,28 @@ $report = @(
     "Hogwarts Legacy executable version: $gameVersion"
     "UE4SS version: $ue4ssVersion"
     ""
-    "HogwartsRP diagnostic log lines:"
+    "HogwartsRP diagnostic log markers:"
 )
 
-if ($diagnosticLines.Count -gt 0) {
-    $report += $diagnosticLines
+if ($loaded) {
+    $report += "[HogwartsRPDiagnostics] Loaded successfully."
 }
-else {
-    $report += "No [HogwartsRPDiagnostics] lines were found in the last 5000 log lines."
+if ($versionLine) {
+    $report += "[HogwartsRPDiagnostics] UE4SS version: $ue4ssVersion"
+}
+elseif ($unavailable) {
+    $report += "[HogwartsRPDiagnostics] UE4SS.GetVersion() is unavailable in this loader build."
+}
+if ($completed) {
+    $report += "[HogwartsRPDiagnostics] Smoke test complete."
+}
+if (-not $loaded -and -not $versionLine -and -not $unavailable -and -not $completed) {
+    $report += "No recognized HogwartsRP diagnostic markers were found in the last 5000 log lines."
 }
 
 $report += @(
     ""
-    "Privacy: this report omits the log file path and unrelated log content."
+    "Privacy: only recognized diagnostic markers and version tokens are included."
     "This smoke test does not verify player discovery, networking, or multiplayer."
 )
 
