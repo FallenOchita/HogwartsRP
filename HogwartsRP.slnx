@@ -2,20 +2,16 @@
   <Folder Name="/src/">
     <Project Path="src/HogwartsRP.Core/HogwartsRP.Core.csproj" />
     <Project Path="src/HogwartsRP.GameIntegration.Abstractions/HogwartsRP.GameIntegration.Abstractions.csproj" />
-    <Project Path="src/HogwartsRP.Launcher/HogwartsRP.Launcher.csproj" />
     <Project Path="src/HogwartsRP.LuaWorker/HogwartsRP.LuaWorker.csproj" />
     <Project Path="src/HogwartsRP.Networking.Abstractions/HogwartsRP.Networking.Abstractions.csproj" />
-    <Project Path="src/HogwartsRP.Networking.Client/HogwartsRP.Networking.Client.csproj" />
     <Project Path="src/HogwartsRP.Resources/HogwartsRP.Resources.csproj" />
     <Project Path="src/HogwartsRP.Scripting/HogwartsRP.Scripting.csproj" />
     <Project Path="src/HogwartsRP.Server/HogwartsRP.Server.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/HogwartsRP.Core.Tests/HogwartsRP.Core.Tests.csproj" />
-    <Project Path="tests/HogwartsRP.Launcher.Tests/HogwartsRP.Launcher.Tests.csproj" />
     <Project Path="tests/HogwartsRP.Resources.Tests/HogwartsRP.Resources.Tests.csproj" />
     <Project Path="tests/HogwartsRP.Scripting.Tests/HogwartsRP.Scripting.Tests.csproj" />
     <Project Path="tests/HogwartsRP.Server.Tests/HogwartsRP.Server.Tests.csproj" />
-    <Project Path="tests/HogwartsRP.Networking.Client.Tests/HogwartsRP.Networking.Client.Tests.csproj" />
   </Folder>
 </Solution>

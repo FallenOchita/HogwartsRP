@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
-  <ItemGroup><ProjectReference Include="..\..\src\HogwartsRP.Resources\HogwartsRP.Resources.csproj" /><ProjectReference Include="..\..\src\HogwartsRP.Launcher\HogwartsRP.Launcher.csproj" /></ItemGroup>
+  <ItemGroup><ProjectReference Include="..\..\src\HogwartsRP.Resources\HogwartsRP.Resources.csproj" /></ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
