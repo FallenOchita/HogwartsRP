@@ -7,7 +7,7 @@
 - Adds per-class `ForEachProperty` diagnostics and preserves partial captures instead of treating failed continuation as a complete catalog.
 - Added a 16-level superclass limit and a 256-property catalog cap.
 - Increased report serialization depth to ten levels so grouped class hierarchies are no longer hidden behind the old depth-five limit; added a 50,000-line safety ceiling with an explicit truncation marker.
-- Added standalone Lua regression tests for complete metadata, partial enumeration, and duplicate-class caching.
+- Added standalone Lua regression tests for complete metadata, partial enumeration, and duplicate-class caching; the Linux CI job runs both UE4SS research Lua specs.
 
 ### Safety and validation boundary
 
