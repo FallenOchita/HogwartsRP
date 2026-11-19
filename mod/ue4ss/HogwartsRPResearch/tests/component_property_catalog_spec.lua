@@ -67,6 +67,8 @@ equal(complete.properties[1].declaring_class, "Class /Script/Test.TestComponent"
 equal(complete.properties[2].declaring_class, "Class /Script/Engine.ActorComponent", "base declaring class")
 equal(complete.class_diagnostics[1].iteration_probe.status, "OK", "successful minimal probe status")
 equal(complete.class_diagnostics[1].iteration_probe.callback_invocations, 1, "successful minimal probe callback count")
+equal(complete.class_diagnostics[1].iteration_probe.callback_invocations,
+    complete.class_diagnostics[1].callback_invocations, "successful probe/detail callback count parity")
 
 local longSyntheticError = "synthetic continuation failure " .. string.rep("diagnostic-detail-", 24)
 local failingClass = class("Class /Script/Test.FailingComponent", {
@@ -83,6 +85,13 @@ equal(partial.class_diagnostics[1].status, "CALL_ERROR_AFTER_CALLBACK", "partial
 local failingDiagnostic = partial.class_diagnostics[1]
 equal(failingDiagnostic.iteration_probe.status, "CALL_ERROR_AFTER_CALLBACK", "minimal probe failure status")
 equal(failingDiagnostic.iteration_probe.callback_invocations, 1, "minimal probe callback count")
+equal(failingDiagnostic.iteration_probe.callback_invocations,
+    failingDiagnostic.callback_invocations, "failing probe/detail callback count parity")
+assert(failingDiagnostic.iteration_probe.error:find("synthetic continuation failure", 1, true),
+    "minimal probe should preserve the original error text")
+assert(failingDiagnostic.iteration_probe.error_length > 180,
+    "minimal probe error length should exceed the old 180-character cap")
+equal(failingDiagnostic.iteration_probe.error_truncated, false, "minimal probe error truncation flag")
 assert(failingDiagnostic.error:find("synthetic continuation failure", 1, true),
     "full enumeration error should retain the original error text")
 assert(failingDiagnostic.error_length > 180, "full enumeration error length should exceed the old 180-character cap")
