@@ -173,6 +173,10 @@ local function runResearch(targets, finalAttempt)
                     movement = { "CharacterOwner", "PawnOwner", "UpdatedComponent" }
                 }
             ),
+            related_reference_audit = Discovery.relatedObjectReferenceAudit(controller, {
+                { root_property = "Player", target = "local_player", properties = { "PlayerController" } },
+                { root_property = "PlayerState", target = "player_state", properties = { "PawnPrivate" } }
+            }),
             targeted_property_metadata = {
                 player = Reflection and Reflection.lookupNamedProperties(player, {
                     "CharacterMovement", "CharMoveComp", "Mesh",
