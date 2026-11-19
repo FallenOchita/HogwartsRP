@@ -1,3 +1,20 @@
+## 2026-11-18 — Rust resource runtime integration (first slice)
+
+### Added
+
+- Added `rust_script` declarations for precompiled Rust resource executables in `fxmanifest.lua`.
+- Added a .NET Rust worker process supervisor with a readiness handshake, bounded 32 KiB JSON-lines frames, request/startup timeouts, stderr diagnostics, and graceful-stop/process-tree termination handling.
+- Integrated Rust worker startup and shutdown into `ResourceManager` alongside Lua scripts.
+- Exposed Rust command registration, network-event declaration, command invocation, and server-originated event dispatch through the resource manager.
+- Aligned Rust SDK protocol field casing with .NET JSON defaults and added a serialization regression test.
+- Added a resource manifest test and updated the Rust support and architecture documentation.
+
+### Boundaries
+
+- Rust workers must be precompiled for the server OS/architecture; automatic Cargo builds and restart policies are not implemented.
+- Command and network-event declarations are surfaced to the host but are not yet wired automatically into the global command registry or WebSocket authorization pipeline.
+- Rust worker processes do not yet receive the Lua worker's OS CPU/memory limits. They run with the server user's permissions and must be treated as trusted code.
+
 ## 2026-11-19 — Rust launcher CI compile fix
 
 - Fixed the Windows release-build error in `save_profiles`: `NamedTempFile::persist` returns the persisted file handle, while the function contract returns `()`. The result is now explicitly mapped to unit.
