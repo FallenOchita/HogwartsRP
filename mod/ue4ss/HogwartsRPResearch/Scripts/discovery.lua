@@ -287,7 +287,6 @@ function M.components(actor, propertyCataloger)
                     if hierarchyCache[hierarchyKey] == nil then
                         hierarchyCache[hierarchyKey] = componentClassHierarchy(component, hierarchyDepth)
                     end
-                    if propertyCatalogCache == nil then propertyCatalogCache = {} end
                     if propertyCatalogCache[hierarchyKey] == nil then
                         if type(propertyCataloger) == "function" then
                             local catalogOk, catalogResult = pcall(propertyCataloger, component)
