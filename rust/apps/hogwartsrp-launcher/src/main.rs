@@ -30,6 +30,7 @@ struct HogwartsRpLauncher {
     server_status: String,
     status_receiver: Option<Receiver<Result<String, String>>>,
     account_portal: String,
+    join_credential: String,
     connection: Arc<Mutex<Option<network::WebSocketPlayerNetworkClient>>>,
     character_name: String,
     character_house: String,
@@ -54,6 +55,7 @@ impl Default for HogwartsRpLauncher {
             server_status: "Not checked".into(),
             status_receiver: None,
             account_portal,
+            join_credential: String::new(),
             connection: Arc::new(Mutex::new(None)),
             character_name: String::new(),
             character_house: "Gryffindor".into(),
@@ -155,6 +157,30 @@ impl HogwartsRpLauncher {
                 if let Some(mut previous) = slot.take() { previous.disconnect(); }
                 *slot = Some(client);
                 Ok(format!("Connected as {display_name}."))
+            })();
+            let _ = sender.send(result);
+        });
+    }
+
+    fn connect_with_ticket(&mut self) {
+        let address = self.server_address.trim().to_owned();
+        let credential = self.join_credential.trim().to_owned();
+        if credential.is_empty() {
+            self.status_message = "Enter a one-time development ticket first.".into();
+            return;
+        }
+        let connection = Arc::clone(&self.connection);
+        let (sender, receiver) = mpsc::channel();
+        self.status_receiver = Some(receiver);
+        self.server_status = "Connecting…".into();
+        thread::spawn(move || {
+            let result = (|| {
+                let client = network::WebSocketPlayerNetworkClient::connect(&address, &credential)?;
+                let display_name = client.session().display_name.clone();
+                let mut slot = connection.lock().map_err(|_| "Launcher connection state is unavailable.".to_owned())?;
+                if let Some(mut previous) = slot.take() { previous.disconnect(); }
+                *slot = Some(client);
+                Ok(format!("Connected as {display_name} using a development ticket."))
             })();
             let _ = sender.send(result);
         });
@@ -312,6 +338,11 @@ impl eframe::App for HogwartsRpLauncher {
             ui.horizontal(|ui| {
                 if ui.button("Connect / Sign in").clicked() { self.connect_server(); }
                 if ui.button("Disconnect").clicked() { self.disconnect_server(); }
+            });
+            ui.horizontal(|ui| {
+                ui.label("Loopback development ticket");
+                ui.text_edit_singleline(&mut self.join_credential);
+                if ui.button("Connect with ticket").clicked() { self.connect_with_ticket(); }
             });
 
             ui.add_space(10.0);
