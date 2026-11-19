@@ -257,17 +257,24 @@ fn parse_callback(stream: &mut TcpStream, redirect_uri: &Url, expected_state: &s
             }
         }
     }
-    if host.as_deref() != Some(redirect_uri.host_str().unwrap_or_default().to_owned().as_str())
-        && host.as_deref() != Some(redirect_uri[url::Position::BeforePath..].trim_end_matches('/')) {
+    let expected_host = format!("{}:{}", redirect_uri.host_str().unwrap_or_default(), redirect_uri.port().unwrap_or_default());
+    if host.as_deref() != Some(expected_host.as_str()) {
         return Err(CallbackError::Retry(400, "Invalid callback host."));
     }
     let callback = redirect_uri.join(parts[1]).map_err(|_| CallbackError::Retry(400, "Invalid callback URL."))?;
+    if callback.origin() != redirect_uri.origin() {
+        return Err(CallbackError::Retry(400, "Invalid callback origin."));
+    }
     if callback.path() != "/callback/" {
         return Err(CallbackError::Retry(404, "Callback not found."));
     }
-    let query: std::collections::HashMap<String, String> =
-        form_urlencoded::parse(callback.query().unwrap_or_default().as_bytes()).into_owned().collect();
-    if query.get("state").map(String::as_str) != Some(expected_state) {
+    let mut query = std::collections::HashMap::new();
+    for (key, value) in form_urlencoded::parse(callback.query().unwrap_or_default().as_bytes()) {
+        if query.insert(key.into_owned(), value.into_owned()).is_some() {
+            return Err(CallbackError::Retry(400, "Duplicate sign-in callback parameter."));
+        }
+    }
+    if !query.get("state").is_some_and(|state| fixed_time_eq(state, expected_state)) {
         return Err(CallbackError::Retry(400, "Sign-in response did not match. Return to the launcher."));
     }
     if query.contains_key("error") {
@@ -275,6 +282,13 @@ fn parse_callback(stream: &mut TcpStream, redirect_uri: &Url, expected_state: &s
     }
     query.get("code").filter(|code| !code.trim().is_empty()).cloned()
         .ok_or(CallbackError::Fatal(400, "Identity provider returned no authorization code."))
+}
+
+fn fixed_time_eq(left: &str, right: &str) -> bool {
+    let left = left.as_bytes();
+    let right = right.as_bytes();
+    if left.len() != right.len() { return false; }
+    left.iter().zip(right).fold(0_u8, |difference, (a, b)| difference | (a ^ b)) == 0
 }
 
 fn write_response(stream: &mut TcpStream, status: u16, message: &str) {
