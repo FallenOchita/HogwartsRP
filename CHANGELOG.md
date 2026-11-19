@@ -1,12 +1,3 @@
-## [Unreleased]
-### Fixed — Named-property lookup status separation
-
-- Reports `NOT_FOUND` when documented direct named-property lookup completes across the inspected class chain without finding the requested descriptor.
-- Reports `LOOKUP_INCOMPLETE` when one or more direct lookup attempts cannot be completed.
-- Keeps first-property sample limitations and enumeration errors in separate diagnostic fields so partial descriptor enumeration cannot mislabel a completed direct lookup.
-- Adds regression coverage for completed not-found lookups and unavailable lookup paths.
-- Remains read-only reflection metadata inspection; no property values, gameplay functions, writes, hooks, or network operations are used.
-
 - Fixed a missing Lua string-concatenation operator in the component discovery status log, which could abort the research pass after discovery completed.
 
 # Changelog
@@ -14,6 +5,14 @@
 All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
+
+### Fixed — Named-property lookup status separation
+
+- Reports `NOT_FOUND` when documented direct named-property lookup completes across the inspected class chain without finding the requested descriptor.
+- Reports `LOOKUP_INCOMPLETE` when one or more direct lookup attempts cannot be completed.
+- Keeps first-property sample limitations and enumeration errors in separate diagnostic fields so partial descriptor enumeration cannot mislabel a completed direct lookup.
+- Adds regression coverage for completed not-found lookups and unavailable lookup paths.
+- Remains read-only reflection metadata inspection; no property values, gameplay functions, writes, hooks, or network operations are used.
 ### Changed — Safe first-property sampling for UE4SS component catalogs
 
 - Changed component-class property descriptor collection to stop after the first callback, avoiding the live UE4SS 4.0.0 continuation path that repeatedly produced `attempt to call a nil value` after one callback.
