@@ -74,11 +74,11 @@ public sealed class BrowserAccountSessionEndpointsTests
         Assert.Contains(BrowserAccountSessionEndpoints.CookieName, context.Response.Headers.SetCookie.ToString(), StringComparison.Ordinal);
         Assert.Contains("path=/account", context.Response.Headers.SetCookie.ToString(), StringComparison.OrdinalIgnoreCase);
         Assert.Contains("httponly", context.Response.Headers.SetCookie.ToString(), StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("samesite=strict", context.Response.Headers.SetCookie.ToString(), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("samesite=lax", context.Response.Headers.SetCookie.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void SetSessionCookieUsesSecureHttpOnlyStrictAndAccountPath()
+    public void SetSessionCookieUsesSecureHttpOnlyLaxAndAccountPath()
     {
         var issued = new BrowserAccountSessionStore().Issue(Guid.NewGuid());
         var context = CreateContext();
@@ -89,7 +89,7 @@ public sealed class BrowserAccountSessionEndpointsTests
         Assert.Contains(BrowserAccountSessionEndpoints.CookieName, cookie, StringComparison.Ordinal);
         Assert.Contains("secure", cookie, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("httponly", cookie, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("samesite=strict", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("samesite=lax", cookie, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("path=/account", cookie, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(issued.CsrfToken, cookie, StringComparison.Ordinal);
     }
