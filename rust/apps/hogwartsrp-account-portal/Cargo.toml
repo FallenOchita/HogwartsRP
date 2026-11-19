@@ -1,0 +1,10 @@
+[package]
+name = "hogwartsrp-account-portal"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Rust-hosted central HogwartsRP browser account portal"
+
+[dependencies]
+hogwartsrp-portal-auth = { path = "../../crates/hogwartsrp-portal-auth" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
