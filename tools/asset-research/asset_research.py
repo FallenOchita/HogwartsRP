@@ -101,10 +101,15 @@ def reports(out,root,files,catalog):
   rows=catalog["categories"].get(cat,[])
   write_json(out/(name+".json"),{"count":len(rows),"items":rows,"status":"CANDIDATES" if rows else "NO_MATCHING_LOOSE_ASSETS"})
   (out/(name+".md")).write_text(table_md(name,rows,["asset_path","object_path","class","metadata_status"]),encoding="utf-8")
+  (out/(name+".html")).write_text(table_html(name,rows,["asset_path","object_path","class","metadata_status"]),encoding="utf-8")
  audio=[f for f in files if f["file_type"] in {".wem",".bnk",".wav",".mp3",".ogg"}]
  write_json(out/"AudioCatalog.json",{"count":len(audio),"files":audio,"asset_candidates":catalog["categories"].get("Audio",[])})
+ (out/"AudioCatalog.md").write_text(table_md("Audio Catalog",audio,["file_name","file_size_bytes","file_type","relative_path"]),encoding="utf-8")
+ (out/"AudioCatalog.html").write_text(table_html("Audio Catalog",audio,["file_name","file_size_bytes","file_type","relative_path"]),encoding="utf-8")
  loc=[f for f in files if f["file_type"]==".locres" or any(x in f["relative_path"].lower() for x in ("localization","subtitle","dialogue"))]
  write_json(out/"LocalizationCatalog.json",{"count":len(loc),"resources":loc,"note":"Resource inventory only; locres payloads are not decoded."})
+ (out/"LocalizationCatalog.md").write_text(table_md("Localization Catalog",loc,["file_name","file_size_bytes","file_type","relative_path"]),encoding="utf-8")
+ (out/"LocalizationCatalog.html").write_text(table_html("Localization Catalog",loc,["file_name","file_size_bytes","file_type","relative_path"]),encoding="utf-8")
  cols=["file_name","file_size_bytes","file_type","relative_path","last_modified_utc","sha256"]
  (out/"FileInventory.md").write_text(table_md("File Inventory",files,cols),encoding="utf-8")
  (out/"FileInventory.html").write_text(table_html("File Inventory",files,cols),encoding="utf-8")
