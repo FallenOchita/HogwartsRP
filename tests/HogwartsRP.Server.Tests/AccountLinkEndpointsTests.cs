@@ -1,6 +1,7 @@
 using HogwartsRP.Server.Accounts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace HogwartsRP.Server.Tests;
 
@@ -136,6 +137,11 @@ public sealed class AccountLinkEndpointsTests : IDisposable
     private DefaultHttpContext CreateContext()
     {
         var context = new DefaultHttpContext();
+        context.RequestServices = new ServiceCollection()
+            .AddLogging()
+            .AddOptions()
+            .AddRouting()
+            .BuildServiceProvider();
         context.Request.Scheme = "https";
         context.Request.Host = new HostString("accounts.example.test");
         context.Request.Headers.Cookie = $"{BrowserAccountSessionEndpoints.CookieName}={_issued.SessionToken}";
