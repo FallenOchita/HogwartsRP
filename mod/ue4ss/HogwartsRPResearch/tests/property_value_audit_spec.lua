@@ -75,5 +75,72 @@ equal(referenceAudit.opaque_userdata_count, 1, "opaque reference count")
 equal(referenceAudit.error_count, 1, "reference error count")
 referenceUserdata:close()
 
+
+-- Exercise the bounded second-hop lookup with userdata-backed UObject fixtures.
+local fakeHandles = {}
+local function fakeUObject(fullName, fields)
+    local handle = assert(io.tmpfile(), "could not create fake UObject userdata")
+    local original = debug.getmetatable(handle)
+    fakeHandles[#fakeHandles + 1] = { handle = handle, metatable = original }
+    local originalIndex = original and original.__index
+    debug.setmetatable(handle, {
+        __index = function(self, key)
+            if key == "IsValid" then return function() return true end end
+            if key == "GetFullName" then return function() return fullName end end
+            if key == "GetPropertyValue" then
+                return function(_, propertyName)
+                    local value = fields[propertyName]
+                    if value == "__RAISE__" then error("synthetic second-hop getter failure") end
+                    return value
+                end
+            end
+            if type(originalIndex) == "table" then return originalIndex[key] end
+            if type(originalIndex) == "function" then return originalIndex(self, key) end
+            return nil
+        end
+    })
+    return handle
+end
+
+local localPlayerController = fakeUObject("BP_Phoenix_Player_Controller_C /Game/Test.Root.Controller")
+local localPlayer = fakeUObject("LocalPlayer /Engine/Transient.GameEngine.LocalPlayer", {
+    PlayerController = localPlayerController
+})
+local playerPawn = fakeUObject("BP_Biped_Player_C /Game/Test.Root.Player", {})
+local playerState = fakeUObject("PlayerState /Game/Test.Root.PlayerState", {
+    PawnPrivate = playerPawn
+})
+local rootController = {
+    GetPropertyValue = function(_, name)
+        if name == "Player" then return localPlayer end
+        if name == "PlayerState" then return playerState end
+    end
+}
+local related = Discovery.relatedObjectReferenceAudit(rootController, {
+    { root_property = "Player", target = "local_player", properties = { "PlayerController" } },
+    { root_property = "PlayerState", target = "player_state", properties = { "PawnPrivate" } }
+})
+equal(related.status, "READ_ONLY_SECOND_HOP_REFERENCE_AUDIT", "second-hop audit status")
+equal(related.root_reference_count, 2, "second-hop root references")
+equal(related.object_reference_count, 2, "second-hop child references")
+equal(related.routes[1].items[1].summary, "BP_Phoenix_Player_Controller_C /Game/Test.Root.Controller", "LocalPlayer controller reference")
+equal(related.routes[2].items[1].summary, "BP_Biped_Player_C /Game/Test.Root.Player", "PlayerState pawn reference")
+
+-- An opaque root is never dereferenced to attempt its child allowlist.
+local opaqueRoot = assert(io.tmpfile(), "could not create opaque root fixture")
+local opaqueController = { GetPropertyValue = function(_, name) if name == "Player" then return opaqueRoot end end }
+local opaqueRelated = Discovery.relatedObjectReferenceAudit(opaqueController, {
+    { root_property = "Player", target = "local_player", properties = { "PlayerController" } }
+})
+equal(opaqueRelated.routes[1].root_status, "OPAQUE_USERDATA", "opaque root status")
+equal(#opaqueRelated.routes[1].items, 0, "opaque root is not expanded")
+
+-- Restore each original file metatable before closing its FILE* userdata.
+for _, entry in ipairs(fakeHandles) do
+    debug.setmetatable(entry.handle, entry.metatable)
+    entry.handle:close()
+end
+opaqueRoot:close()
+
 print("object_reference_audit_spec: PASS")
 

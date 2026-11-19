@@ -6,6 +6,12 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Added — LocalPlayer and PlayerState reference audit
+
+- Added a fixed second-hop audit from controller.Player to LocalPlayer.PlayerController and controller.PlayerState to PlayerState.PawnPrivate.
+- Follows a child allowlist only after the parent is validated as a UObject reference; records object full-name identity only and leaves opaque userdata untouched.
+- Adds regression coverage for both reference paths and verifies that opaque parent values are not expanded. No gameplay functions, writes, hooks, or network operations are used.
+
 ### Added — Controller and movement object-reference audit
 
 - Added a fixed allowlist value audit for controller pawn/player references and movement owner/update references.
