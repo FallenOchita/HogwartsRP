@@ -131,6 +131,6 @@ mod tests {
     fn session_capacity_is_bounded() {
         let store = BrowserSessionStore::new(1);
         let _first = store.issue("account-a", 100).unwrap();
-        assert_eq!(store.issue("account-b", 100).unwrap_err(), BrowserSessionError::CapacityReached);
+        assert!(matches!(store.issue("account-b", 100), Err(BrowserSessionError::CapacityReached)));
     }
 }
