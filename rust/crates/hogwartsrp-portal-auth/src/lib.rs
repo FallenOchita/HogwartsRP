@@ -263,3 +263,159 @@ mod tests {
         assert_eq!(value.client_id(), "hogwartsrp-portal");
     }
 }
+
+
+/// Lifetime for a browser sign-in transaction.
+const AUTHORIZATION_TRANSACTION_TTL_SECONDS: u64 = 300;
+const DEFAULT_TRANSACTION_CAPACITY: usize = 4096;
+
+/// Public values safe to use when redirecting the browser to the OIDC provider.
+/// The PKCE verifier and nonce remain exclusively on the server.
+#[derive(Clone, PartialEq, Eq)]
+pub struct AuthorizationRequest {
+    state: String,
+    code_challenge: String,
+}
+
+impl AuthorizationRequest {
+    pub fn state(&self) -> &str { &self.state }
+    pub fn code_challenge(&self) -> &str { &self.code_challenge }
+    pub fn code_challenge_method(&self) -> &'static str { "S256" }
+}
+
+/// Server-only values recovered after a matching callback consumes the transaction.
+/// Intentionally has no Debug implementation to avoid accidental secret logging.
+pub struct ConsumedAuthorizationTransaction {
+    nonce: String,
+    code_verifier: String,
+}
+
+impl ConsumedAuthorizationTransaction {
+    pub fn nonce(&self) -> &str { &self.nonce }
+    pub fn code_verifier(&self) -> &str { &self.code_verifier }
+}
+
+struct PendingAuthorization {
+    session_hash: [u8; 32],
+    nonce: String,
+    code_verifier: String,
+    expires_at: u64,
+}
+
+/// Bounded, process-local, single-use OIDC transaction storage.
+///
+/// Production deployments with multiple portal instances must replace this with a
+/// shared store that preserves atomic consume semantics.
+pub struct AuthorizationTransactionStore {
+    entries: std::sync::Mutex<std::collections::HashMap<[u8; 32], PendingAuthorization>>,
+    capacity: usize,
+}
+
+#[derive(Debug, Error, PartialEq, Eq)]
+pub enum AuthorizationTransactionError {
+    #[error("The authorization transaction store is unavailable.")]
+    Unavailable,
+    #[error("The authorization transaction store is full.")]
+    CapacityReached,
+    #[error("The authorization transaction is invalid, expired, or already used.")]
+    InvalidOrExpired,
+}
+
+impl Default for AuthorizationTransactionStore {
+    fn default() -> Self { Self::new(DEFAULT_TRANSACTION_CAPACITY) }
+}
+
+impl AuthorizationTransactionStore {
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            entries: std::sync::Mutex::new(std::collections::HashMap::new()),
+            capacity: capacity.max(1),
+        }
+    }
+
+    /// Begin a sign-in attempt bound to the authenticated browser-session identifier.
+    /// The session identifier itself is never retained; only its SHA-256 hash is stored.
+    pub fn begin(
+        &self,
+        browser_session_id: &str,
+        now_unix_seconds: u64,
+    ) -> Result<AuthorizationRequest, AuthorizationTransactionError> {
+        if browser_session_id.is_empty() {
+            return Err(AuthorizationTransactionError::InvalidOrExpired);
+        }
+
+        use rand::RngCore;
+        use sha2::{Digest, Sha256};
+        use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+
+        let mut state_bytes = [0u8; 32];
+        let mut nonce_bytes = [0u8; 32];
+        let mut verifier_bytes = [0u8; 32];
+        let mut rng = rand::rngs::OsRng;
+        rng.fill_bytes(&mut state_bytes);
+        rng.fill_bytes(&mut nonce_bytes);
+        rng.fill_bytes(&mut verifier_bytes);
+
+        let state = URL_SAFE_NO_PAD.encode(state_bytes);
+        let nonce = URL_SAFE_NO_PAD.encode(nonce_bytes);
+        let code_verifier = URL_SAFE_NO_PAD.encode(verifier_bytes);
+        let challenge = URL_SAFE_NO_PAD.encode(Sha256::digest(code_verifier.as_bytes()));
+        let state_hash: [u8; 32] = Sha256::digest(state.as_bytes()).into();
+        let session_hash: [u8; 32] = Sha256::digest(browser_session_id.as_bytes()).into();
+
+        let mut entries = self.entries.lock()
+            .map_err(|_| AuthorizationTransactionError::Unavailable)?;
+        entries.retain(|_, transaction| transaction.expires_at > now_unix_seconds);
+        if entries.len() >= self.capacity {
+            return Err(AuthorizationTransactionError::CapacityReached);
+        }
+
+        entries.insert(state_hash, PendingAuthorization {
+            session_hash,
+            nonce,
+            code_verifier,
+            expires_at: now_unix_seconds.saturating_add(AUTHORIZATION_TRANSACTION_TTL_SECONDS),
+        });
+
+        Ok(AuthorizationRequest { state, code_challenge: challenge })
+    }
+
+    /// Atomically consume a callback transaction. Wrong-session attempts do not
+    /// consume the rightful user's transaction.
+    pub fn consume(
+        &self,
+        state: &str,
+        browser_session_id: &str,
+        now_unix_seconds: u64,
+    ) -> Result<ConsumedAuthorizationTransaction, AuthorizationTransactionError> {
+        use sha2::{Digest, Sha256};
+        let state_hash: [u8; 32] = Sha256::digest(state.as_bytes()).into();
+        let session_hash: [u8; 32] = Sha256::digest(browser_session_id.as_bytes()).into();
+        let mut entries = self.entries.lock()
+            .map_err(|_| AuthorizationTransactionError::Unavailable)?;
+
+        let Some(pending) = entries.get(&state_hash) else {
+            return Err(AuthorizationTransactionError::InvalidOrExpired);
+        };
+        if pending.expires_at <= now_unix_seconds {
+            entries.remove(&state_hash);
+            return Err(AuthorizationTransactionError::InvalidOrExpired);
+        }
+        if pending.session_hash != session_hash {
+            return Err(AuthorizationTransactionError::InvalidOrExpired);
+        }
+
+        let pending = entries.remove(&state_hash)
+            .ok_or(AuthorizationTransactionError::InvalidOrExpired)?;
+        Ok(ConsumedAuthorizationTransaction {
+            nonce: pending.nonce,
+            code_verifier: pending.code_verifier,
+        })
+    }
+
+    pub fn len(&self) -> Result<usize, AuthorizationTransactionError> {
+        self.entries.lock()
+            .map(|entries| entries.len())
+            .map_err(|_| AuthorizationTransactionError::Unavailable)
+    }
+}
