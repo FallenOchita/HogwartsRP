@@ -352,7 +352,9 @@ function M.components(actor, propertyCataloger)
     end)
     local propertyCatalogStatus = "NOT_ATTEMPTED"
     if type(propertyCataloger) == "function" then
-        if propertyCatalogPartial > 0 or propertyCatalogFailed > 0 then
+        if propertyCatalogFailed > 0 and propertyCatalogComplete == 0 and propertyCatalogPartial == 0 then
+            propertyCatalogStatus = "FAILED"
+        elseif propertyCatalogPartial > 0 or propertyCatalogFailed > 0 then
             propertyCatalogStatus = "PARTIAL"
         elseif propertyCatalogComplete == #propertyCatalogClasses and #propertyCatalogClasses > 0 then
             propertyCatalogStatus = "COMPLETE"
