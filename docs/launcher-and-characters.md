@@ -1,24 +1,28 @@
-> **Launcher implementation note:** The active desktop launcher is now the native Rust application documented in [rust-launcher.md](rust-launcher.md). The WinForms executable has been removed. The C# launcher library described below is retained temporarily for its existing contracts/tests only; the Rust app does not invoke it. OIDC join, authenticated WebSocket, and character submission are not yet ported to Rust.
-
 # Launcher and character creation
 
-The preview launcher selects a server, obtains a join credential through `IJoinCredentialProvider`, connects through the replaceable network-client adapter, then detects the game and asks a platform adapter to launch. When OIDC is configured, the launcher uses the system browser and authorization-code flow with PKCE, a loopback callback, and a server-issued nonce. The selected server validates the signed ID token against its configured issuer and client ID, then creates a short-lived, single-use join ticket. The launcher does not send the ID token to the WebSocket game session or accept identity claims from the client. Without OIDC configuration, the console app falls back to the development ticket prompt. The server's `issue-ticket` command is available only when its listener binds to loopback.
+The active desktop launcher is the native Rust application at `rust/apps/hogwartsrp-launcher`. The former C# launcher support library, C# WebSocket client, and their test projects have been removed. The .NET server/core remains C#; this migration changes the launcher layer only.
 
-Configure the same OIDC issuer and public-client ID on the server and launcher. The identity provider must support authorization code with PKCE S256, a browser-based native-app flow, a loopback redirect using `127.0.0.1`, and RS256 ID-token signing keys published in OIDC discovery metadata. The server currently validates RS256 only. Server environment variables are `Authentication__Oidc__Authority` and `Authentication__Oidc__ClientId`; launcher environment variables are `HogwartsRP__Oidc__Authority` and `HogwartsRP__Oidc__ClientId`. The authority value must exactly match the provider's `issuer` metadata value. Production authorities and remote server endpoints must use HTTPS. HTTP is permitted only for loopback development. No provider-specific secrets are embedded in the launcher.
+## Authentication and server connection
+
+The Rust launcher obtains a server challenge, discovers the configured OIDC provider, and uses the system browser for an authorization-code flow with PKCE S256. It binds a loopback callback on `127.0.0.1`, validates the returned state, redeems the authorization code, and exchanges the ID token with the selected server for a one-time join ticket.
+
+The selected server validates the ID token signature, issuer, audience, time claims, and server nonce. The launcher does not treat the ID token as a local permission grant or send it over the game WebSocket connection. The server creates a short-lived, single-use ticket; the launcher then authenticates its WebSocket connection to `/connect` with that ticket. The server creates the player session and supplies its session ID and display name.
+
+Configure the same OIDC issuer and public client ID on the server and launcher. The identity provider must support authorization code with PKCE S256, a browser-based native-app flow, a loopback redirect using `127.0.0.1`, and RS256 ID-token signing keys published in OIDC discovery metadata. The server currently validates RS256 only.
+
+Server environment variables are `Authentication__Oidc__Authority` and `Authentication__Oidc__ClientId`. Launcher environment variables are `HOGWARTSRP_OIDC_ISSUER` and `HOGWARTSRP_OIDC_CLIENT_ID`. The authority value must exactly match the provider's `issuer` metadata value. Production authorities and remote server endpoints must use HTTPS/WSS. HTTP/WS is permitted only for loopback development. No provider-specific secrets are embedded in the launcher.
 
 The flow follows [RFC 8252](https://www.rfc-editor.org/rfc/rfc8252.html) for native-app browser authorization, [RFC 7636](https://www.rfc-editor.org/rfc/rfc7636.html) for PKCE, and [OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html) plus [OpenID Connect Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html) for ID-token and provider metadata validation.
 
-The server derives account identity from a hash of the configured issuer and signed `sub` claim. It uses `name`, then `preferred_username`, for the display name, with a safe fallback. Provider claims do not grant permissions or ownership. The challenge expires after five minutes; the resulting join ticket expires after two minutes and is single-use. The launcher does not log the authorization code, ID token, or ticket.
+The server derives account identity from a hash of the configured issuer and signed `sub` claim. Provider claims do not grant permissions or ownership. The challenge expires after five minutes; the resulting join ticket expires after two minutes and is single-use. The launcher does not log the authorization code, ID token, or ticket.
 
-Installation detection is limited to conventional Steam/Epic Windows install paths and explicitly configured roots. Steam uses the platform app URI. The launcher keeps its own protocol session open, but the game is not connected to it. A compatible Hogwarts Legacy multiplayer adapter and Epic launcher adapter are not included.
+## Character submission
 
-Official Hogwarts Legacy mod support provides a Creator Kit and in-game mod management for content such as quests, dungeons, cosmetics, and skins. Public official documentation does not expose a supported direct character-creation launch API. Community character editor mods demonstrate in-game editing via a mod loader and hotkeys, not a stable launcher API. Consequently the launcher makes no direct-entry attempt by default and reports normal-launch fallback. `ICharacterCreationBridge` and `ICharacterCreationIntegration` allow a future verified integration to be added without changing launcher logic.
+The Rust launcher provides a graphical roleplay character form. It collects a character name, Hogwarts house, optional background and biography, and optional wand details. The Rust `CharacterCreationDraft` validates and normalizes those values before sending a `submit_character` message over the authenticated WebSocket connection.
 
-## Character submission model
+The server repeats all validation and derives ownership from the authenticated player session. Client-supplied owner IDs or permission claims are not accepted. A successful submission stores roleplay metadata on the server; it does not create or modify a character inside Hogwarts Legacy, nor does it apply appearance, house, wand, or other data to the game.
 
-Server submission data includes name, optional appearance JSON, house, wand, background, and roleplay profile. Validation limits input sizes and restricts house values. The server stamps ownership from its authenticated player session and does not accept client-supplied permission or owner fields.
-
-The launcher library now contains `CharacterCreationDraft`, a UI-independent form model. It normalizes and checks the character name, validates the selected house, enforces background/biography length limits and optional wand-length bounds, and builds the existing `CharacterSubmission` contract. The model deliberately leaves appearance JSON unset until a verified appearance representation is available. This is a form-model layer only; the launcher is still a console preview and does not yet display a graphical character-creation screen. Client validation is for usability only—the server repeats authoritative validation.
+The client generates a request ID and waits for the matching `character_submission_result`. The Rust WebSocket client bounds message size, event names, argument counts, and primitive argument types. It currently queues server-originated events while awaiting a character-submission response; a separate continuous receive task and reconnect/backoff behavior remain follow-up work.
 
 ## Character repository
 
@@ -31,46 +35,12 @@ var characterRepository = new JsonCharacterRepository(
 
 The repository loads existing records on first use, serializes writes within the process, writes to a temporary file in the same directory, and replaces the data file after the write completes. It rejects duplicate character IDs and exposes owner-filtered retrieval through `GetByOwnerAsync`. If the JSON file is corrupt, it throws `InvalidDataException` and leaves the existing file untouched.
 
-This adapter is intended for one server process. It does not provide cross-process locking, multi-server coordination, encryption at rest, backups, or a production database. The server exposes an authenticated WebSocket submission endpoint. The launcher network client has a matching submission method that awaits the correlated server response.
+This adapter is intended for one server process. It does not provide cross-process locking, multi-server coordination, encryption at rest, backups, or a production database. The authenticated WebSocket submission endpoint persists roleplay profile data only.
 
-No real game installation or integration has been tested in this environment. There is no claim that direct character creation or in-game multiplayer works.
+## Game launch and integration boundary
 
-## Character submission protocol
+The Rust launcher detects conventional Steam/Epic installation roots and accepts additional roots through `HOGWARTSRP_GAME_ROOTS`. Steam launch requests use the official app URI for Hogwarts Legacy (990080), allowing Steam to perform its normal ownership and sign-in checks. Epic launch is not implemented yet.
 
-After authenticating the WebSocket connection, a client may submit a character using a message shaped like:
+Official Hogwarts Legacy mod support provides a Creator Kit and in-game mod management for content such as quests, dungeons, cosmetics, and skins. Public official documentation does not expose a supported direct character-creation launch API. The launcher therefore starts the game normally and makes no direct-entry attempt by default.
 
-```json
-{
-  "type": "submit_character",
-  "requestId": "client-generated-correlation-id",
-  "submission": {
-    "name": "Ada",
-    "appearanceJson": null,
-    "house": "Ravenclaw",
-    "wand": { "wood": "Oak", "core": "Phoenix feather", "length": 11, "flexibility": "Supple" },
-    "background": "Scholar",
-    "roleplayProfile": { "background": "Student", "biography": "A curious student." }
-  }
-}
-```
-
-The server responds with `type: "character_submission_result"`, echoing the request ID and including a `submissionResult` object. The authenticated account ID is taken from the server-created session, never from the client payload. Configure the server's `Storage:CharactersPath` setting to choose the JSON repository file. The endpoint stores roleplay profile data on the server; it does not apply appearance, house, wand, or character data to the game.
-
-## Launcher character submission client
-
-The authenticated launcher connection exposes `SubmitCharacterAsync(CharacterSubmission)`. It sends a `submit_character` message with a generated request ID and waits for the matching `character_submission_result`. The network receive loop routes results by request ID, so an unrelated or late response cannot complete a different submission. If the connection closes before a result arrives, pending submissions fail rather than hanging. Cancellation is supported while sending or waiting. The server remains authoritative for validation and ownership; the launcher does not send an account/owner identifier. This flow persists roleplay character data only and does not apply the data to Hogwarts Legacy.
-
-## Character submission client regression tests
-
-The solution includes `HogwartsRP.Networking.Client.Tests`. Its in-process WebSocket server tests the launcher protocol without requiring a real game or remote server. Coverage includes concurrent submissions whose responses arrive out of order and the connection closing before a submission result is returned. These are transport/protocol tests only.
-
-## Launcher character draft tests
-
-The solution includes `HogwartsRP.Launcher.Tests`, covering draft-to-submission mapping, field normalization, invalid names and houses, wand-length bounds, and optional fields. These tests do not replace server validation or establish in-game character creation.
-
-
-## Interactive console character creation
-
-After authenticating to a selected server, the console launcher offers roleplay character registration. If accepted, it collects a character name and Hogwarts house, with optional background, biography, and wand details. The draft is validated locally and submitted through the authenticated WebSocket connection. The launcher displays the server's acceptance or rejection result. Declining registration continues the existing launch flow.
-
-This is a console interaction, not a graphical launcher screen. Successful registration stores roleplay metadata on the server; it does not create a character inside Hogwarts Legacy or synchronize appearance, house, wand, position, or other game state.
+The launcher session is separate from the game process. No real game installation, direct character creation, remote-player synchronization, or playable Hogwarts Legacy multiplayer has been verified by these launcher changes.
