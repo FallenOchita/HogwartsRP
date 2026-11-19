@@ -7,7 +7,6 @@ const DIRECTORY_PAGE_SIZE: u32 = 25;
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct DirectoryServer {
-    pub server_id: String,
     pub name: String,
     pub endpoint: String,
     pub game: String,
@@ -15,7 +14,6 @@ pub(crate) struct DirectoryServer {
     pub online_players: u32,
     pub max_players: u32,
     pub status: String,
-    pub last_heartbeat: Option<u64>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -120,14 +118,13 @@ mod tests {
         let json = r#"{
             "page":1,"pageSize":25,"total":1,
             "servers":[{
-                "serverId":"abc123","name":"Test server",
+                "name":"Test server",
                 "endpoint":"https://rp.example.net","game":"hogwarts-legacy-pc",
                 "description":"A test listing","onlinePlayers":2,"maxPlayers":16,
-                "status":"online","lastHeartbeat":1763500000
+                "status":"online"
             }]
         }"#;
         let page: DirectoryPage = serde_json::from_str(json).unwrap();
-        assert_eq!(page.servers[0].server_id, "abc123");
         assert_eq!(page.servers[0].online_players, 2);
         assert_eq!(page.servers[0].description.as_deref(), Some("A test listing"));
     }
@@ -157,10 +154,10 @@ mod tests {
         let invalid_game = DirectoryPage {
             page: 1, page_size: 25, total: 1,
             servers: vec![DirectoryServer {
-                server_id: "x".into(), name: "Bad listing".into(),
+                name: "Bad listing".into(),
                 endpoint: "https://rp.example.net".into(), game: "another-game".into(),
                 description: None, online_players: 0, max_players: 10,
-                status: "online".into(), last_heartbeat: None,
+                status: "online".into(),
             }],
         };
         assert!(validate_page(&invalid_game).is_err());
@@ -168,7 +165,7 @@ mod tests {
         let invalid_endpoint = DirectoryPage {
             page: 1, page_size: 25, total: 1,
             servers: vec![DirectoryServer {
-                server_id: "x".into(), name: "Bad endpoint".into(),
+                name: "Bad endpoint".into(),
                 endpoint: "file:///etc/passwd".into(), game: "hogwarts-legacy-pc".into(),
                 description: None, online_players: 0, max_players: 10,
                 status: "online".into(), last_heartbeat: None,
