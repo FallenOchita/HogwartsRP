@@ -88,7 +88,7 @@ local function enumerateProperties(struct, output, limit, namedPropertyAudit, de
     }
 
     local callbackError = nil
-    local result, callError, callStatus = Safe.safeMethod(struct, "ForEachProperty", function(property)
+    local _, callError, callStatus = Safe.safeMethod(struct, "ForEachProperty", function(property)
         diagnostic.callback_invocations = diagnostic.callback_invocations + 1
         local callbackOk, shouldStop = pcall(function()
             if #output >= limit then
