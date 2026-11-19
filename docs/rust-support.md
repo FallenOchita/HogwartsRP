@@ -43,7 +43,7 @@ The process supervisor uses a 10-second startup timeout, a 15-second request tim
 
 This is the first server-hosting slice, not a complete multi-language runtime:
 - Rust workers can be declared, started, receive host-dispatched events, and service explicitly routed command calls.
-- Automatic Cargo builds, artifact discovery, hot reload, restart policies, and per-resource build pipelines are not implemented.
+- Automatic Cargo builds, artifact discovery, hot reload, and per-resource build pipelines are not implemented.
 - Rust worker commands are not yet registered in the framework-wide CommandRegistry.
 - Network-event declarations are surfaced to the host, but the WebSocket adapter and its allowlist are not automatically wired to them.
 - Cross-resource event fan-out is available through the manager dispatch method, but a shared Lua/Rust event bus adapter is not yet implemented.
@@ -79,4 +79,18 @@ The active desktop launcher is Rust: rust/apps/hogwartsrp-launcher uses eframe/e
 
 ## Rust worker restart policy
 
-The `RustWorkerRestartPolicy` type defines an opt-in bounded retry budget and capped exponential backoff. Its default configuration permits zero retries, preserving fail-fast behavior. The policy is currently a validated configuration primitive; process replacement and ResourceManager integration are not included in this milestone.
+`ResourceManager` accepts an optional `RustWorkerRestartPolicy` in its constructor. The default policy allows zero retries, preserving fail-fast behavior. When configured with a positive retry budget, an unexpected worker exit moves the resource to `Restarting`; the manager waits using capped exponential backoff, starts a replacement from the same precompiled executable, and swaps it into the resource runtime. A successful replacement returns the resource to `Started`. If all configured attempts fail, the resource remains `Failed` with a recovery error.
+
+The retry budget is shared by the Rust workers in a resource for that ResourceManager lifetime and is not reset after a successful replacement. Intentional `StopAllAsync` shutdown cancels pending recovery and marks resources as stopping before disposing processes. The manager does not restart Lua runtimes, dependent resources, or the whole server. A process restart also resets that worker's in-memory state; resource authors must persist any state that must survive a crash.
+
+Example:
+
+```csharp
+var restartPolicy = new RustWorkerRestartPolicy(
+    maxRestarts: 3,
+    initialDelay: TimeSpan.FromSeconds(1),
+    maxDelay: TimeSpan.FromSeconds(10));
+var resources = new ResourceManager(resourcesPath, runtimeFactory, restartPolicy: restartPolicy);
+```
+
+The integration test uses a real compiled Rust fixture that exits once, is restarted by the manager, and successfully handles a command after recovery. This does not provide OS sandboxing or per-worker CPU/memory limits.
