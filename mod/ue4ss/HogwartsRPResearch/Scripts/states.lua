@@ -1,31 +1,38 @@
 -- Evidence-based state placeholders. Unknown remains unknown; no name-based guesses.
-local Safe = require("safe")
+-- This module consumes property-audit records only; it does not invoke gameplay functions.
 local M = {}
 
-local function readMovementMode(movement)
-    if not Safe.isValidObject(movement) then return "UNKNOWN" end
-    local value = Safe.safeProperty(movement, "MovementMode")
-    if value == nil then return "UNKNOWN" end
-    return tostring(value)
+local function findAudit(audit, target, property)
+    for _, item in ipairs((audit and audit.items) or {}) do
+        if item.target == target and item.property == property then return item end
+    end
+    return nil
 end
 
-function M.sample(player, movement)
-    local velocity = Safe.safeMethod(player, "GetVelocity")
-    local speed = nil
-    if velocity ~= nil then
-        local ok, magnitude = pcall(function()
-            if type(velocity.Size) == "function" then return velocity:Size() end
-            return nil
-        end)
-        if ok then speed = magnitude end
+function M.sample(player, movement, audit)
+    local movementMode = findAudit(audit, "movement", "MovementMode")
+        or findAudit(audit, "player", "MovementMode")
+    local velocity = findAudit(audit, "movement", "Velocity")
+        or findAudit(audit, "player", "Velocity")
+
+    local modeValue = "UNAVAILABLE"
+    if movementMode and movementMode.status == "PRIMITIVE_VALUE_READ" then
+        modeValue = movementMode.summary
+    end
+
+    local speedValue = "UNAVAILABLE"
+    if velocity and velocity.status == "PRIMITIVE_VALUE_READ" then
+        speedValue = "RAW_VALUE:" .. velocity.summary
     end
 
     return {
         locomotion = {
-            movement_mode = readMovementMode(movement),
-            speed = speed or "UNAVAILABLE",
+            movement_mode = modeValue,
+            movement_mode_read_status = movementMode and movementMode.status or "NOT_PROBED",
+            velocity_read_status = velocity and velocity.status or "NOT_PROBED",
+            speed = speedValue,
             classification = "UNCLASSIFIED",
-            note = "Thresholds require in-game baseline samples before Idle/Walking/Running/Sprinting labels are assigned."
+            note = "No speed or locomotion label is inferred from opaque values. Baseline samples and verified decoding are still required."
         },
         traversal = "UNKNOWN",
         mounts = "UNKNOWN",
