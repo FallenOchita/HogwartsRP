@@ -1,3 +1,17 @@
+## 2026-11-19 — ByteProperty enum-association capability audit
+
+### Added
+
+- Added a descriptor capability audit to the MovementMode report, recording the descriptor class and exposure of documented generic Property methods.
+- Added explicit statuses for the missing documented ByteProperty-to-UEnum reference path and for enum entries that are intentionally not enumerated without a verified UEnum reference.
+
+### Safety and validation boundary
+
+- The audit performs protected member lookups only; it does not invoke descriptor methods or probe speculative accessor names.
+- No property values, opaque userdata, memory offsets, gameplay UFunctions, setters, hooks, or network operations are accessed.
+- The documented UE4SS 4.0.0 API exposes UEnum lookup methods only once a UEnum reference exists; the Property API does not document how to obtain the associated UEnum from a ByteProperty.
+- Live behavior remains unverified until the updated toolkit is run in Hogwarts Legacy with UE4SS 4.0.0.
+
 ## 2026-11-19 — Direct named-property metadata lookup
 
 ### Added
