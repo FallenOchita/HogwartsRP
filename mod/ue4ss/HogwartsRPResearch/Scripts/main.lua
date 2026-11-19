@@ -3,14 +3,11 @@
 -- READ-ONLY: no setters, ProcessEvent, gameplay hooks, or network writes.
 
 local MOD = "HogwartsRPResearch"
-local ROOT = "Mods/HogwartsRPResearch"
-local REPORT_DIR = ROOT .. "/reports"
 
 local function log(message)
-    local ok = pcall(function()
+    pcall(function()
         print("[" .. MOD .. "] " .. tostring(message) .. "\n")
     end)
-    return ok
 end
 
 local function protectedRequire(path)
@@ -74,13 +71,26 @@ local function runResearch()
             catalog.states = States.sample(player, movement)
         end
 
-        Reports.writeAll(REPORT_DIR, catalog)
-
-        if Adapter then
-            Adapter.generate(REPORT_DIR .. "/HogwartsLegacyAdapter.lua", player, controller, movement)
+        local reportDir, pathError = Reports.getOutputDirectory()
+        if not reportDir then
+            log("Cannot resolve report output directory: " .. tostring(pathError))
+            return
         end
 
-        log("Research pass completed. Reports written where filesystem access is available.")
+        log("Report output directory: " .. reportDir)
+        local written, failed = Reports.writeAll(reportDir, catalog)
+
+        if Adapter then
+            local adapterPath = reportDir .. "/HogwartsLegacyAdapter.lua"
+            if Adapter.generate(adapterPath, player, controller, movement) then
+                log("Adapter candidate written: " .. adapterPath)
+            else
+                log("Adapter candidate could not be written.")
+            end
+        end
+
+        log("Research pass finished. Reports written: " .. tostring(written) ..
+            "; failed: " .. tostring(failed))
     end)
 
     if not ok then
