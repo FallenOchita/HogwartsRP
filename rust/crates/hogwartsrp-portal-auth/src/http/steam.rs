@@ -146,10 +146,9 @@ async fn callback(
     if !is_token(&session_token) || values.len() < 8 || values.len() > 64 {
         return callback_redirect(false);
     }
-    let transaction = match state.transactions.consume(&callback_state, &session_token, now()) {
-        Ok(value) => value,
-        Err(_) => return callback_redirect(false),
-    };
+    if state.transactions.consume(&callback_state, &session_token, now()).is_err() {
+        return callback_redirect(false);
+    }
     let Some(provider) = state.steam_link.as_ref() else {
         return callback_redirect(false);
     };
