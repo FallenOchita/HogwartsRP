@@ -4,15 +4,18 @@
 
 The Rust host serves a responsive, same-origin account dashboard at `/` and `/account`.
 It shows signed-in state and the central account ID, displays session expiry, and
-provides a CSRF-protected sign-out action. The page uses a same-origin JavaScript
+provides CSRF-protected sign-out and account-link disconnect actions. The dashboard
+loads provider connection flags from the authenticated Rust portal API. The page uses a same-origin JavaScript
 asset, a restrictive Content Security Policy, no-store caching, and text-only DOM
 updates for account data.
 
-Discord, Steam, and Epic Games are shown as optional identity connections, but
-the dashboard deliberately labels linking as pending until the Rust portal is
-connected to the already implemented provider verification handlers. It does
-not display fabricated connected/disconnected states or pretend that disabled
-controls can link accounts.
+Discord, Steam, and Epic Games are optional independent identity connections.
+The Rust portal now has a development JSON link store, authenticated connection
+status endpoint, and CSRF/same-origin-protected disconnect endpoint. Only provider
+verification code may call the trusted `link_verified_identity` store method;
+there is deliberately no HTTP endpoint that accepts an external subject or account
+ID from the browser. Provider authorization/callback verification is the next
+integration stage, so new connections cannot yet be created through the dashboard.
 
 The Rust workspace now contains a small standalone Axum host at
 `rust/apps/hogwartsrp-account-portal`. It is separate from the C# per-game-server
@@ -33,6 +36,11 @@ Routes:
 - `GET /account/session` returns the authenticated account ID, CSRF token and
   expiry. The bearer session cookie is HttpOnly; the separate CSRF cookie is
   readable by same-origin portal code.
+- `GET /account/links` returns Discord, Steam, and Epic connected flags for the
+  account derived from the authenticated session. It never returns provider IDs.
+- `DELETE /account/links/{provider}` disconnects only that provider from the
+  current session's account. It requires the session cookie, matching CSRF header,
+  and an Origin matching the configured portal callback origin.
 - `POST /account/logout` requires the session cookie and
   `X-HogwartsRP-CSRF` header, revokes that session and clears both cookies.
 
@@ -60,6 +68,8 @@ Configuration/environment:
   `config/portal-oidc.json`).
 - `HOGWARTSRP_PORTAL_ACCOUNTS_PATH`: identity JSON path (default
   `data/portal-accounts.json`).
+- `HOGWARTSRP_PORTAL_ACCOUNT_LINKS_PATH`: provider-link JSON path (default
+  `data/portal-account-links.json`).
 - `HOGWARTSRP_PORTAL_LISTEN`: bind address (default `127.0.0.1:8787`).
 
 Terminate TLS at a trusted reverse proxy for non-loopback deployments. Do not
@@ -73,8 +83,11 @@ monitoring, and deployment hardening.
 - The JSON identity store is a single-process development adapter, not a
   production database. It stores only the verified issuer, subject and generated
   HogwartsRP account ID; it does not store provider tokens.
-- Provider account-link UI integration, distributed sessions, migrations,
-  rate limiting and production deployment are follow-up work.
+- Provider authorization/callback verification is not yet wired into the Rust
+  portal; accounts cannot be newly connected from the UI yet.
+- Browser sessions, authorization transactions, and the JSON account/link stores
+  are process-local or single-process development adapters. Distributed sessions,
+  database migrations, rate limiting and production deployment are follow-up work.
 - This host does not issue per-server join tickets and is not wired into any
   individual HogwartsRP game server.
 
