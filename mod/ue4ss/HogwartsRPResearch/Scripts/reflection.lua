@@ -319,13 +319,16 @@ function M.inspect(object, options)
     if namedPropertyAudit then
         namedPropertyAudit.enumeration_diagnostics = propertyDiagnostics
         local directLookupIncomplete = false
+        local directLookupFound = false
         for _, diagnostic in ipairs(namedPropertyAudit.direct_lookup_diagnostics) do
-            if diagnostic.status ~= "NOT_FOUND_ON_LOOKUP_CLASS" and diagnostic.status ~= "FOUND" then
-                directLookupIncomplete = true
+            if diagnostic.status == "FOUND" then
+                directLookupFound = true
                 break
+            elseif diagnostic.status ~= "NOT_FOUND_ON_LOOKUP_CLASS" then
+                directLookupIncomplete = true
             end
         end
-        namedPropertyAudit.direct_lookup_status = namedPropertyAudit.status == "FOUND" and "FOUND"
+        namedPropertyAudit.direct_lookup_status = directLookupFound and "FOUND"
             or (directLookupIncomplete and "LOOKUP_INCOMPLETE" or "NOT_FOUND")
         if namedPropertyAudit.status == "PROPERTY_NOT_FOUND" then
             namedPropertyAudit.status = directLookupIncomplete and "LOOKUP_INCOMPLETE" or "PROPERTY_NOT_FOUND"
