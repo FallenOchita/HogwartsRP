@@ -16,6 +16,6 @@ module.exports={data:new SlashCommandBuilder().setName("assign-ticket").setDescr
    ticket.assignedStaff=ticket.assignedStaff.filter(id=>id!==target.id);
    await i.channel.permissionOverwrites.delete(target.id).catch(()=>{});
   }
-  await ticket.save();await audit.record(i.client,{guildId:ticket.guildId,ticketId:ticket.ticketId,channelId:ticket.channelId,actorId:i.user.id,action:action==="assign"?"TICKET_ASSIGNED":"TICKET_UNASSIGNED",details:{targetId:target.id}});
+  await ticket.save();await audit.record(i.client,{guildId:ticket.guildId,ticketId:ticket.ticketId,channelId:ticket.channelId,actorId:i.user.id,action:action==="assign"?"TICKET_ASSIGNED":"TICKET_UNASSIGNED",details:{targetId:target.id}}).catch(()=>{});
   return i.reply({content:(action==="assign"?"Assigned ":"Unassigned ")+target.toString()+".",ephemeral:false});
  }};
