@@ -1,3 +1,19 @@
+## 2026-11-18 — Read-only player object relationship validation
+
+### Added
+
+- Added `relationships.lua` to inspect the controller `AcknowledgedPawn` and `Pawn` properties and compare each returned object identity with the discovered player pawn.
+- Added a movement-component outer comparison against the player pawn.
+- Added independent class metadata resolution diagnostics using `GetClass()` and the class object full name, without conflating class lookup with object discovery.
+- Added `RelationshipReport.txt` with explicit `MATCH`, `MISMATCH`, `PROPERTY_UNAVAILABLE`, and unresolved states.
+- Kept owner resolution `NOT_PROBED`; no `GetOwner` or gameplay UFunction is invoked.
+- Updated the research toolkit documentation, `CHANGELOG.md`, and this update log.
+
+### Validation boundary
+
+- The implementation reads only the two named controller properties and object/class metadata. It does not write properties, invoke gameplay functions, call ProcessEvent, install hooks, or transmit data.
+- Source changes do not establish live UE4SS compatibility. Install this branch and inspect `RelationshipReport.txt`; only runtime `MATCH` results confirm the corresponding references in the tested game session.
+
 ## 2026-11-18 — Delayed UE4SS player/controller discovery
 
 ### Fixed

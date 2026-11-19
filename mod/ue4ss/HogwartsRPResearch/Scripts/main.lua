@@ -26,6 +26,7 @@ local Discovery = protectedRequire("discovery")
 local States = protectedRequire("states")
 local Adapter = protectedRequire("adapter")
 local Reflection = protectedRequire("reflection")
+local Relationships = protectedRequire("relationships")
 
 log("Loaded. Read-only research mode enabled.")
 
@@ -101,6 +102,7 @@ local function runResearch(targets, finalAttempt)
             properties = {},
             functions = {},
             reflection = {},
+            relationships = {},
             states = {},
             capabilities = {}
         }
@@ -125,6 +127,17 @@ local function runResearch(targets, finalAttempt)
         catalog.reflection.player = inspectMetadata(player)
         catalog.reflection.controller = inspectMetadata(controller)
         catalog.reflection.movement = inspectMetadata(movement)
+
+        if Relationships then
+            local relationshipOk, relationshipResult = pcall(function()
+                return Relationships.inspect(player, controller, movement)
+            end)
+            catalog.relationships = relationshipOk and relationshipResult or {
+                status = "RELATIONSHIP_INSPECTION_FAILED", error = tostring(relationshipResult)
+            }
+        else
+            catalog.relationships = { status = "RELATIONSHIP_MODULE_UNAVAILABLE" }
+        end
 
         catalog.properties = {
             candidate_value_probes = Discovery.properties(player, {
@@ -161,6 +174,7 @@ local function runResearch(targets, finalAttempt)
         log("Reflection status — player: " .. tostring(catalog.reflection.player.status) ..
             ", controller: " .. tostring(catalog.reflection.controller.status) ..
             ", movement: " .. tostring(catalog.reflection.movement.status))
+        log("Relationship validation status: " .. tostring(catalog.relationships.status))
 
         local written, failed = Reports.writeAll(reportDir, catalog)
 
