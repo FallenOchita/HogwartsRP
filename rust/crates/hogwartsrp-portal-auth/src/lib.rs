@@ -383,7 +383,7 @@ impl AuthorizationTransactionStore {
 
         entries.insert(state_hash, PendingAuthorization {
             session_hash,
-            nonce,
+            nonce: nonce.clone(),
             code_verifier,
             expires_at: now_unix_seconds.saturating_add(AUTHORIZATION_TRANSACTION_TTL_SECONDS),
         });
