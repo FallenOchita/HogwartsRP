@@ -15,6 +15,8 @@ public sealed class RustWorkerProcessRuntime : IDisposable
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly Process _process;
     private readonly ConcurrentDictionary<string, TaskCompletionSource<WorkerResponse>> _pending = new();
+    private readonly ConcurrentDictionary<string, byte> _registeredCommands = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, byte> _registeredNetworkEvents = new(StringComparer.Ordinal);
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly CancellationTokenSource _lifetime = new();
@@ -28,6 +30,8 @@ public sealed class RustWorkerProcessRuntime : IDisposable
 
     public string ExecutablePath { get; }
     public int ProcessId => _process.Id;
+    public IReadOnlyCollection<string> RegisteredCommands => _registeredCommands.Keys.ToArray();
+    public IReadOnlyCollection<string> RegisteredNetworkEvents => _registeredNetworkEvents.Keys.ToArray();
     public event Action<string>? CommandRegistered;
     public event Action<string>? NetworkEventRegistered;
     public event Action<string>? WorkerOutput;
@@ -114,7 +118,14 @@ public sealed class RustWorkerProcessRuntime : IDisposable
             }
             finally { _writeLock.Release(); }
 
-            var response = await completion.Task.WaitAsync(_requestTimeout, cancellationToken);
+            WorkerResponse response;
+            try { response = await completion.Task.WaitAsync(_requestTimeout, cancellationToken); }
+            catch (TimeoutException)
+            {
+                Terminate();
+                FailPending(new TimeoutException($"Rust worker exceeded its {_requestTimeout.TotalSeconds:0.#} second request limit."));
+                throw;
+            }
             if (response.Type == "request_error") throw new InvalidOperationException(response.Error ?? "Rust resource request failed.");
             return response;
         }
@@ -146,11 +157,13 @@ public sealed class RustWorkerProcessRuntime : IDisposable
                 if (response.Type == "ready") { _ready.TrySetResult(); continue; }
                 if (response.Type == "command_registered" && response.Name is not null)
                 {
+                    _registeredCommands.TryAdd(response.Name, 0);
                     CommandRegistered?.Invoke(response.Name);
                     continue;
                 }
                 if (response.Type == "network_event_registered" && response.Name is not null)
                 {
+                    _registeredNetworkEvents.TryAdd(response.Name, 0);
                     NetworkEventRegistered?.Invoke(response.Name);
                     continue;
                 }
@@ -164,7 +177,9 @@ public sealed class RustWorkerProcessRuntime : IDisposable
         {
             if (!_ready.Task.IsCompleted)
                 _ready.TrySetException(new InvalidOperationException("Rust resource exited before its ready message."));
-            FailPending(new InvalidOperationException($"Rust resource exited (code {_process.ExitCode})."));
+            var exitCode = -1;
+            try { if (_process.HasExited) exitCode = _process.ExitCode; } catch (InvalidOperationException) { }
+            FailPending(new InvalidOperationException($"Rust resource exited (code {exitCode})."));
         }
     }
 
