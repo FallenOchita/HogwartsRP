@@ -76,7 +76,7 @@ Build the resource executable for the same operating system and architecture as 
 
 ## Native desktop launcher
 
-The active desktop launcher is Rust: rust/apps/hogwartsrp-launcher uses eframe/egui. The WinForms executable has been removed from the .NET solution. See Native Rust launcher in rust-launcher.md. The .NET launcher support library remains temporarily for existing contracts/tests, but the Rust executable does not invoke it.
+The active desktop launcher is Rust: rust/apps/hogwartsrp-launcher uses eframe/egui. The WinForms executable has been removed from the .NET solution. See Native Rust launcher in rust-launcher.md. The launcher service layer and authenticated WebSocket client are implemented in Rust; the former C# launcher library and client projects have been removed. The .NET server/core and server-side abstractions remain C#.
 
 
 ## Rust worker restart policy
