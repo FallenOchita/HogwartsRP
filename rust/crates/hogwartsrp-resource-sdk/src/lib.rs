@@ -10,7 +10,7 @@ use std::io::{self, BufRead, Write};
 const MAX_LINE_BYTES: usize = 32 * 1024;
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "camelCase")]
 struct WorkerMessage {
     #[serde(rename = "type")]
     kind: String,
@@ -47,9 +47,10 @@ impl Resource {
     where F: Fn(&[Value]) -> Result<Option<Value>, String> + Send + Sync + 'static {
         let name = name.into();
         validate_event_name(&name).map_err(|e| format!("invalid command name: {e:?}"))?;
-        if self.commands.insert(name.clone(), Box::new(handler)).is_some() {
+        if self.commands.contains_key(&name) {
             return Err(format!("command already registered: {name}"));
         }
+        self.commands.insert(name, Box::new(handler));
         Ok(())
     }
 
@@ -145,5 +146,15 @@ mod tests {
     fn accepts_registered_event_handlers() {
         let mut resource = Resource::new("example").unwrap();
         assert!(resource.on_event("resource:started", |_| Ok(None)).is_ok());
+    }
+    #[test]
+    fn protocol_field_names_match_dotnet_web_json_defaults() {
+        let message = WorkerMessage {
+            kind: "network_event_registered".into(), id: None, name: Some("player:joined".into()),
+            event_name: Some("player:joined".into()), arguments: vec![], error: None
+        };
+        let json = serde_json::to_string(&message).unwrap();
+        assert!(json.contains("\"eventName\""));
+        assert!(!json.contains("\"event_name\""));
     }
 }

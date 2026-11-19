@@ -31,3 +31,12 @@ The server host constructs `JsonCharacterRepository` at startup. Configure `Stor
 ## Rust extension layer
 
 A Rust workspace now contains a resource SDK and a native-core validation crate. The SDK defines a bounded JSON-lines worker protocol and APIs for resource command/event registration. The native crate provides deterministic name, argument-count, and frame-size validation. These are foundation libraries only: the current ResourceManager still launches Lua workers exclusively, and the .NET host does not yet load Rust through FFI. Rust worker supervision and native interop must be integrated and tested before either is considered part of the running server. See [Rust support](rust-support.md).
+
+
+## Rust resource process hosting
+
+The restricted resource manifest accepts repeated rust_script entries for precompiled executables relative to the resource directory. ResourceManager starts these workers after the resource's Lua server/shared scripts and stops them in reverse order. Executable paths are normalized and checked to remain under the resource directory. Rust workers use the JSON-lines protocol described in docs/rust-support.md; the host waits for a ready message before marking the resource started.
+
+RustWorkerProcessRuntime bounds UTF-8 protocol frames to 32 KiB, waits up to 10 seconds for startup, applies a 15-second request timeout, and requests graceful shutdown before terminating a worker process tree. The manager exposes command registration, network-event declarations, command invocation, and server-originated event dispatch. The network-event callback is only a declaration signal: the server's WebSocket adapter must still enforce identity, allowlists, and authorization before dispatching client-originated events. The manager does not yet automatically connect Rust command declarations to the framework-wide CommandRegistry or the WebSocket event policy.
+
+Rust executables run with the server process user's OS permissions. Unlike the Lua worker, this first Rust hosting slice does not yet apply per-worker OS memory/CPU limits. Treat Rust resources as trusted code; process separation alone is not a complete sandbox. Automatic Cargo builds, restart policies, and shared Lua/Rust event-bus integration remain future work.
