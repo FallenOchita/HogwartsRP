@@ -39,3 +39,7 @@ Install the stable Rust toolchain, then run:
     cargo build --manifest-path rust/Cargo.toml -p hogwartsrp-rust-greeter
 
 The example is a protocol SDK sample. Until the C# worker supervisor is merged, running it directly waits for host messages on stdin.
+
+## Native desktop launcher
+
+The active desktop launcher is also Rust: `rust/apps/hogwartsrp-launcher` uses eframe/egui. The WinForms executable has been removed from the .NET solution. See [Native Rust launcher](rust-launcher.md) for build steps and the feature-porting boundary. The .NET launcher support library is retained temporarily for its existing contracts/tests, but the Rust executable does not invoke it.
