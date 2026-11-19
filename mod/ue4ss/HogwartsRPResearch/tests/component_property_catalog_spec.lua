@@ -37,7 +37,7 @@ local function class(fullName, properties, parent, failAfterFirst)
         ForEachProperty = function(_, callback)
             if failAfterFirst then
                 if properties[1] then callback(properties[1]) end
-                error("synthetic continuation failure")
+                error(type(failAfterFirst) == "string" and failAfterFirst or "synthetic continuation failure")
             end
             for _, item in ipairs(properties) do
                 if callback(item) then break end
@@ -68,9 +68,10 @@ equal(complete.properties[2].declaring_class, "Class /Script/Engine.ActorCompone
 equal(complete.class_diagnostics[1].iteration_probe.status, "OK", "successful minimal probe status")
 equal(complete.class_diagnostics[1].iteration_probe.callback_invocations, 1, "successful minimal probe callback count")
 
+local longSyntheticError = "synthetic continuation failure " .. string.rep("diagnostic-detail-", 24)
 local failingClass = class("Class /Script/Test.FailingComponent", {
     property("CapturedBeforeFailure", "BoolProperty /Script/Test.FailingComponent:CapturedBeforeFailure")
-}, nil, true)
+}, nil, longSyntheticError)
 local failingComponent = {
     GetFullName = function() return "FailingComponent /Game/Test.Actor.FailingComponent" end,
     GetClass = function() return failingClass end
