@@ -6,7 +6,7 @@ Discord.js v14 ticket, moderation appeal, character application, whitelist and d
 - Six department panels and 21 ticket types.
 - Modal intake for appeals, character/whitelist applications, bug reports and player/staff reports.
 - Private channels with opener, department staff and bot access.
-- Claim, unclaim, review, escalate, close and application decision actions.
+- Claim, unclaim, assign, review, escalate, close and application decision actions. Staff reports are restricted to administrator roles and their transcript goes to the audit channel.
 - MongoDB ticket records, audit trail, statistics and user history.
 - HTML and Markdown transcripts, persisted in a Docker volume and uploaded to the transcript log channel.
 - Three-open-ticket limit, five-minute cooldown and same-type duplicate prevention.
