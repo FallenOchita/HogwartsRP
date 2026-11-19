@@ -130,7 +130,9 @@ internal sealed class LauncherWindow : Form
             if (_oidc is null && !endpoint.IsLoopback)
                 throw new InvalidOperationException("Configure OIDC sign-in before connecting to a remote server.");
 
-            IJoinCredentialProvider credentials = _oidc ?? new DialogJoinCredentialProvider(this);
+            IJoinCredentialProvider credentials = _oidc is not null
+                ? _oidc
+                : new DialogJoinCredentialProvider(this);
             _connection = new ServerConnectionService(_network, credentials);
             _connection.StatusMessage += message => Ui(() => SetStatus(message));
             await _connection.ConnectAsync(_selectedServer);
