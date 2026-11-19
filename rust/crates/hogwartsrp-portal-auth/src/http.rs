@@ -2,8 +2,10 @@ use crate::{
     AccountLinkProvider, AuthorizationTransactionStore, BrowserSessionStore, JsonAccountLinkStore, JsonPortalAccountStore, PortalOidcConfig,
 };
 mod discord;
+mod epic;
 mod steam;
 pub use discord::DiscordLinkConfig;
+pub use epic::EpicLinkConfig;
 pub use steam::SteamLinkConfig;
 use axum::{
     extract::{Path, Query, State},
@@ -35,6 +37,7 @@ pub struct PortalHttpState {
     account_links: Arc<JsonAccountLinkStore>,
     discord_link: Option<Arc<DiscordLinkConfig>>,
     steam_link: Option<Arc<SteamLinkConfig>>,
+    epic_link: Option<Arc<EpicLinkConfig>>,
 }
 
 impl PortalHttpState {
@@ -45,6 +48,7 @@ impl PortalHttpState {
         account_links: Arc<JsonAccountLinkStore>,
         discord_link: Option<DiscordLinkConfig>,
         steam_link: Option<SteamLinkConfig>,
+        epic_link: Option<EpicLinkConfig>,
     ) -> Self {
         Self {
             config: Arc::new(config),
@@ -55,6 +59,7 @@ impl PortalHttpState {
             account_links,
             discord_link: discord_link.map(Arc::new),
             steam_link: steam_link.map(Arc::new),
+            epic_link: epic_link.map(Arc::new),
         }
     }
 }
@@ -72,6 +77,7 @@ pub fn router(state: PortalHttpState) -> Router {
         .route("/account/logout", axum::routing::post(logout))
         .merge(discord::router())
         .merge(steam::router())
+        .merge(epic::router())
         .with_state(state)
 }
 

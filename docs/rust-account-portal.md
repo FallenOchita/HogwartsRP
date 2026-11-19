@@ -14,7 +14,7 @@ The Rust portal now has a development JSON link store, authenticated connection
 status endpoint, and CSRF/same-origin-protected disconnect endpoint. Only provider
 verification code may call the trusted `link_verified_identity` store method;
 there is deliberately no HTTP endpoint that accepts an external subject or account
-ID from the browser. Discord linking is implemented, and Steam OpenID linking is implemented as an optional provider flow. Epic Games authorization/callback verification remains the next integration stage.
+ID from the browser. Discord, Steam OpenID, and Epic Games account linking are implemented as optional provider flows.
 
 The Rust workspace now contains a small standalone Axum host at
 `rust/apps/hogwartsrp-account-portal`. It is separate from the C# per-game-server
@@ -37,10 +37,10 @@ Routes:
   readable by same-origin portal code.
 - `GET /account/links` returns Discord, Steam, and Epic connected flags for the
   account derived from the authenticated session. It never returns provider IDs.
-- `POST /account/links/discord/start` and `POST /account/links/steam/start` begin
-  their respective session-bound provider linking flows when configured.
-- `GET /account/links/discord/callback` and `GET /account/links/steam/callback`
-  consume their single-use browser transaction and verify the provider response.
+- `POST /account/links/{discord|steam|epic}/start` begins a CSRF-protected,
+  session-bound provider linking flow when that provider is configured.
+- `GET /account/links/{discord|steam|epic}/callback` consumes the single-use
+  browser transaction and verifies the provider response server-side.
 - `DELETE /account/links/{provider}` disconnects only that provider from the
   current session's account. It requires the session cookie, matching CSRF header,
   and an Origin matching the configured portal callback origin.
@@ -86,7 +86,6 @@ monitoring, and deployment hardening.
 - The JSON identity store is a single-process development adapter, not a
   production database. It stores only the verified issuer, subject and generated
   HogwartsRP account ID; it does not store provider tokens.
-- Epic Games provider authorization/callback verification is not yet wired into the Rust portal.
 - Browser sessions, authorization transactions, and the JSON account/link stores
   are process-local or single-process development adapters. Distributed sessions,
   database migrations, rate limiting and production deployment are follow-up work.
@@ -137,5 +136,29 @@ must use HTTPS and register the exact callback URI. Steam linking is identity
 proof only; it does not establish ownership of Hogwarts Legacy or grant server
 access.
 
-Epic Games linking remains a follow-up integration and does not yet have a
-functional Connect action.
+Epic Games account linking
+
+Set all four environment variables to enable Epic Games linking:
+
+- `HOGWARTSRP_EPIC_CLIENT_ID`: EOS OAuth client ID.
+- `HOGWARTSRP_EPIC_CLIENT_SECRET`: server-only OAuth client secret.
+- `HOGWARTSRP_EPIC_DEPLOYMENT_ID`: EOS deployment ID for the client.
+- `HOGWARTSRP_EPIC_REDIRECT_URI`: exact registered callback URI ending in `/account/links/epic/callback`.
+
+The dashboard sends a CSRF-protected same-origin POST to
+`/account/links/epic/start`. The portal creates a short-lived, single-use state
+transaction bound to the authenticated browser session, then redirects to Epic
+using the `basic_profile` scope. The callback consumes that state, exchanges the
+authorization code at Epic's fixed token endpoint using HTTP Basic client
+authentication, and verifies the resulting access token through Epic's fixed
+`tokenInfo` endpoint. The portal accepts only an active bearer token issued to
+the configured client and a 32-character hexadecimal Epic account ID. Only that
+verified ID is stored; access and refresh tokens are not persisted.
+
+Epic's published web authorization-code flow documents state but does not
+document PKCE parameters, so this implementation does not send or claim PKCE
+for Epic. State is random, short-lived, single-use, and bound to the current
+browser session. Local development may use HTTP only on loopback; public
+deployments must use HTTPS and register the exact callback URI. Epic linking is
+identity proof only; it does not establish Hogwarts Legacy ownership or grant
+server access.
