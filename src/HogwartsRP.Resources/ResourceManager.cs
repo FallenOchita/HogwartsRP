@@ -1,5 +1,6 @@
 using HogwartsRP.Core;
 using HogwartsRP.Scripting;
+using System.Collections.Concurrent;
 
 namespace HogwartsRP.Resources;
 
@@ -8,55 +9,131 @@ public sealed class ResourceManager
     private sealed class Running(ResourceInfo info, List<IDisposable> runtimes, List<RustWorkerProcessRuntime> rustWorkers)
     {
         private readonly object _sync = new();
-        private bool _workerFailed;
+        private bool _stopping;
+        private int _restartAttempts;
+        private readonly HashSet<RustWorkerProcessRuntime> _handledExits = [];
 
         public ResourceInfo Info = info;
         public List<IDisposable> Runtimes = runtimes;
         public List<RustWorkerProcessRuntime> RustWorkers = rustWorkers;
+        public bool IsStopping { get { lock (_sync) return _stopping; } }
+
+        public ResourceInfo Snapshot { get { lock (_sync) return Info; } }
 
         public void MarkStarted()
         {
             lock (_sync)
             {
-                if (!_workerFailed) Info = Info with { State = ResourceState.Started, Error = null };
+                if (!_stopping && Info.State == ResourceState.Starting)
+                    Info = Info with { State = ResourceState.Started, Error = null };
             }
         }
 
-        public void MarkWorkerExited(int? exitCode)
+        public bool TryHandleExit(RustWorkerProcessRuntime worker)
+        {
+            lock (_sync) return _handledExits.Add(worker);
+        }
+
+        public IReadOnlyList<RustWorkerProcessRuntime> WorkerSnapshot()
+        {
+            lock (_sync) return RustWorkers.ToArray();
+        }
+
+        public RustWorkerProcessRuntime GetSingleWorker()
         {
             lock (_sync)
             {
-                _workerFailed = true;
-                if (Info.State is ResourceState.Starting or ResourceState.Started)
-                    Info = Info with { State = ResourceState.Failed, Error = exitCode is null
-                        ? "A Rust worker exited unexpectedly (exit code unavailable)."
-                        : $"A Rust worker exited unexpectedly with code {exitCode}." };
+                if (RustWorkers.Count == 0) throw new KeyNotFoundException();
+                if (RustWorkers.Count != 1) throw new InvalidOperationException("Resource has multiple Rust workers; command routing is ambiguous.");
+                return RustWorkers[0];
             }
+        }
+
+        public bool MarkWorkerExited(int? exitCode, bool restartEnabled)
+        {
+            lock (_sync)
+            {
+                if (_stopping) return false;
+                var message = exitCode is null
+                    ? "A Rust worker exited unexpectedly (exit code unavailable)."
+                    : $"A Rust worker exited unexpectedly with code {exitCode}.";
+                Info = Info with { State = restartEnabled ? ResourceState.Restarting : ResourceState.Failed, Error = message };
+                return restartEnabled;
+            }
+        }
+
+        public int NextRestartAttempt(int maxRestarts)
+        {
+            lock (_sync)
+            {
+                if (_stopping || _restartAttempts >= maxRestarts) return 0;
+                return ++_restartAttempts;
+            }
+        }
+
+        public bool ReplaceWorker(RustWorkerProcessRuntime previous, RustWorkerProcessRuntime replacement)
+        {
+            lock (_sync)
+            {
+                if (_stopping) return false;
+                var index = RustWorkers.IndexOf(previous);
+                if (index < 0) return false;
+                RustWorkers[index] = replacement;
+                var runtimeIndex = Runtimes.IndexOf(previous);
+                if (runtimeIndex >= 0) Runtimes[runtimeIndex] = replacement;
+                Info = Info with { State = ResourceState.Started, Error = null };
+                return true;
+            }
+        }
+
+        public void SetRestartFailed(string error)
+        {
+            lock (_sync)
+            {
+                if (!_stopping) Info = Info with { State = ResourceState.Failed, Error = error };
+            }
+        }
+
+        public void BeginStopping()
+        {
+            lock (_sync)
+            {
+                _stopping = true;
+                Info = Info with { State = ResourceState.Stopping };
+            }
+        }
+
+        public void MarkStopped()
+        {
+            lock (_sync) Info = Info with { State = ResourceState.Stopped };
         }
     }
 
     private readonly string _resourcesDirectory;
     private readonly Func<string, ILuaRuntime> _runtimeFactory;
     private readonly Action<ILuaRuntime, string>? _configure;
+    private readonly RustWorkerRestartPolicy _restartPolicy;
     private readonly Dictionary<string, Running> _running = new(StringComparer.OrdinalIgnoreCase);
+    private readonly CancellationTokenSource _shutdown = new();
+    private readonly ConcurrentDictionary<Task, byte> _restartTasks = new();
 
-    public ResourceManager(string resourcesDirectory, Func<string, ILuaRuntime> runtimeFactory, Action<ILuaRuntime, string>? configure = null)
+    public ResourceManager(string resourcesDirectory, Func<string, ILuaRuntime> runtimeFactory,
+        Action<ILuaRuntime, string>? configure = null, RustWorkerRestartPolicy? restartPolicy = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(resourcesDirectory);
         _resourcesDirectory = Path.GetFullPath(resourcesDirectory);
         _runtimeFactory = runtimeFactory ?? throw new ArgumentNullException(nameof(runtimeFactory));
         _configure = configure;
+        _restartPolicy = restartPolicy ?? new RustWorkerRestartPolicy();
     }
 
-    public IReadOnlyList<ResourceInfo> Status => _running.Values.Select(x => x.Info).OrderBy(x => x.Manifest.Name).ToArray();
+    public IReadOnlyList<ResourceInfo> Status => _running.Values.Select(x => x.Snapshot).OrderBy(x => x.Manifest.Name).ToArray();
 
     /// <summary>Raised when a Rust worker declares an inbound network event. The server must still authorize it.</summary>
     public event Action<string, string>? RustNetworkEventRegistered;
-
     /// <summary>Raised when a Rust worker registers a command.</summary>
     public event Action<string, string>? RustCommandRegistered;
-
-    /// <summary>Raised when a Rust worker exits; resource status is marked Failed before observers are notified.</summary>
+    /// <summary>Raised when a Rust worker exits; observers are isolated from worker supervision.</summary>
     public event Action<string, int?>? RustWorkerExited;
 
     public IReadOnlyList<ResourceManifest> Discover()
@@ -77,8 +154,7 @@ public sealed class ResourceManager
             var dir = Path.Combine(_resourcesDirectory, manifest.Name);
             var runtimes = new List<IDisposable>();
             var rustWorkers = new List<RustWorkerProcessRuntime>();
-            var info = new ResourceInfo(manifest, dir, ResourceState.Starting);
-            var running = new Running(info, runtimes, rustWorkers);
+            var running = new Running(new(manifest, dir, ResourceState.Starting), runtimes, rustWorkers);
             try
             {
                 var scripts = manifest.ServerScripts.Concat(manifest.SharedScripts).ToArray();
@@ -100,15 +176,10 @@ public sealed class ResourceManager
                     var worker = await RustWorkerProcessRuntime.StartAsync(executable, dir, cancellationToken: cancellationToken);
                     rustWorkers.Add(worker);
                     runtimes.Add(worker);
-                    worker.CommandRegistered += command => RustCommandRegistered?.Invoke(manifest.Name, command);
-                    worker.NetworkEventRegistered += eventName => RustNetworkEventRegistered?.Invoke(manifest.Name, eventName);
-                    worker.WorkerExited += exitCode =>
-                    {
-                        running.MarkWorkerExited(exitCode);
-                        NotifyRustWorkerExited(manifest.Name, exitCode);
-                    };
-                    foreach (var command in worker.RegisteredCommands) RustCommandRegistered?.Invoke(manifest.Name, command);
-                    foreach (var eventName in worker.RegisteredNetworkEvents) RustNetworkEventRegistered?.Invoke(manifest.Name, eventName);
+                    AttachWorker(manifest, running, worker);
+                    foreach (var command in worker.RegisteredCommands) Notify(RustCommandRegistered, manifest.Name, command);
+                    foreach (var eventName in worker.RegisteredNetworkEvents) Notify(RustNetworkEventRegistered, manifest.Name, eventName);
+                    if (!worker.IsRunning) HandleWorkerExit(manifest, running, worker, worker.ExitCode);
                 }
 
                 running.MarkStarted();
@@ -116,6 +187,7 @@ public sealed class ResourceManager
             }
             catch (Exception ex)
             {
+                running.BeginStopping();
                 foreach (var runtime in runtimes.AsEnumerable().Reverse()) runtime.Dispose();
                 _running[manifest.Name] = new(new(manifest, dir, ResourceState.Failed, ex.Message), [], []);
                 throw new InvalidOperationException($"Resource '{manifest.Name}' failed to start.", ex);
@@ -123,30 +195,91 @@ public sealed class ResourceManager
         }
     }
 
-    private void NotifyRustWorkerExited(string resourceName, int? exitCode)
+    private void AttachWorker(ResourceManifest manifest, Running running, RustWorkerProcessRuntime worker)
     {
-        var handlers = RustWorkerExited;
-        if (handlers is null) return;
-        foreach (Action<string, int?> handler in handlers.GetInvocationList())
+        worker.CommandRegistered += command => Notify(RustCommandRegistered, manifest.Name, command);
+        worker.NetworkEventRegistered += eventName => Notify(RustNetworkEventRegistered, manifest.Name, eventName);
+        worker.WorkerExited += exitCode => HandleWorkerExit(manifest, running, worker, exitCode);
+    }
+
+    private void HandleWorkerExit(ResourceManifest manifest, Running running, RustWorkerProcessRuntime worker, int? exitCode)
+    {
+        if (!running.TryHandleExit(worker)) return;
+        var restart = running.MarkWorkerExited(exitCode, _restartPolicy.MaxRestarts > 0);
+        Notify(RustWorkerExited, manifest.Name, exitCode);
+        if (!restart) return;
+
+        var task = RestartWorkerAsync(manifest, running, worker);
+        _restartTasks.TryAdd(task, 0);
+        _ = task.ContinueWith(completed => _restartTasks.TryRemove(completed, out _),
+            CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+    }
+
+    private async Task RestartWorkerAsync(ResourceManifest manifest, Running running, RustWorkerProcessRuntime previous)
+    {
+        Exception? lastError = null;
+        while (!running.IsStopping && !_shutdown.IsCancellationRequested)
         {
-            try { handler(resourceName, exitCode); }
+            var attempt = running.NextRestartAttempt(_restartPolicy.MaxRestarts);
+            if (attempt == 0) break;
+
+            try
+            {
+                await Task.Delay(_restartPolicy.GetDelay(attempt), _shutdown.Token);
+                if (running.IsStopping) return;
+
+                var replacement = await RustWorkerProcessRuntime.StartAsync(previous.ExecutablePath,
+                    Path.Combine(_resourcesDirectory, manifest.Name), cancellationToken: _shutdown.Token);
+                AttachWorker(manifest, running, replacement);
+
+                if (!running.ReplaceWorker(previous, replacement))
+                {
+                    replacement.Dispose();
+                    return;
+                }
+                previous.Dispose();
+
+                foreach (var command in replacement.RegisteredCommands) Notify(RustCommandRegistered, manifest.Name, command);
+                foreach (var eventName in replacement.RegisteredNetworkEvents) Notify(RustNetworkEventRegistered, manifest.Name, eventName);
+                if (!replacement.IsRunning) HandleWorkerExit(manifest, running, replacement, replacement.ExitCode);
+                return;
+            }
+            catch (OperationCanceledException) when (_shutdown.IsCancellationRequested) { return; }
+            catch (Exception ex)
+            {
+                lastError = ex;
+            }
+        }
+
+        if (!running.IsStopping)
+            running.SetRestartFailed($"Rust worker restart budget exhausted after {_restartPolicy.MaxRestarts} attempt(s). {lastError?.Message ?? "The worker exited and no retries remain."}");
+    }
+
+    private static void Notify<T1, T2>(Action<T1, T2>? handlers, T1 first, T2 second)
+    {
+        if (handlers is null) return;
+        foreach (Action<T1, T2> handler in handlers.GetInvocationList())
+        {
+            try { handler(first, second); }
             catch { /* Host observers must not disrupt worker supervision. */ }
         }
     }
 
     public async ValueTask DispatchRustEventAsync(string eventName, object?[] arguments, CancellationToken cancellationToken = default)
     {
-        foreach (var worker in _running.Values.SelectMany(x => x.RustWorkers))
+        foreach (var worker in _running.Values.SelectMany(x => x.WorkerSnapshot()).ToArray())
             await worker.DispatchEventAsync(eventName, arguments, cancellationToken);
     }
 
     public ValueTask<string?> InvokeRustCommandAsync(string resourceName, string command, object?[] arguments, CancellationToken cancellationToken = default)
     {
-        if (!_running.TryGetValue(resourceName, out var resource) || resource.RustWorkers.Count == 0)
+        if (!_running.TryGetValue(resourceName, out var resource))
             throw new KeyNotFoundException($"No running Rust worker exists for resource '{resourceName}'.");
-        if (resource.RustWorkers.Count != 1)
-            throw new InvalidOperationException($"Resource '{resourceName}' has multiple Rust workers; command routing is ambiguous.");
-        return resource.RustWorkers[0].InvokeCommandAsync(command, arguments, cancellationToken);
+        RustWorkerProcessRuntime worker;
+        try { worker = resource.GetSingleWorker(); }
+        catch (KeyNotFoundException) { throw new KeyNotFoundException($"No running Rust worker exists for resource '{resourceName}'."); }
+        catch (InvalidOperationException ex) { throw new InvalidOperationException($"Resource '{resourceName}' has multiple Rust workers; command routing is ambiguous.", ex); }
+        return worker.InvokeCommandAsync(command, arguments, cancellationToken);
     }
 
     private static string ResolveResourcePath(string resourceDirectory, string relativePath)
@@ -159,14 +292,21 @@ public sealed class ResourceManager
         return fullPath;
     }
 
-    public ValueTask StopAllAsync()
+    public async ValueTask StopAllAsync()
     {
+        _shutdown.Cancel();
+        foreach (var resource in _running.Values.Reverse()) resource.BeginStopping();
+        var pending = _restartTasks.Keys.ToArray();
+        if (pending.Length > 0)
+        {
+            try { await Task.WhenAll(pending); }
+            catch { /* Restart failures are represented in resource status. */ }
+        }
+
         foreach (var resource in _running.Values.Reverse())
         {
-            resource.Info = resource.Info with { State = ResourceState.Stopping };
             foreach (var runtime in resource.Runtimes.AsEnumerable().Reverse()) runtime.Dispose();
-            resource.Info = resource.Info with { State = ResourceState.Stopped };
+            resource.MarkStopped();
         }
-        return ValueTask.CompletedTask;
     }
 }
