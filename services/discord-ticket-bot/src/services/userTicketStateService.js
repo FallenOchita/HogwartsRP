@@ -1,6 +1,7 @@
 const State=require("../models/UserTicketState");const Ticket=require("../models/Ticket");const config=require("../config/env");
 async function reserve(guildId,userId){
- await State.updateOne({guildId,userId},{$setOnInsert:{guildId,userId,openCount:0,cooldownUntil:new Date(0)}},{upsert:true});
+ try{await State.updateOne({guildId,userId},{$setOnInsert:{guildId,userId,openCount:0,cooldownUntil:new Date(0)}},{upsert:true});}
+ catch(error){if(error.code!==11000)throw error;}
  const now=new Date(),reserved=await State.findOneAndUpdate({guildId,userId,openCount:{$lt:config.maxOpenTickets},cooldownUntil:{$lte:now}},{$inc:{openCount:1},$set:{cooldownUntil:new Date(now.getTime()+config.cooldownMs)}},{new:true});
  if(reserved)return reserved;
  const state=await State.findOne({guildId,userId}).lean();
@@ -10,7 +11,7 @@ async function reserve(guildId,userId){
 }
 async function release(guildId,userId,{resetCooldown=false}={}){
  await State.updateOne({guildId,userId},{$inc:{openCount:-1},...(resetCooldown?{$set:{cooldownUntil:new Date(0)}}:{})});
- await State.updateOne({guildId,userId,openCount:{$lt:0}},{$set:{openCount:0}});
+ await State.updateMany({guildId,userId,openCount:{$lt:0}},{$set:{openCount:0}});
 }
 async function reconcile(){
  const counts=await Ticket.aggregate([{$match:{status:"open"}},{$group:{_id:{guildId:"$guildId",userId:"$userId"},count:{$sum:1}}}]);
