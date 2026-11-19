@@ -419,3 +419,77 @@ impl AuthorizationTransactionStore {
             .map_err(|_| AuthorizationTransactionError::Unavailable)
     }
 }
+
+
+#[cfg(test)]
+mod transaction_tests {
+    use super::*;
+
+    #[test]
+    fn creates_s256_challenge_and_keeps_verifier_server_side() {
+        let store = AuthorizationTransactionStore::default();
+        let request = store.begin("browser-session-a", 1_000).unwrap();
+        assert_eq!(request.code_challenge_method(), "S256");
+        assert_eq!(request.state().len(), 43);
+        assert_eq!(request.code_challenge().len(), 43);
+        let consumed = store.consume(request.state(), "browser-session-a", 1_001).unwrap();
+        assert_eq!(consumed.code_verifier().len(), 43);
+        assert_eq!(store.len().unwrap(), 0);
+    }
+
+    #[test]
+    fn transaction_is_bound_to_its_browser_session() {
+        let store = AuthorizationTransactionStore::default();
+        let request = store.begin("owner-session", 1_000).unwrap();
+        assert_eq!(
+            store.consume(request.state(), "different-session", 1_001).unwrap_err(),
+            AuthorizationTransactionError::InvalidOrExpired
+        );
+        assert_eq!(store.len().unwrap(), 1);
+        assert!(store.consume(request.state(), "owner-session", 1_001).is_ok());
+    }
+
+    #[test]
+    fn transaction_is_single_use() {
+        let store = AuthorizationTransactionStore::default();
+        let request = store.begin("session", 1_000).unwrap();
+        assert!(store.consume(request.state(), "session", 1_001).is_ok());
+        assert_eq!(
+            store.consume(request.state(), "session", 1_002).unwrap_err(),
+            AuthorizationTransactionError::InvalidOrExpired
+        );
+    }
+
+    #[test]
+    fn expired_transactions_are_rejected_and_cleaned() {
+        let store = AuthorizationTransactionStore::default();
+        let request = store.begin("session", 1_000).unwrap();
+        assert_eq!(
+            store.consume(request.state(), "session", 1_300).unwrap_err(),
+            AuthorizationTransactionError::InvalidOrExpired
+        );
+        assert_eq!(store.len().unwrap(), 0);
+    }
+
+    #[test]
+    fn store_is_bounded_and_prunes_expired_entries_before_capacity_check() {
+        let store = AuthorizationTransactionStore::new(1);
+        let first = store.begin("session-a", 1_000).unwrap();
+        assert_eq!(
+            store.begin("session-b", 1_001).unwrap_err(),
+            AuthorizationTransactionError::CapacityReached
+        );
+        let second = store.begin("session-b", 1_301).unwrap();
+        assert_ne!(first.state(), second.state());
+        assert_eq!(store.len().unwrap(), 1);
+    }
+
+    #[test]
+    fn empty_session_binding_is_rejected() {
+        let store = AuthorizationTransactionStore::default();
+        assert_eq!(
+            store.begin("", 1_000).unwrap_err(),
+            AuthorizationTransactionError::InvalidOrExpired
+        );
+    }
+}
