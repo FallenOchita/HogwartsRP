@@ -80,9 +80,8 @@ referenceUserdata:close()
 local fakeHandles = {}
 local function fakeUObject(fullName, fields)
     local handle = assert(io.tmpfile(), "could not create fake UObject userdata")
-    local closeOriginal = handle.close
-    fakeHandles[#fakeHandles + 1] = { handle = handle, close = closeOriginal }
     local original = debug.getmetatable(handle)
+    fakeHandles[#fakeHandles + 1] = { handle = handle, metatable = original }
     local originalIndex = original and original.__index
     debug.setmetatable(handle, {
         __index = function(self, key)
@@ -136,10 +135,10 @@ local opaqueRelated = Discovery.relatedObjectReferenceAudit(opaqueController, {
 equal(opaqueRelated.routes[1].root_status, "OPAQUE_USERDATA", "opaque root status")
 equal(#opaqueRelated.routes[1].items, 0, "opaque root is not expanded")
 
--- Restore the original file close operation captured before replacing each
--- userdata metatable; the test doubles must not change file-handle cleanup.
+-- Restore each original file metatable before closing its FILE* userdata.
 for _, entry in ipairs(fakeHandles) do
-    entry.close(entry.handle)
+    debug.setmetatable(entry.handle, entry.metatable)
+    entry.handle:close()
 end
 opaqueRoot:close()
 
