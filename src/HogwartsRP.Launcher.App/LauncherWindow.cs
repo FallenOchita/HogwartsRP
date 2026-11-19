@@ -10,6 +10,10 @@ internal sealed class LauncherWindow : Form
 {
     private readonly TextBox _serverName = new() { Text = "Local development", Width = 260 };
     private readonly TextBox _serverAddress = new() { Text = "http://127.0.0.1:7777", Width = 360 };
+    private readonly ComboBox _savedServers = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 360 };
+    private readonly Button _saveServer = new() { Text = "Save server", AutoSize = true };
+    private readonly Button _removeServer = new() { Text = "Remove saved server", AutoSize = true };
+    private readonly JsonServerProfileStore _serverProfileStore = new();
     private readonly Label _status = new() { Text = "Choose a server and connect.", AutoSize = true };
     private readonly Button _connect = new() { Text = "Connect / Sign in", AutoSize = true };
     private readonly Button _register = new() { Text = "Register character", AutoSize = true, Enabled = false };
@@ -44,6 +48,17 @@ internal sealed class LauncherWindow : Form
         ForeColor = Color.GhostWhite;
         Font = new Font("Segoe UI", 10F);
         BuildLayout();
+        RefreshServerProfiles();
+        _savedServers.SelectedIndexChanged += (_, _) =>
+        {
+            if (_savedServers.SelectedItem is ServerProfile profile)
+            {
+                _serverName.Text = profile.Name;
+                _serverAddress.Text = profile.Address;
+            }
+        };
+        _saveServer.Click += (_, _) => SaveServerProfile();
+        _removeServer.Click += (_, _) => RemoveServerProfile();
         _connect.Click += async (_, _) => await ConnectAsync();
         _register.Click += async (_, _) => await RegisterCharacterAsync();
         _play.Click += async (_, _) => await PlayAsync();
@@ -69,6 +84,11 @@ internal sealed class LauncherWindow : Form
         root.Controls.Add(new Label { Text = "A roleplay launcher for Hogwarts Legacy", AutoSize = true, ForeColor = Color.LightGray, Padding = new Padding(0, 0, 0, 20) });
 
         var server = MakeGroup("SERVER CONNECTION");
+        AddRow(server, "Saved servers", _savedServers);
+        var profileActions = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = true };
+        profileActions.Controls.Add(_saveServer);
+        profileActions.Controls.Add(_removeServer);
+        server.Controls.Add(profileActions);
         AddRow(server, "Server name", _serverName);
         AddRow(server, "Server address", _serverAddress);
         server.Controls.Add(_connect);
@@ -113,6 +133,57 @@ internal sealed class LauncherWindow : Form
         row.Controls.Add(editor);
         parent.Controls.Add(row);
         parent.Controls.SetChildIndex(row, 0);
+    }
+
+    private void RefreshServerProfiles(string? selectId = null)
+    {
+        try
+        {
+            var profiles = _serverProfileStore.Load();
+            _savedServers.BeginUpdate();
+            _savedServers.Items.Clear();
+            foreach (var profile in profiles) _savedServers.Items.Add(profile);
+            _savedServers.EndUpdate();
+            if (selectId is not null)
+            {
+                for (var index = 0; index < _savedServers.Items.Count; index++)
+                    if (_savedServers.Items[index] is ServerProfile item && item.Id == selectId)
+                    {
+                        _savedServers.SelectedIndex = index;
+                        break;
+                    }
+            }
+            _removeServer.Enabled = _savedServers.Items.Count > 0;
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Could not load saved servers: {ex.Message}");
+            _removeServer.Enabled = false;
+        }
+    }
+
+    private void SaveServerProfile()
+    {
+        try
+        {
+            var profile = _serverProfileStore.Save(_serverName.Text, _serverAddress.Text);
+            RefreshServerProfiles(profile.Id);
+            SetStatus($"Saved server profile: {profile.Name}.");
+        }
+        catch (Exception ex) { SetStatus($"Could not save server: {ex.Message}"); }
+    }
+
+    private void RemoveServerProfile()
+    {
+        if (_savedServers.SelectedItem is not ServerProfile profile) return;
+        if (!_serverProfileStore.Delete(profile.Id))
+        {
+            SetStatus("The selected saved server was not found.");
+            RefreshServerProfiles();
+            return;
+        }
+        RefreshServerProfiles();
+        SetStatus($"Removed saved server: {profile.Name}.");
     }
 
     private async Task ConnectAsync()
