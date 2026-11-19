@@ -4,6 +4,14 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Added — UE4SS property-enumeration diagnostics
+
+- Added per-class diagnostics to the existing ForEachProperty pass: invocation status, callback invocation count, partial property count, last observed property name, and concise errors.
+- Included the same diagnostic records in the named-property audit so incomplete reflection passes are distinguishable from a completed pass that did not find a descriptor.
+- Protected the callback body and report callback failures separately from method lookup and invocation failures.
+- Kept enumeration single-pass and metadata-only; no retries, property-value reads, gameplay function calls, writes, hooks, or network operations were added.
+
+
 ### Fixed — Windows Rust worker integration-test cleanup
 
 - Ensure the ResourceManager stops its Rust worker in the test cleanup path, including when an assertion fails.
