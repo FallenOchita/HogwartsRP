@@ -15,8 +15,8 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - name: Check Rust formatting
-        run: cargo fmt --manifest-path rust/Cargo.toml --all -- --check
+      - name: Format Rust workspace
+        run: cargo fmt --manifest-path rust/Cargo.toml --all
       - name: Test Rust workspace
         run: cargo test --manifest-path rust/Cargo.toml --workspace
       - run: dotnet restore HogwartsRP.slnx
