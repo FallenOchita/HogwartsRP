@@ -102,7 +102,7 @@ function M.writeAll(directory, catalog)
         PlayerReport = catalog.objects and catalog.objects.player,
         ControllerReport = catalog.objects and catalog.objects.controller,
         MovementReport = catalog.objects and catalog.objects.movement,
-        NPCReport = { status = "NOT_YET_DISCOVERED", note = "NPC class catalog is not yet validated." },
+        NPCReport = catalog.actor_catalog or { status = "ACTOR_CATALOG_UNAVAILABLE" },
         ComponentReport = catalog.components,
         PropertyReport = catalog.properties,
         FunctionReport = catalog.functions,
