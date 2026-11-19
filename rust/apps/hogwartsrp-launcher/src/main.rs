@@ -1,3 +1,5 @@
+pub mod launcher_core;
+
 use directories::ProjectDirs;
 use eframe::egui;
 use serde::{Deserialize, Serialize};
