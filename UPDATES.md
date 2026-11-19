@@ -743,3 +743,7 @@ This file records implementation details and milestone status. For user-facing f
 - The audit now captures `MovementMode` during the already-existing reflected class-hierarchy property pass, avoiding duplicate enumeration and early callback termination.
 - The report records the descriptor and declaring class only if that shared metadata pass actually finds it; otherwise it preserves an explicit incomplete/not-found status.
 - No property values are read by this metadata path and no gameplay functions, writes, hooks, or network operations are added.
+## 2026-11-19 — Component discovery logging fix
+
+- Fixed a missing Lua concatenation operator in the component discovery status log that caused `attempt to call a string value` after discovery and relationship validation.
+- The change is limited to report-status logging; component discovery, property catalog behavior, and read-only safeguards are unchanged.
