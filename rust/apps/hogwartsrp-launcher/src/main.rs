@@ -21,17 +21,6 @@ struct ServerProfile {
     address: String,
 }
 
-#[derive(Deserialize)]
-struct ServerStatus {
-    status: String,
-    #[serde(rename = "serverName")]
-    server_name: String,
-    #[serde(rename = "onlinePlayers")]
-    online_players: u32,
-    #[serde(rename = "maxPlayers")]
-    max_players: u32,
-}
-
 struct HogwartsRpLauncher {
     server_name: String,
     server_address: String,
@@ -395,26 +384,6 @@ fn load_profiles() -> Vec<ServerProfile> {
     serde_json::from_slice::<Vec<ServerProfile>>(&data).unwrap_or_default()
 }
 
-fn detect_steam_installation() -> Option<PathBuf> {
-    let mut candidates = Vec::new();
-    if let Ok(path) = std::env::var("STEAM_DIR") { candidates.push(PathBuf::from(path)); }
-    if cfg!(target_os = "windows") {
-        if let Ok(program_files) = std::env::var("PROGRAMFILES(X86)") {
-            candidates.push(PathBuf::from(program_files).join("Steam"));
-        }
-        if let Ok(program_files) = std::env::var("PROGRAMFILES") {
-            candidates.push(PathBuf::from(program_files).join("Steam"));
-        }
-    } else if cfg!(target_os = "linux") {
-        if let Ok(home) = std::env::var("HOME") {
-            candidates.push(PathBuf::from(&home).join(".steam/steam"));
-            candidates.push(PathBuf::from(home).join(".local/share/Steam"));
-        }
-    }
-    candidates.into_iter()
-        .map(|root| root.join("steamapps/common/Hogwarts Legacy/Phoenix/Binaries/Win64/HogwartsLegacy.exe"))
-        .find(|exe| exe.is_file())
-}
 
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
