@@ -502,3 +502,6 @@ mod transaction_tests {
         );
     }
 }
+
+mod authentication;
+pub use authentication::{PortalOidcAuthenticationError, VerifiedPortalIdentity};
