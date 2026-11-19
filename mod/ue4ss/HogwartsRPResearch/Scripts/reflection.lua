@@ -75,6 +75,50 @@ local function conciseDiagnostic(value)
     return message
 end
 
+-- Preserve the complete first-pass error up to a fixed report-safe limit.
+-- The original length and truncation state make any clipping explicit.
+local MAX_ENUMERATION_ERROR_LENGTH = 2048
+
+local function detailedDiagnostic(value)
+    local message = tostring(value or "unknown error")
+    local originalLength = #message
+    local truncated = originalLength > MAX_ENUMERATION_ERROR_LENGTH
+    if truncated then message = message:sub(1, MAX_ENUMERATION_ERROR_LENGTH) end
+    return message, originalLength, truncated
+end
+
+-- Isolate the UE4SS iterator/callback bridge from descriptor inspection.
+-- This callback intentionally performs no property access and only counts
+-- callbacks; returning false requests continued iteration.
+local function probePropertyIteration(struct)
+    local probe = {
+        method = "ForEachProperty",
+        callback_mode = "COUNT_ONLY_RETURN_FALSE",
+        callback_invocations = 0,
+        status = "NOT_STARTED"
+    }
+    local _, callError, callStatus = Safe.safeMethod(struct, "ForEachProperty", function(_)
+        probe.callback_invocations = probe.callback_invocations + 1
+        return false
+    end)
+    probe.invocation_status = callStatus or (callError and "CALL_ERROR" or "OK")
+    if callStatus == "CALL_ERROR" and probe.callback_invocations > 0 then
+        probe.status = "CALL_ERROR_AFTER_CALLBACK"
+    elseif callStatus == "CALL_ERROR" then
+        probe.status = "CALL_ERROR_BEFORE_CALLBACK"
+    elseif callStatus == "LOOKUP_ERROR" or callStatus == "METHOD_UNAVAILABLE" then
+        probe.status = callStatus
+    elseif callStatus == "OK" then
+        probe.status = "OK"
+    else
+        probe.status = callStatus or "UNKNOWN"
+    end
+    if callError ~= nil then
+        probe.error, probe.error_length, probe.error_truncated = detailedDiagnostic(callError)
+    end
+    return probe
+end
+
 -- Audit the documented metadata surface exposed by a property descriptor.
 -- Capability methods are looked up only; no enum accessor is invoked or guessed.
 local function enumAssociationCapabilityAudit(property, descriptor)
@@ -113,6 +157,8 @@ local function enumerateProperties(struct, output, limit, namedPropertyAudit, de
         callback_invocations = 0,
         last_property_name = "UNAVAILABLE"
     }
+
+    diagnostic.iteration_probe = probePropertyIteration(struct)
 
     local callbackError = nil
     local _, callError, callStatus = Safe.safeMethod(struct, "ForEachProperty", function(property)
@@ -169,7 +215,12 @@ local function enumerateProperties(struct, output, limit, namedPropertyAudit, de
     else
         diagnostic.status = callStatus or "UNKNOWN"
     end
-    if callError ~= nil then diagnostic.error = conciseDiagnostic(callError) end
+    if callError ~= nil then
+        diagnostic.error, diagnostic.error_length, diagnostic.error_truncated = detailedDiagnostic(callError)
+    end
+    if callbackError ~= nil then
+        diagnostic.callback_error_length = #callbackError
+    end
 
     if callError and namedPropertyAudit and namedPropertyAudit.status ~= "FOUND" then
         namedPropertyAudit.status = "ENUMERATION_INCOMPLETE"
@@ -233,7 +284,8 @@ end
 -- Build a bounded property-descriptor catalog for one confirmed component.
 -- The caller caches this result by class identity so duplicate instances do
 -- not trigger repeated reflection passes. Each class receives one
--- ForEachProperty attempt; partial results and callback errors are preserved.
+-- ForEachProperty metadata pass plus an isolated count-only callback probe;
+-- partial results and full bounded error diagnostics are preserved.
 function M.catalogComponentProperties(component, options)
     options = options or {}
     local maxDepth = options.max_super_depth or DEFAULTS.max_super_depth
@@ -303,7 +355,8 @@ function M.catalogComponentProperties(component, options)
             result.class_diagnostics[#result.class_diagnostics + 1] = diagnostic
             if enumerationError then
                 partial = true
-                diagnostic.error = conciseDiagnostic(enumerationError)
+                -- enumerateProperties already records the bounded full error.
+                -- Do not overwrite it with the legacy short diagnostic.
             end
         else
             result.properties_truncated = true
