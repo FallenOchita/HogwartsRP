@@ -66,7 +66,7 @@ impl HogwartsRpLauncher {
         let parent = path.parent().ok_or_else(|| "Invalid profile path.".to_owned())?;
         let mut temporary = tempfile::NamedTempFile::new_in(parent).map_err(|e| e.to_string())?;
         temporary.write_all(&json).map_err(|e| e.to_string())?;
-        temporary.persist(&path).map_err(|e| e.error.to_string())
+        temporary.persist(&path).map(|_| ()).map_err(|e| e.error.to_string())
     }
 
     fn save_current_server(&mut self) {
