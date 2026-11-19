@@ -1,3 +1,18 @@
+## 2026-11-19 — Direct named-property metadata lookup
+
+### Added
+
+- Added a targeted named-property lookup through the documented UE4SS UObject:Reflection() and UObjectReflection:GetProperty() API.
+- The MovementMode audit now records a direct lookup result for each queried class in the known superclass chain, with the lookup scope, status, and descriptor metadata when found.
+- Added a separate direct_lookup_status so targeted lookup results are not conflated with the existing ForEachProperty inventory status.
+
+### Safety and validation boundary
+
+- The direct lookup retrieves property metadata only; it does not read property values or invoke gameplay functions.
+- The existing ForEachProperty inventory and its diagnostics remain available as a separate path.
+- The API documentation does not establish inherited-property lookup semantics or expose a property-to-UEnum accessor, so the report does not infer a declaring class from lookup scope or assign enum names to raw value 3.
+- No Lua runtime or Hogwarts Legacy/UE4SS game session is available here; live behavior remains unverified until a fresh PropertyReport is generated.
+
 ## 2026-11-19 — UE4SS property-enumeration diagnostics
 
 ### Added
