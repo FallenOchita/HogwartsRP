@@ -75,6 +75,33 @@ local function conciseDiagnostic(value)
     return message
 end
 
+-- Audit the documented metadata surface exposed by a property descriptor.
+-- Capability methods are looked up only; no enum accessor is invoked or guessed.
+local function enumAssociationCapabilityAudit(property, descriptor)
+    local methodCapabilities = {}
+    for _, methodName in ipairs({ "GetFullName", "GetFName", "GetClass", "IsA" }) do
+        methodCapabilities[methodName] = Safe.methodCapability(property, methodName)
+    end
+
+    local associationStatus = "NOT_AN_ENUM_PROPERTY_CLASS"
+    if descriptor.property_class == "ByteProperty" then
+        associationStatus = "BYTE_PROPERTY_ASSOCIATION_UNVERIFIED"
+    elseif descriptor.property_class == "EnumProperty" then
+        associationStatus = "ENUM_PROPERTY_TYPE_CONFIRMED_REFERENCE_UNAVAILABLE"
+    end
+
+    return {
+        status = associationStatus,
+        descriptor_property_class = descriptor.property_class,
+        documented_property_method_capabilities = methodCapabilities,
+        enum_reference_status = "NO_DOCUMENTED_BYTEPROPERTY_ENUM_ACCESSOR",
+        enum_api_status = "UENUM_METHODS_REQUIRE_AN_EXISTING_UENUM_REFERENCE",
+        enum_entries_status = "NOT_ENUMERATED_NO_VERIFIED_UENUM_REFERENCE",
+        documentation_scope = "UE4SS_4.0.0_LUA_API",
+        note = "The documented Property API exposes generic descriptor identity methods but no ByteProperty-to-UEnum accessor. UEnum lookup methods cannot identify the associated enum without an independently obtained UEnum reference.",
+        safety = "PROPERTY_DESCRIPTOR_CAPABILITY_LOOKUPS_ONLY_NO_ENUM_ACCESSOR_OR_ENUMERATION_CALLS"
+    }
+end
 local function enumerateProperties(struct, output, limit, namedPropertyAudit, declaringClass)
     local diagnostic = {
         class = declaringClass,
@@ -150,34 +177,6 @@ local function enumerateProperties(struct, output, limit, namedPropertyAudit, de
     return callError and tostring(callError) or nil, diagnostic
 end
 
--- Audit the documented metadata surface exposed by a property descriptor.
--- Capability methods are looked up only; no enum accessor is invoked or guessed.
-local function enumAssociationCapabilityAudit(property, descriptor)
-    local methodCapabilities = {}
-    for _, methodName in ipairs({ "GetFullName", "GetFName", "GetClass", "IsA" }) do
-        methodCapabilities[methodName] = Safe.methodCapability(property, methodName)
-    end
-
-    local associationStatus = "NOT_AN_ENUM_PROPERTY_CLASS"
-    if descriptor.property_class == "ByteProperty" then
-        associationStatus = "BYTE_PROPERTY_ASSOCIATION_UNVERIFIED"
-    elseif descriptor.property_class == "EnumProperty" then
-        associationStatus = "ENUM_PROPERTY_TYPE_CONFIRMED_REFERENCE_UNAVAILABLE"
-    end
-
-    return {
-        status = associationStatus,
-        property_class = descriptor.property_class,
-        descriptor_property_class = descriptor.property_class,
-        documented_property_method_capabilities = methodCapabilities,
-        enum_reference_status = "NO_DOCUMENTED_BYTEPROPERTY_ENUM_ACCESSOR",
-        enum_api_status = "UENUM_METHODS_REQUIRE_AN_EXISTING_UENUM_REFERENCE",
-        enum_entries_status = "NOT_ENUMERATED_NO_VERIFIED_UENUM_REFERENCE",
-        documentation_scope = "UE4SS_4.0.0_LUA_API",
-        note = "The documented Property API exposes generic descriptor identity methods but no ByteProperty-to-UEnum accessor. UEnum lookup methods cannot identify the associated enum without an independently obtained UEnum reference.",
-        safety = "PROPERTY_DESCRIPTOR_CAPABILITY_LOOKUPS_ONLY_NO_ENUM_ACCESSOR_OR_ENUMERATION_CALLS"
-    }
-end
 -- Resolve one named descriptor through UE4SS's documented UObjectReflection API.
 -- This avoids depending on ForEachProperty callback iteration for the named-property audit.
 local function lookupNamedProperty(struct, propertyName, lookupClass)
