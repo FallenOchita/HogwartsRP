@@ -4,6 +4,19 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Added — Browser account session foundation
+
+- Added a process-local browser account session registry with cryptographically random bearer and CSRF tokens.
+- Stored only token digests, bound each session to a server-supplied central account ID, and exposed session resolution without returning credentials.
+- Added fixed session expiry, bounded capacity with concurrency-safe issuance, expired-session pruning, constant-time CSRF verification, and per-session revocation.
+- Added regression tests for account binding, malformed tokens, CSRF pairing, expiry, capacity, and revocation.
+- Documented the required future cookie, HTTPS, CSRF-header, origin-check, and distributed-session integration rules.
+
+### Security and scope
+
+- Session issuance is a trusted server-side operation. No browser login route, cookie middleware, provider callback, account-link endpoint, or portal UI is exposed yet.
+- Sessions are process-local and are invalidated on service restart; a production multi-instance portal requires a shared session backend.
+
 ### Planned — Public directory and player account linking foundation
 
 - Added `docs/public-directory-and-account-linking.md` defining the architecture and security requirements for a central public server directory and browser-based player account connections for Discord, Steam, and Epic Games.

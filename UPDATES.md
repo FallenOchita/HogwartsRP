@@ -1,3 +1,25 @@
+## 2026-11-19 — Browser account session foundation
+
+### Added
+
+- Added BrowserAccountSessionStore for process-local central browser account sessions.
+- Generated independent cryptographically random 256-bit bearer and CSRF tokens; retained only SHA-256 digests.
+- Bound sessions to account IDs supplied by trusted server-side authentication code; browser callers cannot select an account ID.
+- Added fixed expiry, concurrency-safe bounded registry capacity, expiry pruning, constant-time CSRF comparison, and individual session revocation.
+- Serialized session issuance around capacity checks so concurrent sign-ins cannot exceed the configured in-memory session limit.
+- Added regression tests for session issuance and account binding, malformed tokens, CSRF pairing, expiry, capacity, and revocation.
+- Added docs/browser-account-sessions.md with required cookie flags, CSRF header handling, HTTPS, origin checks, and deployment limitations.
+
+### Security and implementation boundary
+
+- This is a session lifecycle primitive only. No browser login route, cookie middleware, provider callback, account-link endpoint, or portal UI is exposed yet.
+- The registry is in-memory and process-local. Restarting the service invalidates sessions; production multi-instance hosting requires a shared session backend.
+- Existing server OIDC still issues per-server join tickets and has not been repurposed as central browser authentication.
+
+### Next implementation gate
+
+Implement the central browser host's authenticated session endpoints and connect them to a separately verified central sign-in flow. Account-owned operations must derive the account ID from the session and enforce CSRF protection.
+
 ## 2026-11-19 — Central account identity storage foundation
 
 ### Added
