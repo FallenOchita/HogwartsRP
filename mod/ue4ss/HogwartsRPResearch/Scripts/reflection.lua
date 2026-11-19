@@ -151,9 +151,8 @@ local function enumerateProperties(struct, output, limit, namedPropertyAudit, de
 end
 
 -- Audit the documented metadata surface exposed by a property descriptor.
--- No enum accessor or documented Property method is invoked; no speculative accessor is probed.
+-- Capability methods are looked up only; no enum accessor is invoked or guessed.
 local function enumAssociationCapabilityAudit(property, descriptor)
-    local propertyClass = Safe.safeMethod(property, "GetClass")
     local methodCapabilities = {}
     for _, methodName in ipairs({ "GetFullName", "GetFName", "GetClass", "IsA" }) do
         methodCapabilities[methodName] = Safe.methodCapability(property, methodName)
