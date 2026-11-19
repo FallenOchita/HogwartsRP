@@ -36,6 +36,8 @@ public sealed class JsonAccountIdentityStore
 {
     private sealed class StoreDocument
     {
+        public StoreDocument() { }
+
         public int Version { get; set; } = 1;
         public List<HogwartsAccount> Accounts { get; set; } = [];
         public List<ExternalAccountLink> Links { get; set; } = [];
