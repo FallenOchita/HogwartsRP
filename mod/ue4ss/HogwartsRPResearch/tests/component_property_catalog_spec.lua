@@ -42,6 +42,7 @@ local function class(fullName, properties, parent, failAfterFirst)
             for _, item in ipairs(properties) do
                 if callback(item) then break end
             end
+            return false
         end
     }
 end
