@@ -6,7 +6,7 @@ module.exports={data:new SlashCommandBuilder().setName("assign-ticket").setDescr
   const ticket=await Ticket.findOne({channelId:i.channelId,status:"open"});if(!ticket)return i.reply({content:"This is not an open ticket.",ephemeral:true});
   const type=types[ticket.ticketType],role=config.roles[type.department];
   if(!isAdmin(i.member)&&!canManageTickets(i.member,role))return i.reply({content:"Department staff access required.",ephemeral:true});
-  const target=i.options.getMember("member"),action=i.options.getString("action");
+  const targetUser=i.options.getUser("member"),target=await i.guild.members.fetch(targetUser.id).catch(()=>null),action=i.options.getString("action");
   if(!target)return i.reply({content:"Member is not in this server.",ephemeral:true});
   if(action==="assign"&&!isAdmin(target)&&!canManageTickets(target,role))return i.reply({content:"The selected member does not have the required department role.",ephemeral:true});
   if(action==="assign"){
