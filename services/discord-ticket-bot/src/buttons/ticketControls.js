@@ -8,7 +8,7 @@ async function execute(i){
   if(ticket.userId!==i.user.id&&!isAdmin(i.member)&&!canManageTickets(i.member,role)&&!assigned)return i.reply({content:"You cannot close this ticket.",ephemeral:true});
   await i.deferReply({ephemeral:true});await closeTicket({client:i.client,ticket,actorId:i.user.id,reason:"Closed using ticket controls"});return i.editReply("Ticket closed.");
  }
- if(!canManageTickets(i.member,role)&&!assigned)return i.reply({content:"Staff access required.",ephemeral:true});
+ if((ticket.ticketType==="report-staff"?!isAdmin(i.member):!canManageTickets(i.member,role))&&!assigned)return i.reply({content:"Staff access required.",ephemeral:true});
  if(action==="claim"){await manager.claim(i.client,ticket,i.user.id);return i.reply({content:"Ticket claimed.",ephemeral:true});}
  if(action==="unclaim"){await manager.unclaim(i.client,ticket,i.user.id,i.member);return i.reply({content:"Ticket unclaimed.",ephemeral:true});}
  if(action==="review"){ticket.reviewRequestedAt=new Date();await ticket.save();await audit.record(i.client,{guildId:ticket.guildId,ticketId:ticket.ticketId,channelId:ticket.channelId,actorId:i.user.id,action:"REVIEW_REQUESTED"});return i.reply({content:"Review request recorded.",ephemeral:true});}
