@@ -7,7 +7,7 @@
 
 ### Safety and validation boundary
 
-- The audit performs protected member lookups only; it does not invoke descriptor methods or probe speculative accessor names.
+- The audit performs protected member lookups for the listed Property capabilities; it does not invoke those methods or probe speculative enum accessor names. The shared validity guard retains its normal validity check.
 - No property values, opaque userdata, memory offsets, gameplay UFunctions, setters, hooks, or network operations are accessed.
 - The documented UE4SS 4.0.0 API exposes UEnum lookup methods only once a UEnum reference exists; the Property API does not document how to obtain the associated UEnum from a ByteProperty.
 - Live behavior remains unverified until the updated toolkit is run in Hogwarts Legacy with UE4SS 4.0.0.
