@@ -127,24 +127,7 @@ impl HogwartsRpLauncher {
         self.server_status = "Checking…".into();
         thread::spawn(move || {
             let result = (|| {
-                let mut url = Url::parse(&address).map_err(|e| e.to_string())?;
-                if !matches!(url.scheme(), "http" | "https") {
-                    return Err("Status endpoint requires HTTP or HTTPS.".into());
-                }
-                url.set_path("/status");
-                url.set_query(None);
-                url.set_fragment(None);
-                let client = reqwest::blocking::Client::builder()
-                    .timeout(Duration::from_secs(5))
-                    .build()
-                    .map_err(|e| e.to_string())?;
-                let response = client.get(url).send().map_err(|e| e.to_string())?
-                    .error_for_status().map_err(|e| e.to_string())?;
-                let status: ServerStatus = response.json().map_err(|e| e.to_string())?;
-                if status.status != "online" || status.server_name.trim().is_empty()
-                    || status.online_players > status.max_players || status.max_players == 0 {
-                    return Err("Server returned an invalid status response.".into());
-                }
+                let status = launcher_core::ServerStatusClient::default().get_status(&address)?;
                 Ok(format!("{} · {}/{} players", status.server_name, status.online_players, status.max_players))
             })();
             let _ = sender.send(result);
@@ -152,12 +135,15 @@ impl HogwartsRpLauncher {
     }
 
     fn launch_game(&mut self) {
-        match detect_steam_installation() {
-            Some(_) => match open::that("steam://run/990080") {
+        let additional_roots = std::env::var_os("HOGWARTSRP_GAME_ROOTS")
+            .map(|value| std::env::split_paths(&value).collect())
+            .unwrap_or_default();
+        match launcher_core::GameInstallationDetector::new(additional_roots).detect() {
+            Some(installation) => match launcher_core::launch_steam(&installation) {
                 Ok(()) => self.status_message = "Steam launch request sent. Game startup is not yet confirmed.".into(),
-                Err(error) => self.status_message = format!("Could not open Steam: {error}"),
+                Err(error) => self.status_message = format!("Could not launch Hogwarts Legacy through Steam: {error}"),
             },
-            None => self.status_message = "Steam Hogwarts Legacy installation was not found in the standard library paths. Custom Steam library discovery is not implemented yet.".into(),
+            None => self.status_message = "A supported Hogwarts Legacy installation was not found. Configure HOGWARTSRP_GAME_ROOTS to add custom install directories.".into(),
         }
     }
 
@@ -262,7 +248,7 @@ impl HogwartsRpLauncher {
         let Some(receiver) = &self.status_receiver else { return; };
         match receiver.try_recv() {
             Ok(Ok(status)) => {
-                self.server_status = status;
+                self.server_status = status.clone();
                 self.status_message = status;
                 self.status_receiver = None;
             }
