@@ -6,6 +6,14 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Added — Targeted MovementMode enum-object lookup
+
+- Added one exact StaticFindObject lookup for Enum /Script/Engine.EMovementMode when the named MovementMode descriptor is a ByteProperty.
+- Validates the returned object's full name and UEnum class identity before making a targeted UEnum:GetNameByValue(3) metadata lookup.
+- Reports the enum as a corroborating candidate, not a direct ByteProperty-to-UEnum association, because UE4SS 4.0.0 does not expose that descriptor link.
+- Adds regression coverage for a successful exact lookup and an unavailable enum object.
+- Does not enumerate arbitrary enums, read property values, inspect offsets, invoke gameplay functions, write properties, add hooks, or perform network operations.
+
 ### Fixed — Named-property lookup status separation
 
 - Reports `NOT_FOUND` when documented direct named-property lookup completes across the inspected class chain without finding the requested descriptor.
