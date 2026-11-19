@@ -128,6 +128,16 @@ local function runResearch(targets, finalAttempt)
         catalog.reflection.player = inspectMetadata(player)
         catalog.reflection.controller = inspectMetadata(controller)
         catalog.reflection.movement = inspectMetadata(movement)
+        if Reflection and Reflection.capabilityReport then
+            catalog.reflection.provider_capabilities = Reflection.capabilityReport({
+                player = player, controller = controller, movement = movement
+            })
+        else
+            catalog.reflection.provider_capabilities = {
+                status = "CAPABILITY_AUDIT_UNAVAILABLE",
+                safety = "MEMBER_LOOKUP_ONLY_NO_METHOD_INVOCATION"
+            }
+        end
 
         if Relationships then
             local relationshipOk, relationshipResult = pcall(function()

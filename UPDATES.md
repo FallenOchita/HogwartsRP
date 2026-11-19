@@ -1,3 +1,18 @@
+## 2026-11-19 — Read-only UE4SS reflection-provider capability audit
+
+### Added and improved
+
+- Added member-exposure inspection for reflected class enumeration methods. The audit records whether a Lua member is exposed without invoking it.
+- Added the provider-capability section to the generated reflection report for player, controller, and movement targets.
+- Preserved distinct metadata outcomes for unavailable members, member lookup failures, and call failures. An exposed method is explicitly not treated as a proven working method.
+- Updated the reflection documentation with the new report fields and the interpretation of `CALL_ERROR`.
+
+### Safety and validation boundary
+
+- The capability audit uses protected member lookup only. It does not invoke gameplay UFunctions, call ProcessEvent, read arbitrary property values, write properties, install hooks, or perform network operations.
+- This patch does not claim the UE4SS reflection provider is fixed. A fresh in-game FunctionReport is required to see which methods are exposed and whether descriptor enumeration succeeds.
+- No CI or live-game result is claimed by this source update.
+
 ## 2026-11-19 — Hogwarts Legacy asset research toolkit baseline
 
 ### Added

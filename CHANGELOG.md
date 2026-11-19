@@ -4,6 +4,14 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Improved — UE4SS reflection-provider capability audit
+
+- Added read-only member-exposure checks for reflected class enumeration methods, without invoking those methods.
+- Added provider capability details to the generated reflection report so method exposure is separated from successful metadata enumeration.
+- Preserved distinct per-function outcomes for unavailable methods, lookup failures, and call failures; a call failure is not reported as proof that the underlying Unreal function is absent.
+- Kept the research boundary unchanged: no gameplay UFunction invocation, ProcessEvent calls, property writes, hooks, or network operations.
+- Live UE4SS validation is still required to determine why selected UFunction descriptor wrappers fail during owned-property enumeration.
+
 ### Improved — Read-only movement property value audit
 
 - Added a structured property-value audit for selected player and movement-component candidates, recording access method, Lua value type, and conservative read status.
