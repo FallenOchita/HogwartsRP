@@ -4,6 +4,14 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Improved — Rust worker supervision and integration coverage
+
+- Added cross-platform end-to-end tests that launch a compiled Rust resource worker, verify command and network-event registration, invoke a command, dispatch an event, and observe worker stderr output.
+- Added unexpected-exit reporting and process-state visibility to the Rust worker supervisor; pending requests now fail when the worker exits.
+- Isolated host observer callback exceptions so logging and registration subscribers cannot terminate the worker protocol pump.
+- Validate worker response message types before completing host requests.
+- Added a dedicated Rust integration-test worker fixture and CI build step on Windows and Ubuntu.
+
 ### Added — Rust resource runtime integration
 
 - Added precompiled Rust worker declarations through repeated `rust_script` manifest entries, with resource-relative path validation.
