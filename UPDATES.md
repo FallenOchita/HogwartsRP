@@ -507,3 +507,20 @@ This file records implementation details and milestone status. For user-facing f
 - The invalid `CharMoveComp` property probe remains unresolved. The valid `CharacterMovement` reference can be compared against the enumerated `CharMoveComp` object's full path, but no property alias is inferred.
 - The 3,811 unresolved Outer chains remain unresolved; no ownership is guessed for them.
 - No gameplay functions, setters, hooks, property writes, or network operations were added.
+
+
+## 2026-11-18 — Read-only movement property value audit
+
+### Added and changed
+
+- Added a conservative property-value audit for selected player and movement-component candidates, including the target object, access path, Lua type, and explicit read status.
+- Primitive values are recorded as raw values. UObject-like userdata is reported as an object reference only when a full name can be obtained; otherwise it remains opaque userdata.
+- Opaque userdata and tables are not dereferenced or expanded. In particular, `TrivialObject` values are not treated as decoded velocity vectors or movement-mode integers.
+- Updated `GameplayStateReport` to consume audit results and removed the previous `GetVelocity` and vector `Size()` calls from the state sampler.
+- Kept all unknown gameplay states unknown and locomotion classification unassigned until verified decoding and baseline evidence exist.
+
+### Validation boundary
+
+- Static source review confirms the new state sampler does not invoke gameplay functions.
+- Live UE4SS 4.0.0 behavior remains unverified until the user installs this branch and supplies the generated `PropertyReport` and `GameplayStateReport`.
+- The audit does not decode Unreal structs, inspect opaque userdata internals, write properties, or perform network operations.
