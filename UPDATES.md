@@ -1,3 +1,20 @@
+## 2026-11-18 — Read-only UE4SS reflection metadata discovery
+
+### Added
+
+- Added `reflection.lua` using the documented UE4SS 4.0.0 reflection APIs: `GetClass`, `ForEachProperty`, `ForEachFunction`, and `GetSuperStruct`.
+- Enumerated reflected property and function metadata for the already discovered player, controller, and movement objects, including superclass chains.
+- Recorded property identity and property-class metadata, function identity and raw flags, and UFunction-owned property descriptors.
+- Extended the existing PropertyReport.txt and FunctionReport.txt payloads while preserving the separate allowlisted candidate value/callable probes.
+- Added configurable hard limits to prevent unexpectedly large reports.
+- Added `docs/ue4ss-reflection-discovery.md` describing the APIs, output, safety boundary, and validation limits.
+
+### Safety and validation boundary
+
+- This pass enumerates metadata only. It does not read arbitrary property values, invoke UFunctions, call ProcessEvent, write to game objects, install gameplay hooks, or connect to a network.
+- The documented Lua API does not provide enough metadata in this pass to decode parameter direction or claim a complete function signature; the report does not guess these fields.
+- No in-game result is claimed yet. The next validation is to install this branch, launch the game, and inspect reflection statuses and the generated PropertyReport.txt and FunctionReport.txt for errors or truncation.
+
 ## 2026-11-18 — Research toolkit report path correction
 
 ### Fixed
