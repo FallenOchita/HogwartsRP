@@ -1,3 +1,21 @@
+## 2026-11-19 — Hogwarts Legacy asset research toolkit baseline
+
+### Added
+
+- Added tools/asset-research/asset_research.py, a standard-library read-only scanner, classifier, metadata heuristic, report generator, and search CLI.
+- Added a PowerShell launcher and example configuration for Steam or Epic installation paths.
+- Added optional streaming SHA-256 hashes, timestamps, relative paths, file sizes, extensions, and container flags.
+- Added loose Unreal asset candidates, path/name-based categories, printable-string reference candidates, and a dependency graph whose edges are explicitly marked unverified.
+- Added JSON/Markdown/HTML outputs for file inventory and candidate Blueprint, character, animation, audio, world/map/level, localization, DataTable, Enum, and Struct catalogs.
+- Added synthetic unit tests and architecture/roadmap documentation.
+
+### Safety and validation boundary
+
+- The game installation is a read-only source. Reports/logs are written outside the game root; output nested inside the installation is rejected.
+- .pak/.utoc/.ucas files are inventoried only. No extraction, decryption, key recovery, DRM/authentication bypass, anti-cheat circumvention, executable patching, or asset modification is implemented.
+- Loose .uasset/.umap metadata is heuristic. Full Blueprint metadata and authoritative dependencies are not claimed.
+- Automated tests and a live Steam/Epic scan remain to be run before considering the toolkit validated.
+
 ## 2026-11-19 — Read-only player-owned component object enumeration
 
 ### Added
