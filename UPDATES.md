@@ -1,3 +1,23 @@
+## 2026-11-18 — Public directory and player account linking design foundation
+
+### Defined
+
+- Added `docs/public-directory-and-account-linking.md` as the architecture and security baseline for the next milestone.
+- Separated the central HogwartsRP browser account identity from the existing per-server OIDC join identity.
+- Defined independent optional Discord OAuth, Steam browser OpenID, and Epic Games OAuth account-linking flows, including server-side verification, state/CSRF protections, stable provider IDs, uniqueness constraints, and safe unlink behavior.
+- Defined a central public directory with authenticated server registration, revocable credentials, heartbeats, stale listing expiry, aggregate-only public status, endpoint validation, and rate limits.
+- Defined the browser Account Connections page and launcher Public Servers view, including the handoff back to each server's own join authentication.
+
+### Validation boundary
+
+- This change documents architecture and security requirements only. It does not implement provider integrations, a central account portal, a public directory service, or launcher UI.
+- No Discord, Steam, or Epic credentials are assumed to exist. Provider-specific setup and current requirements must be verified when each adapter is implemented.
+- No production endpoint, live server registration, or heartbeat has been deployed or tested.
+
+### Next implementation gate
+
+Build the central account service and durable identity/link ownership model first. Then implement and test each provider adapter before exposing account-link controls in the browser.
+
 # Detailed Updates
 
 ## 2026-11-19 — HogwartsRP launcher artwork integration
