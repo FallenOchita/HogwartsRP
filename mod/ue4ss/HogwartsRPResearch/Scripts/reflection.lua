@@ -38,22 +38,45 @@ local function propertyRecord(property)
     }
 end
 
+-- UFunction parameter/owned-property metadata uses the same cautious iterator
+-- strategy as class properties: capture one descriptor and return true immediately.
+-- Continued ForEachProperty iteration has produced errors in the live UE4SS report.
 local function functionRecord(fn, maxFields)
     local fields = {}
+    local diagnostic = {
+        method = "ForEachProperty",
+        enumeration_mode = "FIRST_PROPERTY_SAMPLE_EARLY_STOP",
+        property_sample_limit = 1,
+        callback_invocations = 0,
+        status = "NOT_STARTED",
+        last_property_name = "UNAVAILABLE"
+    }
+
     local _, enumerationError, enumerationStatus = Safe.safeMethod(fn, "ForEachProperty", function(property)
-        if #fields >= maxFields then return true end
+        diagnostic.callback_invocations = diagnostic.callback_invocations + 1
         if Safe.isValidObject(property) then
             fields[#fields + 1] = propertyRecord(property)
+            diagnostic.last_property_name = fields[#fields].name
+            diagnostic.stop_reason = "FIRST_PROPERTY_SAMPLE_CAPTURED"
+        else
+            diagnostic.stop_reason = "FIRST_CALLBACK_CONSUMED"
         end
-        return false
+        return true
     end)
-    local metadataStatus = enumerationStatus or (enumerationError and "CALL_ERROR" or "OK")
-    if enumerationStatus == "METHOD_UNAVAILABLE" then
-        metadataStatus = "METHOD_UNAVAILABLE"
-    elseif enumerationStatus == "LOOKUP_ERROR" then
-        metadataStatus = "LOOKUP_ERROR"
+
+    diagnostic.invocation_status = enumerationStatus or (enumerationError and "CALL_ERROR" or "OK")
+    if enumerationStatus == "METHOD_UNAVAILABLE" or enumerationStatus == "LOOKUP_ERROR" then
+        diagnostic.status = enumerationStatus
+    elseif enumerationStatus == "CALL_ERROR" and diagnostic.callback_invocations > 0 then
+        diagnostic.status = "CALL_ERROR_AFTER_CALLBACK"
     elseif enumerationStatus == "CALL_ERROR" then
-        metadataStatus = "CALL_ERROR"
+        diagnostic.status = "CALL_ERROR_BEFORE_CALLBACK"
+    elseif enumerationStatus == "OK" and diagnostic.callback_invocations == 0 then
+        diagnostic.status = "NO_CALLBACKS_DELIVERED"
+    elseif enumerationStatus == "OK" then
+        diagnostic.status = diagnostic.stop_reason or "OK"
+    else
+        diagnostic.status = enumerationStatus or "UNKNOWN"
     end
 
     return {
@@ -62,8 +85,11 @@ local function functionRecord(fn, maxFields)
         function_flags = Safe.safeMethod(fn, "GetFunctionFlags") or "UNAVAILABLE",
         owned_property_metadata = fields,
         owned_property_metadata_truncated = #fields >= maxFields,
-        owned_property_metadata_status = metadataStatus,
-        owned_property_metadata_note = "Metadata-only attempt. UE4SS may not expose UFunction property iteration for every descriptor; no function is invoked.",
+        owned_property_metadata_status = diagnostic.status,
+        owned_property_metadata_complete = false,
+        owned_property_metadata_sample_limit = 1,
+        owned_property_metadata_diagnostic = diagnostic,
+        owned_property_metadata_note = "Metadata-only first-property sample. Enumeration stops after the first callback; uncaptured UFunction fields are unknown, not absent. No function is invoked.",
         enumeration_error = enumerationError
     }
 end
