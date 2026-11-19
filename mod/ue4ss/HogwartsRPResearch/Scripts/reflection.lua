@@ -345,12 +345,7 @@ function M.catalogComponentProperties(component, options)
         current = parent
     end
 
-    if not hierarchyComplete and result.hierarchy_status == nil and
-        result.class_hierarchy_status == "NOT_STARTED" then
-        result.class_hierarchy_status = "DEPTH_LIMIT_REACHED"
-        result.hierarchy_termination = "MAX_SUPER_DEPTH"
-        partial = true
-    elseif not hierarchyComplete and result.class_hierarchy_status == "NOT_STARTED" then
+    if not hierarchyComplete and result.class_hierarchy_status == "NOT_STARTED" then
         result.class_hierarchy_status = "DEPTH_LIMIT_REACHED"
         result.hierarchy_termination = "MAX_SUPER_DEPTH"
         partial = true
