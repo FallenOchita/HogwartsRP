@@ -4,6 +4,15 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Improved — Read-only movement property value audit
+
+- Added a structured property-value audit for selected player and movement-component candidates, recording access method, Lua value type, and conservative read status.
+- Primitive values are reported as raw evidence; object references are identified by full name where available.
+- Opaque userdata and Lua tables are not dereferenced or expanded, preventing `TrivialObject` values from being mistaken for decoded numbers or structs.
+- Updated gameplay-state reporting to consume audit records instead of invoking `GetVelocity` or vector methods; movement mode and speed remain unavailable unless a primitive value is safely established.
+- Added a standalone Lua regression harness for primitive, missing, table, opaque-userdata, and getter-error cases.
+- Preserved the read-only boundary: no gameplay UFunctions, setters, hooks, property writes, or network operations are used by the new audit.
+
 ### Improved — Read-only component inventory validation
 
 - Added a class-grouped inventory for confirmed player-Outer matches, including instance counts and full paths for repeated classes.
