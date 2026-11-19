@@ -14,7 +14,15 @@ This change adds reusable HTTP handlers for inspecting and revoking an existing 
 - Revocation is limited to the supplied session token. Expired entries are rejected and can be pruned.
 - Session lifetime is fixed, between five minutes and 24 hours (12 hours by default); there is no sliding renewal.
 
-## HTTP endpoints and cookie behavior\n\n- `GET /account/session` reads the `HogwartsRP.AccountSession` cookie and returns only the server-bound account ID and session timestamps. Missing, invalid, or expired cookies receive `401`.\n- `DELETE /account/session` requires the same cookie plus the `X-HogwartsRP-CSRF` header. A missing or mismatched CSRF token receives `403`; success revokes only that session, clears the cookie, and returns `204`.\n- Both routes set `Cache-Control: no-store` and `Pragma: no-cache`.\n- `SetSessionCookie` is a helper for trusted server-side sign-in completion code. It sets `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/account`, and the server expiry. It does not expose a public session-issuance endpoint.\n- `BrowserAccountSessionEndpoints.Map` is not called by the per-game server startup. A future central host must map it explicitly after its trusted authentication/session services are configured.\n\n## Required HTTP integration rules
+## HTTP endpoints and cookie behavior
+
+- `GET /account/session` reads the `HogwartsRP.AccountSession` cookie and returns only the server-bound account ID and session timestamps. Missing, invalid, or expired cookies receive `401`.
+- `DELETE /account/session` requires the same cookie plus the `X-HogwartsRP-CSRF` header. A missing or mismatched CSRF token receives `403`; success revokes only that session, clears the cookie, and returns `204`.
+- Both routes set `Cache-Control: no-store` and `Pragma: no-cache`.
+- `SetSessionCookie` is a helper for trusted server-side sign-in completion code. It sets `Secure`, `HttpOnly`, `SameSite=Lax`, `Path=/account`, and the server expiry. Lax is required so the browser sends the session cookie on a top-level GET return from an external OAuth/OpenID provider; provider callback state must still be validated and bound to the session.
+- `BrowserAccountSessionEndpoints.Map` is not called by the per-game server startup. A future central host must map it explicitly after its trusted authentication/session services are configured.
+
+## Required HTTP integration rules
 
 When the central browser host is added, it must:
 
