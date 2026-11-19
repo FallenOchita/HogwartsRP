@@ -14,4 +14,4 @@
 - No in-game multiplayer or direct in-game character creation is claimed.
 
 ## Validation
-- GitHub Actions validation is pending.
+- GitHub Actions validation is queued; results will be recorded after both Windows and Ubuntu jobs finish.
