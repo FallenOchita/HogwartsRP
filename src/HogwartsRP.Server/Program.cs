@@ -89,7 +89,7 @@ var resources = new ResourceManager(root, resourceName =>
     return worker;
 });
 
-var registeredRustCommands = new ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
+var registeredRustCommands = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 resources.RustCommandRegistered += (resourceName, commandName) =>
 {
     var permissionKey = $"Resources:RustCommandPermissions:{resourceName}:{commandName}";
@@ -97,8 +97,14 @@ resources.RustCommandRegistered += (resourceName, commandName) =>
         ?? $"resource.{resourceName}.command.{commandName}";
     try
     {
-        if (!registeredRustCommands.TryAdd(commandName, 0))
-            throw new InvalidOperationException($"A command named '{commandName}' is already reserved.");
+        if (registeredRustCommands.TryGetValue(commandName, out var existingOwner))
+        {
+            if (existingOwner.Equals(resourceName, StringComparison.OrdinalIgnoreCase))
+                return; // A restarted worker reuses the command route already owned by this resource.
+            throw new InvalidOperationException($"Command '{commandName}' is already owned by resource '{existingOwner}'.");
+        }
+        if (!registeredRustCommands.TryAdd(commandName, resourceName))
+            throw new InvalidOperationException($"A command named '{commandName}' is already being registered.");
         commands.Register(commandName, permission,
             (_, commandArgs) => resources.InvokeRustCommandAsync(resourceName, commandName, commandArgs, CancellationToken.None));
         logger.LogInformation("Registered Rust command {CommandName} for resource {ResourceName} with permission {Permission}",
