@@ -5,6 +5,15 @@
 All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
+### Changed — Safe first-property sampling for UE4SS component catalogs
+
+- Changed component-class property descriptor collection to stop after the first callback, avoiding the live UE4SS 4.0.0 continuation path that repeatedly produced `attempt to call a nil value` after one callback.
+- Explicitly labels the output as a first-property sample per class, sets `property_catalog_complete = false`, and reports `PARTIAL` even when the class hierarchy itself is complete.
+- Preserves the count-only continuation and early-stop probes for diagnostics; the continuation probe is evidence only and does not control the descriptor sample.
+- Ensures a missing property in the sample is never reported as proof that the property is absent; direct named-property lookup remains separate and fallback enumeration is marked incomplete.
+- Adds regression assertions for one-property sampling, early termination, partial status, and preserved continuation-error diagnostics.
+- Remains read-only: only property descriptor metadata is recorded; no property values, gameplay functions, writes, hooks, or network operations are used.
+
 ### Added — ForEachProperty early-stop comparison
 
 - Added a second count-only probe that returns `true` on its first callback, exercising the documented early-stop path without inspecting the property descriptor.
