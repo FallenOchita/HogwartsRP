@@ -116,15 +116,32 @@ local rootController = {
         if name == "PlayerState" then return playerState end
     end
 }
+local metadataCalls = {}
 local related = Discovery.relatedObjectReferenceAudit(rootController, {
-    { root_property = "Player", target = "local_player", properties = { "PlayerController" } },
-    { root_property = "PlayerState", target = "player_state", properties = { "PawnPrivate" } }
-})
+    {
+        root_property = "Player", target = "local_player", properties = { "PlayerController" },
+        metadata_properties = { "PlayerController", "Origin" }
+    },
+    {
+        root_property = "PlayerState", target = "player_state", properties = { "PawnPrivate" },
+        metadata_properties = { "PlayerId", "PawnPrivate" }
+    }
+}, function(object, names)
+    metadataCalls[#metadataCalls + 1] = { object = Safe.safeFullName(object), names = names }
+    return { status = "INSPECTED", requested_count = #names, items = {} }
+end)
 equal(related.status, "READ_ONLY_SECOND_HOP_REFERENCE_AUDIT", "second-hop audit status")
 equal(related.root_reference_count, 2, "second-hop root references")
 equal(related.object_reference_count, 2, "second-hop child references")
 equal(related.routes[1].items[1].summary, "BP_Phoenix_Player_Controller_C /Game/Test.Root.Controller", "LocalPlayer controller reference")
 equal(related.routes[2].items[1].summary, "BP_Biped_Player_C /Game/Test.Root.Player", "PlayerState pawn reference")
+equal(#metadataCalls, 2, "metadata lookups only for validated parent objects")
+equal(metadataCalls[1].object, "LocalPlayer /Engine/Transient.GameEngine.LocalPlayer", "LocalPlayer metadata target")
+equal(metadataCalls[1].names[2], "Origin", "LocalPlayer metadata allowlist")
+equal(metadataCalls[2].object, "PlayerState /Game/Test.Root.PlayerState", "PlayerState metadata target")
+equal(metadataCalls[2].names[1], "PlayerId", "PlayerState metadata allowlist")
+equal(related.routes[1].metadata_audit.status, "INSPECTED", "LocalPlayer metadata status")
+equal(related.routes[2].metadata_audit.status, "INSPECTED", "PlayerState metadata status")
 
 -- An opaque root is never dereferenced to attempt its child allowlist.
 local opaqueRoot = assert(io.tmpfile(), "could not create opaque root fixture")
