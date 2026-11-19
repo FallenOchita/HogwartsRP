@@ -78,7 +78,7 @@
         if (!response.ok) throw new Error("Connect request failed");
         const result = await response.json();
         const destination = new URL(result.authorizationUrl);
-        const expectedHost = provider === "discord" ? "discord.com" : provider === "steam" ? "steamcommunity.com" : "epicgames.com";
+        const expectedHost = provider === "discord" ? "discord.com" : provider === "steam" ? "steamcommunity.com" : "www.epicgames.com";
         if (destination.protocol !== "https:" || destination.hostname !== expectedHost) {
           throw new Error("Unexpected authorization destination");
         }
