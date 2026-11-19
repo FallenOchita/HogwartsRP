@@ -10,6 +10,8 @@ All notable HogwartsRP changes are recorded here.
 - Added Windows-targeted desktop build configuration while retaining the existing launcher, authentication, networking, and character-validation services.
 - Added startup-splash and Windows application/window-icon support for the selected HogwartsRP artwork. The image files are supplied in the artwork bundle and must be copied into `src/HogwartsRP.Launcher.App/Assets` to display the final art; text fallbacks remain available when assets are absent.
 - Added saved server profiles to the desktop launcher, including local JSON persistence, selecting saved entries, updating an existing profile by address, and removing saved entries.
+- Added a public read-only `/status` endpoint exposing server name, live authenticated-player count, capacity, and check timestamp without exposing player identities.
+- Added launcher status checks for saved server addresses, including online player counts and bounded request timeouts, with response validation and regression tests.
 - Added regression tests for server-profile persistence, sorting, updates, deletion, invalid input, and corrupt-file preservation.
 - Added an interactive console character-creation flow to the launcher, connected to the authenticated character-submission endpoint.
 - Added launcher-flow tests for successful submission, client-side validation rejection, server rejection, and skipping character creation.

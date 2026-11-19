@@ -56,7 +56,8 @@ using var oidcTicketExchange = string.IsNullOrWhiteSpace(oidcAuthority)
 
 var eventPolicy = new NetworkEventPolicy();
 var sessions = new PlayerSessionRegistry();
-await using var networking = new WebSocketNetworkingAdapter(listenUrl, joinTickets, eventPolicy, sessions, loggerFactory, oidcTicketExchange, characterSubmissions);
+var serverName = builder.Configuration["Server:Name"] ?? "HogwartsRP Server";
+await using var networking = new WebSocketNetworkingAdapter(listenUrl, joinTickets, eventPolicy, sessions, loggerFactory, oidcTicketExchange, characterSubmissions, serverName);
 networking.PlayerConnected += session =>
     logger.LogInformation("Player {DisplayName} connected with session {SessionId}", session.DisplayName, session.Id);
 networking.PlayerDisconnected += session =>

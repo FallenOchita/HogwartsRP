@@ -146,6 +146,8 @@ public sealed class PlayerSessionRegistry
         _capacity = capacity;
     }
 
+    public int Capacity => _capacity;
+
     public IReadOnlyCollection<PlayerSession> ConnectedPlayers
     {
         get { lock (_gate) return _sessions.Values.ToArray(); }

@@ -26,6 +26,7 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
     private readonly PlayerSessionRegistry _sessions;
     private readonly ILogger _logger;
     private readonly ICharacterSubmissionService _characterSubmissions;
+    private readonly string _serverName;
     private readonly ConcurrentDictionary<string, ClientConnection> _clients = new(StringComparer.Ordinal);
     private WebApplication? _application;
 
@@ -36,12 +37,14 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
         PlayerSessionRegistry sessions,
         ILoggerFactory loggerFactory,
         IJoinTicketExchange? ticketExchange = null,
-        ICharacterSubmissionService? characterSubmissions = null)
+        ICharacterSubmissionService? characterSubmissions = null,
+        string? serverName = null)
     {
         _listenUrl = ValidateListenUrl(listenUrl);
         _credentials = credentials;
         _ticketExchange = ticketExchange;
         _characterSubmissions = characterSubmissions ?? new UnavailableCharacterSubmissionService();
+        _serverName = ValidateServerName(serverName);
         _eventPolicy = eventPolicy;
         _sessions = sessions;
         _logger = loggerFactory.CreateLogger<WebSocketNetworkingAdapter>();
@@ -61,6 +64,7 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
         var application = builder.Build();
         application.UseWebSockets();
         application.MapGet("/health", () => Results.Ok(new { status = "ready" }));
+        application.MapGet("/status", HandlePublicStatusAsync);
         application.MapGet("/auth/oidc/challenge", (Delegate)HandleOidcChallengeAsync);
         application.MapPost("/auth/tickets", (Delegate)HandleOidcTicketExchangeAsync);
         application.MapGet("/connect", HandleConnectionAsync);
@@ -101,6 +105,28 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
     }
 
     public async ValueTask DisposeAsync() => await StopAsync();
+
+    private IResult HandlePublicStatusAsync(HttpContext context)
+    {
+        context.Response.Headers.CacheControl = "no-store";
+        context.Response.Headers.Pragma = "no-cache";
+        return Results.Json(new
+        {
+            status = "online",
+            serverName = _serverName,
+            onlinePlayers = _sessions.ConnectedPlayers.Count,
+            maxPlayers = _sessions.Capacity,
+            checkedAtUtc = DateTimeOffset.UtcNow
+        });
+    }
+
+    private static string ValidateServerName(string? serverName)
+    {
+        var value = string.IsNullOrWhiteSpace(serverName) ? "HogwartsRP Server" : serverName.Trim();
+        if (value.Length > 64 || value.Any(char.IsControl))
+            throw new ArgumentException("Server names must be at most 64 printable characters.", nameof(serverName));
+        return value;
+    }
 
     private async Task<IResult> HandleOidcChallengeAsync(HttpContext context)
     {
