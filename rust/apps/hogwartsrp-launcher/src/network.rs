@@ -8,7 +8,6 @@ use std::{
     net::TcpStream,
 };
 use tungstenite::{connect, stream::MaybeTlsStream, Message, WebSocket};
-use url::Url;
 use uuid::Uuid;
 
 use crate::launcher_core::{validate_server_endpoint, CharacterSubmission};
@@ -233,6 +232,7 @@ fn validate_arguments(arguments: &[Value]) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use url::Url;
 
     #[test]
     fn validates_network_event_names_and_arguments() {
