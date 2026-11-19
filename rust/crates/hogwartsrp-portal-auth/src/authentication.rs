@@ -89,11 +89,14 @@ impl PortalOidcConfig {
             .build()
             .map_err(|_| PortalOidcAuthenticationError::ClientSetup)?;
 
-        let token_response = client
+        let token_request = client
             .exchange_code(AuthorizationCode::new(authorization_code.to_owned()))
+            .map_err(|_| PortalOidcAuthenticationError::ClientSetup)?
             .set_pkce_verifier(PkceCodeVerifier::new(
                 transaction.code_verifier().to_owned(),
-            ))
+            ));
+
+        let token_response = token_request
             .request_async(&http_client)
             .await
             .map_err(|_| PortalOidcAuthenticationError::CodeExchange)?;
