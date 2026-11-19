@@ -1,3 +1,17 @@
+## 2026-11-19 — Targeted LocalPlayer and PlayerState metadata audit
+
+### Added
+
+- Added allowlisted direct property-descriptor lookups for the validated LocalPlayer and PlayerState objects.
+- LocalPlayer candidates: PlayerController, AspectRatioAxisConstraint, Origin, and Size.
+- PlayerState candidates: PawnPrivate, PlayerId, PlayerNamePrivate, bIsSpectator, bIsABot, bIsInactive, Score, and Ping.
+- Metadata lookup is attempted only after the related-reference audit validates the parent UObject. It records class-chain and descriptor outcomes without reading property values.
+
+### Safety and validation boundary
+
+- The audit does not enumerate arbitrary properties, read the values of the listed properties, dereference opaque userdata, or invoke gameplay UFunctions.
+- Automated regression coverage is included; fresh live UE4SS PropertyReport validation is pending.
+
 ## 2026-11-19 — LocalPlayer and PlayerState second-hop reference audit
 
 ### Added
