@@ -8,7 +8,7 @@ All notable HogwartsRP changes are recorded here.
 
 - Added a process-local browser account session registry with cryptographically random bearer and CSRF tokens.
 - Stored only token digests, bound each session to a server-supplied central account ID, and exposed session resolution without returning credentials.
-- Added fixed session expiry, bounded capacity, expired-session pruning, constant-time CSRF verification, and per-session revocation.
+- Added fixed session expiry, bounded capacity with concurrency-safe issuance, expired-session pruning, constant-time CSRF verification, and per-session revocation.
 - Added regression tests for account binding, malformed tokens, CSRF pairing, expiry, capacity, and revocation.
 - Documented the required future cookie, HTTPS, CSRF-header, origin-check, and distributed-session integration rules.
 
