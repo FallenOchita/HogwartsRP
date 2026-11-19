@@ -65,6 +65,8 @@ equal(complete.class_count, 2, "class count")
 equal(complete.property_count, 2, "property count")
 equal(complete.properties[1].declaring_class, "Class /Script/Test.TestComponent", "derived declaring class")
 equal(complete.properties[2].declaring_class, "Class /Script/Engine.ActorComponent", "base declaring class")
+equal(complete.class_diagnostics[1].iteration_probe.status, "OK", "successful minimal probe status")
+equal(complete.class_diagnostics[1].iteration_probe.callback_invocations, 1, "successful minimal probe callback count")
 
 local failingClass = class("Class /Script/Test.FailingComponent", {
     property("CapturedBeforeFailure", "BoolProperty /Script/Test.FailingComponent:CapturedBeforeFailure")
@@ -77,6 +79,13 @@ local partial = Reflection.catalogComponentProperties(failingComponent)
 equal(partial.status, "PARTIAL", "partial catalog status")
 equal(partial.property_count, 1, "partial captured property count")
 equal(partial.class_diagnostics[1].status, "CALL_ERROR_AFTER_CALLBACK", "partial diagnostic status")
+local failingDiagnostic = partial.class_diagnostics[1]
+equal(failingDiagnostic.iteration_probe.status, "CALL_ERROR_AFTER_CALLBACK", "minimal probe failure status")
+equal(failingDiagnostic.iteration_probe.callback_invocations, 1, "minimal probe callback count")
+assert(failingDiagnostic.error:find("synthetic continuation failure", 1, true),
+    "full enumeration error should retain the original error text")
+assert(failingDiagnostic.error_length > 180, "full enumeration error length should exceed the old 180-character cap")
+equal(failingDiagnostic.error_truncated, false, "full enumeration error truncation flag")
 
 local actor = {
     GetFullName = function() return "BP_Biped_Player_C /Game/Test.Root.Player" end
