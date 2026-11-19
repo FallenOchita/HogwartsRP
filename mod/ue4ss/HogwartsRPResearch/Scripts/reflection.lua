@@ -90,16 +90,16 @@ end
 -- Isolate the UE4SS iterator/callback bridge from descriptor inspection.
 -- This callback intentionally performs no property access and only counts
 -- callbacks; returning false requests continued iteration.
-local function probePropertyIteration(struct)
+local function probePropertyIteration(struct, stopAfterFirst)
     local probe = {
         method = "ForEachProperty",
-        callback_mode = "COUNT_ONLY_RETURN_FALSE",
+        callback_mode = stopAfterFirst and "COUNT_ONLY_STOP_AFTER_FIRST_RETURN_TRUE" or "COUNT_ONLY_RETURN_FALSE",
         callback_invocations = 0,
         status = "NOT_STARTED"
     }
     local _, callError, callStatus = Safe.safeMethod(struct, "ForEachProperty", function(_)
         probe.callback_invocations = probe.callback_invocations + 1
-        return false
+        return stopAfterFirst == true
     end)
     probe.invocation_status = callStatus or (callError and "CALL_ERROR" or "OK")
     if callStatus == "CALL_ERROR" and probe.callback_invocations > 0 then
@@ -158,7 +158,10 @@ local function enumerateProperties(struct, output, limit, namedPropertyAudit, de
         last_property_name = "UNAVAILABLE"
     }
 
-    diagnostic.iteration_probe = probePropertyIteration(struct)
+    diagnostic.iteration_probe = probePropertyIteration(struct, false)
+    -- A true return requests the documented early-stop path after the first callback.
+    -- Comparing this with the false-return probe helps isolate continued iteration.
+    diagnostic.iteration_stop_probe = probePropertyIteration(struct, true)
 
     local callbackError = nil
     local _, callError, callStatus = Safe.safeMethod(struct, "ForEachProperty", function(property)
@@ -284,7 +287,7 @@ end
 -- Build a bounded property-descriptor catalog for one confirmed component.
 -- The caller caches this result by class identity so duplicate instances do
 -- not trigger repeated reflection passes. Each class receives one
--- ForEachProperty metadata pass plus an isolated count-only callback probe;
+-- ForEachProperty metadata pass plus count-only continue and early-stop probes;
 -- partial results and full bounded error diagnostics are preserved.
 function M.catalogComponentProperties(component, options)
     options = options or {}
