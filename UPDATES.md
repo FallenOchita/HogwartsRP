@@ -1,3 +1,17 @@
+## 2026-11-19 — UE4SS property-enumeration diagnostics
+
+### Added
+
+- Added per-class diagnostics to the existing property reflection pass, recording method lookup/invocation status, callback invocation count, number of properties captured, last observed property name, and concise errors.
+- Added the diagnostic records to the MovementMode named-property audit so the next report can identify which class's enumeration failed and whether any callback data was received before failure.
+- Protected the callback body and distinguish callback errors from method lookup and invocation errors.
+
+### Safety and validation boundary
+
+- The implementation reuses the existing single ForEachProperty pass. It does not retry enumeration or make additional reflection calls.
+- It remains metadata-only: no property values, opaque userdata, gameplay UFunctions, setters, hooks, or network operations are accessed.
+- No UE4SS runtime or Hogwarts Legacy installation is available to this change, so live behavior remains unverified until a fresh report is generated.
+
 ## 2026-11-19 — Windows Rust worker test cleanup correction
 
 ### Fixed
