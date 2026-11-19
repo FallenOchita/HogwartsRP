@@ -165,7 +165,19 @@ local function runResearch(targets, finalAttempt)
             }),
             player_metadata = catalog.reflection.player.properties,
             controller_metadata = catalog.reflection.controller.properties,
-            movement_metadata = catalog.reflection.movement.properties
+            movement_metadata = catalog.reflection.movement.properties,
+            targeted_property_metadata = {
+                player = Reflection and Reflection.lookupNamedProperties(player, {
+                    "CharacterMovement", "CharMoveComp", "Mesh",
+                    "ConversationComponent", "ToolSetComponent", "AnimationArchitectComponent"
+                }) or { status = "REFLECTION_MODULE_UNAVAILABLE", items = {} },
+                controller = Reflection and Reflection.lookupNamedProperties(controller, {
+                    "AcknowledgedPawn", "Pawn", "Player", "PlayerState"
+                }) or { status = "REFLECTION_MODULE_UNAVAILABLE", items = {} },
+                movement = Reflection and Reflection.lookupNamedProperties(movement, {
+                    "CharacterOwner", "PawnOwner", "UpdatedComponent", "Velocity"
+                }) or { status = "REFLECTION_MODULE_UNAVAILABLE", items = {} }
+            }
         }
         catalog.properties.movement_mode_enum_audit =
             catalog.reflection.movement.named_property_audit or {
