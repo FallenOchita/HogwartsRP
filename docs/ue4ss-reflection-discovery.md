@@ -33,9 +33,13 @@ The reflection pass is metadata-only:
 
 The existing allowlisted candidate probes in `discovery.lua` remain separate. Those probes read only the explicitly listed candidate properties and report their observed Lua type/value; they do not invoke candidate functions.
 
-## Partial UFunction metadata and class diagnostics
+## Reflection provider capability audit
 
-Some UFunction descriptor wrappers in the target UE4SS build expose a method-shaped `ForEachProperty` member but fail when that wrapper is called. The toolkit now records the failure as a concise per-function status (`CALL_ERROR`, `METHOD_UNAVAILABLE`, or `OK`) and preserves the function's other metadata. It does not emit the repeated Lua traceback for each descriptor. A successful metadata enumeration on one descriptor does not imply that every descriptor supports the same operation.
+The FunctionReport now distinguishes member exposure from successful metadata enumeration. The provider-capability section performs protected Lua member lookups for `ForEachProperty`, `ForEachFunction`, `GetSuperStruct`, and selected UFunction descriptor methods. It records whether each member is exposed without invoking it. Therefore, `EXPOSED_NOT_INVOKED` is not proof that the method works.
+
+Per-function owned-property enumeration preserves distinct outcomes such as `METHOD_UNAVAILABLE`, `LOOKUP_ERROR`, and `CALL_ERROR`. A `CALL_ERROR` means the wrapper was exposed but the metadata operation failed; it does not mean the Unreal UFunction is absent. The report keeps any other function metadata already obtained and includes a concise error detail.
+
+This audit does not call gameplay functions, invoke `ProcessEvent`, read arbitrary property values, or change game state. The next live report is needed to determine whether the observed nil-call error is caused by a missing binding, an incompatible wrapper, or a callback/descriptor limitation.
 
 Class-name reporting now distinguishes an unavailable `GetClass` method, a failed `GetClass` call, an invalid returned class object, and an unavailable class full name. These statuses avoid presenting an unresolved class name as evidence that the discovered player/controller object itself is invalid.
 
