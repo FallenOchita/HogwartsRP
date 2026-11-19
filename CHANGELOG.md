@@ -4,6 +4,20 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Added — Read-only UE4SS reflection metadata discovery
+
+- Added a bounded reflection pass for the discovered player, controller, and movement objects using UE4SS 4.0.0 `UStruct:ForEachProperty`, `UStruct:ForEachFunction`, and `GetSuperStruct`.
+- Recorded property names, full paths, property classes, function names, full paths, raw function flags, and UFunction-owned property descriptors.
+- Extended PropertyReport.txt and FunctionReport.txt with reflection metadata and superclass-chain information.
+- Kept metadata enumeration separate from the existing allowlisted candidate value probes.
+- Enforced explicit limits for superclass depth, properties, functions, and UFunction-owned property descriptors.
+
+### Safety and validation boundary
+
+- Reflection enumeration reads metadata only. It does not invoke UFunctions, call ProcessEvent, write properties, install gameplay hooks, or communicate over a network.
+- Parameter direction and full callable signatures are not inferred from metadata the documented Lua API does not expose.
+- The implementation is committed for live UE4SS validation; successful execution and useful metadata output must still be confirmed in Hogwarts Legacy.
+
 ### Fixed — HogwartsRP research report output paths
 
 - Resolve report output from the installed research module's absolute script location instead of the game's current working directory.
