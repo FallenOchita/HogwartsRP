@@ -21,6 +21,48 @@ public class LifecycleTests
     }
 
     [Fact]
+    public async Task UnexpectedRustWorkerExitMarksResourceFailed()
+    {
+        var workerPath = Environment.GetEnvironmentVariable("HOGWARTSRP_TEST_WORKER_PATH");
+        Assert.False(string.IsNullOrWhiteSpace(workerPath), "CI must provide the compiled Rust test worker path.");
+        Assert.True(File.Exists(workerPath));
+
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        var resourceDirectory = Path.Combine(root, "rust_sample");
+        var binaryDirectory = Path.Combine(resourceDirectory, "bin");
+        Directory.CreateDirectory(binaryDirectory);
+        var executable = Path.Combine(binaryDirectory, OperatingSystem.IsWindows() ? "test-worker.exe" : "test-worker");
+        File.Copy(workerPath!, executable);
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(executable, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(resourceDirectory, "fxmanifest.lua"),
+                "fx_version 'cerulean'\ngame 'hogwartslegacy'\nrust_script 'bin/" + Path.GetFileName(executable) + "'");
+            var manager = new ResourceManager(root, _ => new NativeLua54Runtime());
+            var exited = new TaskCompletionSource<int?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            manager.RustWorkerExited += (_, code) => exited.TrySetResult(code);
+
+            await manager.StartAllAsync();
+            Assert.Equal(ResourceState.Started, Assert.Single(manager.Status).State);
+
+            await Assert.ThrowsAnyAsync<Exception>(async () =>
+                await manager.InvokeRustCommandAsync("rust_sample", "exit", [23]));
+
+            Assert.Equal(23, await exited.Task.WaitAsync(TimeSpan.FromSeconds(5)));
+            var status = Assert.Single(manager.Status);
+            Assert.Equal(ResourceState.Failed, status.State);
+            Assert.Contains("23", status.Error);
+            await manager.StopAllAsync();
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
     public void ManifestParserRecognizesPrecompiledRustWorkers()
     {
         const string manifest = "fx_version 'cerulean'\ngame 'hogwartslegacy'\nrust_script 'bin/rust_greeter.exe'\nrust_script 'bin/house_events.exe'";

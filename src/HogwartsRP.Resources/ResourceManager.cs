@@ -7,9 +7,32 @@ public sealed class ResourceManager
 {
     private sealed class Running(ResourceInfo info, List<IDisposable> runtimes, List<RustWorkerProcessRuntime> rustWorkers)
     {
+        private readonly object _sync = new();
+        private bool _workerFailed;
+
         public ResourceInfo Info = info;
         public List<IDisposable> Runtimes = runtimes;
         public List<RustWorkerProcessRuntime> RustWorkers = rustWorkers;
+
+        public void MarkStarted()
+        {
+            lock (_sync)
+            {
+                if (!_workerFailed) Info = Info with { State = ResourceState.Started, Error = null };
+            }
+        }
+
+        public void MarkWorkerExited(int? exitCode)
+        {
+            lock (_sync)
+            {
+                _workerFailed = true;
+                if (Info.State is ResourceState.Starting or ResourceState.Started)
+                    Info = Info with { State = ResourceState.Failed, Error = exitCode is null
+                        ? "A Rust worker exited unexpectedly (exit code unavailable)."
+                        : $"A Rust worker exited unexpectedly with code {exitCode}." };
+            }
+        }
     }
 
     private readonly string _resourcesDirectory;
@@ -33,6 +56,9 @@ public sealed class ResourceManager
     /// <summary>Raised when a Rust worker registers a command.</summary>
     public event Action<string, string>? RustCommandRegistered;
 
+    /// <summary>Raised when a Rust worker exits; resource status is marked Failed before observers are notified.</summary>
+    public event Action<string, int?>? RustWorkerExited;
+
     public IReadOnlyList<ResourceManifest> Discover()
     {
         Directory.CreateDirectory(_resourcesDirectory);
@@ -52,6 +78,7 @@ public sealed class ResourceManager
             var runtimes = new List<IDisposable>();
             var rustWorkers = new List<RustWorkerProcessRuntime>();
             var info = new ResourceInfo(manifest, dir, ResourceState.Starting);
+            var running = new Running(info, runtimes, rustWorkers);
             try
             {
                 var scripts = manifest.ServerScripts.Concat(manifest.SharedScripts).ToArray();
@@ -75,11 +102,17 @@ public sealed class ResourceManager
                     runtimes.Add(worker);
                     worker.CommandRegistered += command => RustCommandRegistered?.Invoke(manifest.Name, command);
                     worker.NetworkEventRegistered += eventName => RustNetworkEventRegistered?.Invoke(manifest.Name, eventName);
+                    worker.WorkerExited += exitCode =>
+                    {
+                        running.MarkWorkerExited(exitCode);
+                        NotifyRustWorkerExited(manifest.Name, exitCode);
+                    };
                     foreach (var command in worker.RegisteredCommands) RustCommandRegistered?.Invoke(manifest.Name, command);
                     foreach (var eventName in worker.RegisteredNetworkEvents) RustNetworkEventRegistered?.Invoke(manifest.Name, eventName);
                 }
 
-                _running[manifest.Name] = new(new(manifest, dir, ResourceState.Started), runtimes, rustWorkers);
+                running.MarkStarted();
+                _running[manifest.Name] = running;
             }
             catch (Exception ex)
             {
@@ -87,6 +120,17 @@ public sealed class ResourceManager
                 _running[manifest.Name] = new(new(manifest, dir, ResourceState.Failed, ex.Message), [], []);
                 throw new InvalidOperationException($"Resource '{manifest.Name}' failed to start.", ex);
             }
+        }
+    }
+
+    private void NotifyRustWorkerExited(string resourceName, int? exitCode)
+    {
+        var handlers = RustWorkerExited;
+        if (handlers is null) return;
+        foreach (Action<string, int?> handler in handlers.GetInvocationList())
+        {
+            try { handler(resourceName, exitCode); }
+            catch { /* Host observers must not disrupt worker supervision. */ }
         }
     }
 
