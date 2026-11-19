@@ -6,6 +6,8 @@ on:
   pull_request:
     paths:
       - 'services/discord-ticket-bot/**'
+permissions:
+  contents: read
 jobs:
   test:
     runs-on: ubuntu-latest
