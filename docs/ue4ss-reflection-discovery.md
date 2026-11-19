@@ -147,3 +147,10 @@ This pass does not use `ForEachProperty`, read property values, dereference opaq
 The PropertyReport now includes a separate reference_value_audit for a fixed allowlist of controller and movement reference properties: controller AcknowledgedPawn, Pawn, Player, and PlayerState; movement CharacterOwner, PawnOwner, and UpdatedComponent. Each allowlisted value is read through the existing guarded property-value helper. When a value is a valid UObject userdata with an available full name, only that full name is recorded as its identity. Opaque userdata remains opaque. Lua tables and primitive values are classified without exposing or expanding their contents. Missing properties, unavailable targets, and property-read errors remain distinct outcomes.
 
 This audit does not call GetOwner, invoke gameplay UFunctions, inspect nested component properties, dereference opaque userdata, write properties, install hooks, or perform network operations. It is separate from the descriptor-only targeted_property_metadata section and the existing player/movement value audit.
+
+
+## LocalPlayer and PlayerState second-hop reference audit
+
+The PropertyReport now includes a narrowly scoped `related_reference_audit` that follows only two references already observed on the controller: `Player` to `LocalPlayer.PlayerController`, and `PlayerState` to `PlayerState.PawnPrivate`. The child property is read only after the parent value is validated as a UObject userdata reference with a readable full name. The report records only the child object's full-name identity, or a bounded status such as unavailable, opaque, or read error.
+
+This is a fixed two-route, one-level follow-up, not recursive traversal. It does not enumerate arbitrary LocalPlayer or PlayerState properties, inspect child objects beyond those single properties, dereference opaque userdata, invoke gameplay UFunctions, write properties, install hooks, or perform network operations. A live report is required to confirm whether these candidate properties are present and populated in the Hogwarts Legacy runtime.
