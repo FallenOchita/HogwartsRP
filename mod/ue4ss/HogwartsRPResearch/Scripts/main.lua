@@ -163,6 +163,18 @@ local function runResearch(targets, finalAttempt)
             controller_metadata = catalog.reflection.controller.properties,
             movement_metadata = catalog.reflection.movement.properties
         }
+        if Reflection and Reflection.inspectNamedProperty then
+            catalog.properties.movement_mode_enum_audit =
+                Reflection.inspectNamedProperty(movement, "MovementMode")
+        else
+            catalog.properties.movement_mode_enum_audit = {
+                status = "AUDIT_UNAVAILABLE",
+                property = "MovementMode",
+                enum_association_status = "NOT_ESTABLISHED",
+                enum_entries = {},
+                safety = "NO_PROPERTY_VALUE_READS_NO_GAMEPLAY_FUNCTION_INVOCATION"
+            }
+        end
 
         catalog.functions = {
             candidate_presence_probes = Discovery.functions(player, {
