@@ -1,3 +1,19 @@
+## 2026-11-18 — Native Rust desktop launcher migration
+
+### Changed
+
+- Added the native eframe/egui application at rust/apps/hogwartsrp-launcher.
+- Made the Rust binary the active desktop launcher; removed the WinForms launcher project, UI source files, and solution entry.
+- Ported saved server profiles, read-only server status checks, configured account-portal browser opening, and Steam launch requests to Rust.
+- Added Windows CI release compilation for hogwartsrp-launcher.
+- Updated README.md, docs/launcher-and-characters.md, and added docs/rust-launcher.md.
+
+### Remaining migration work
+
+- The Rust app does not invoke the legacy C# launcher library. The C# library remains temporarily in the solution for existing contracts and tests only.
+- OIDC authorization-code + PKCE, join-ticket acquisition, authenticated WebSocket session lifecycle, character creation/submission, expanded Steam library discovery, Epic launch, and auto-update have not yet been ported to Rust.
+- No live game multiplayer behavior is implied by this launcher migration.
+
 ## 2026-11-19 — Rust resource SDK and native-core foundation
 
 ### Added
