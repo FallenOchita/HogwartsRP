@@ -88,8 +88,7 @@ fn validate_page(result: &DirectoryPage) -> Result<(), String> {
     for server in &result.servers {
         let endpoint = Url::parse(&server.endpoint)
             .map_err(|_| "Directory returned a server with an invalid endpoint.".to_owned())?;
-        if server.server_id.trim().is_empty()
-            || server.name.trim().is_empty()
+        if server.name.trim().is_empty()
             || server.name.len() > 80
             || !matches!(endpoint.scheme(), "http" | "https")
             || endpoint.host_str().is_none()
@@ -168,7 +167,7 @@ mod tests {
                 name: "Bad endpoint".into(),
                 endpoint: "file:///etc/passwd".into(), game: "hogwarts-legacy-pc".into(),
                 description: None, online_players: 0, max_players: 10,
-                status: "online".into(), last_heartbeat: None,
+                status: "online".into(),
             }],
         };
         assert!(validate_page(&invalid_endpoint).is_err());
