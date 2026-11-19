@@ -140,3 +140,10 @@ The PropertyReport now includes `targeted_property_metadata`, a bounded set of d
 Each result records the descriptor's name, full name, property class, lookup scope, and per-class lookup outcomes. `FOUND` means a descriptor was returned; `NOT_FOUND` is used only when direct lookup completed across the traversed class chain; `LOOKUP_INCOMPLETE` means a lookup or class-hierarchy step failed or could not be completed. A descriptor's full name, rather than the lookup-scope class, remains the evidence for its declaring class.
 
 This pass does not use `ForEachProperty`, read property values, dereference opaque userdata, invoke gameplay UFunctions, write properties, install hooks, or perform network operations. The fixed allowlist is intentionally narrow; unlisted properties are not asserted to be absent.
+
+
+## Controller and movement object-reference value audit
+
+The PropertyReport now includes a separate reference_value_audit for a fixed allowlist of controller and movement reference properties: controller AcknowledgedPawn, Pawn, Player, and PlayerState; movement CharacterOwner, PawnOwner, and UpdatedComponent. Each allowlisted value is read through the existing guarded property-value helper. When a value is a valid UObject userdata with an available full name, only that full name is recorded as its identity. Opaque userdata remains opaque. Lua tables and primitive values are classified without exposing or expanding their contents. Missing properties, unavailable targets, and property-read errors remain distinct outcomes.
+
+This audit does not call GetOwner, invoke gameplay UFunctions, inspect nested component properties, dereference opaque userdata, write properties, install hooks, or perform network operations. It is separate from the descriptor-only targeted_property_metadata section and the existing player/movement value audit.

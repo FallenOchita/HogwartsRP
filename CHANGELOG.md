@@ -6,6 +6,13 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Added — Controller and movement object-reference audit
+
+- Added a fixed allowlist value audit for controller pawn/player references and movement owner/update references.
+- Records only reflected object full names when available; opaque userdata remains opaque, and tables/non-object values are not expanded.
+- Keeps property-read errors and unavailable targets distinct. No gameplay UFunctions, setters, hooks, or network operations are used.
+
+
 ### Added — Targeted player and movement property metadata
 
 - Added bounded direct `Reflection:GetProperty` lookups for an explicit allowlist of player, controller, and movement-component reference descriptors.

@@ -2,6 +2,7 @@
 -- Run from mod/ue4ss/HogwartsRPResearch with: lua tests/property_value_audit_spec.lua
 package.path = "Scripts/?.lua;" .. package.path
 local Safe = require("safe")
+local Discovery = require("discovery")
 
 local function equal(actual, expected, label)
     assert(actual == expected, (label or "value") .. ": expected " .. tostring(expected) .. ", got " .. tostring(actual))
@@ -36,4 +37,43 @@ local failed = Safe.inspectPropertyValue(getterError, "Velocity")
 equal(failed.status, "PROPERTY_READ_ERROR", "getter error status")
 equal(failed.access, "GetPropertyValue", "getter error access")
 
-print("property_value_audit_spec: PASS")
+
+local referenceUserdata = io.tmpfile()
+assert(referenceUserdata, "could not create reference userdata fixture")
+local referenceAudit = Discovery.objectReferenceAudit(
+    {
+        controller = {
+            GetFullName = function() return "BP_Phoenix_Player_Controller_C /Game/Test.Root.Controller" end,
+            GetPropertyValue = function(_, name)
+                if name == "AcknowledgedPawn" then return referenceUserdata end
+                if name == "PlayerState" then return nil end
+                if name == "Player" then return 42 end
+            end
+        },
+        movement = {
+            GetFullName = function() return "Biped_MovementComponent /Game/Test.Root.Player.CharMoveComp" end,
+            GetPropertyValue = function(_, name)
+                if name == "CharacterOwner" then return { X = 1 } end
+                if name == "PawnOwner" then error("synthetic movement getter failure") end
+            end
+        }
+    },
+    { controller = { "AcknowledgedPawn", "Player", "PlayerState" }, movement = { "CharacterOwner", "PawnOwner" } }
+)
+equal(referenceAudit.status, "READ_ONLY_OBJECT_REFERENCE_AUDIT", "reference audit status")
+equal(referenceAudit.requested_count, 5, "reference audit requested count")
+equal(referenceAudit.items[1].status, "OPAQUE_USERDATA", "reference opaque status")
+equal(referenceAudit.items[1].summary, "OPAQUE_USERDATA_NOT_DEREFERENCED", "reference opaque summary")
+equal(referenceAudit.items[2].status, "PRIMITIVE_VALUE_READ", "primitive reference status")
+equal(referenceAudit.items[2].summary, "NON_OBJECT_VALUE_NOT_EXPANDED", "primitive reference suppressed")
+equal(referenceAudit.items[3].status, "PROPERTY_UNAVAILABLE", "missing reference status")
+equal(referenceAudit.items[4].status, "TABLE_VALUE_NOT_EXPANDED", "table reference status")
+equal(referenceAudit.items[4].summary, "NON_OBJECT_VALUE_NOT_EXPANDED", "table reference suppressed")
+equal(referenceAudit.items[5].status, "PROPERTY_READ_ERROR", "reference getter error status")
+equal(referenceAudit.object_reference_count, 0, "object reference count")
+equal(referenceAudit.opaque_userdata_count, 1, "opaque reference count")
+equal(referenceAudit.error_count, 1, "reference error count")
+referenceUserdata:close()
+
+print("object_reference_audit_spec: PASS")
+

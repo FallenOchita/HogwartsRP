@@ -495,6 +495,58 @@ function M.components(actor, propertyCataloger, componentInspector)
     }
 end
 
+-- Read only a fixed allowlist of controller/movement object-reference properties.
+-- Object userdata is summarized by its reflected full name when available; opaque
+-- userdata is retained as opaque and no nested fields or component methods are read.
+function M.objectReferenceAudit(targets, allowlists)
+    local result = {
+        status = "READ_ONLY_OBJECT_REFERENCE_AUDIT", items = {}, requested_count = 0,
+        safety = "ALLOWLISTED_PROPERTY_VALUE_READS_OBJECT_REFERENCE_IDENTITY_ONLY_NO_OPAQUE_USERDATA_DEREFERENCE_NO_UFUNCTION_INVOCATION"
+    }
+    targets, allowlists = targets or {}, allowlists or {}
+    for _, targetName in ipairs({ "controller", "movement" }) do
+        local propertyNames = allowlists[targetName]
+        if type(propertyNames) == "table" then
+        local target = targets[targetName]
+        local targetFullName = Safe.isValidObject(target) and Safe.safeFullName(target) or "UNAVAILABLE"
+        for _, propertyName in ipairs(propertyNames) do
+            local item
+            if not Safe.isValidObject(target) then
+                item = { target = targetName, target_full_name = targetFullName, property = propertyName,
+                    status = "TARGET_NOT_FOUND", lua_type = "nil", access = "NONE", summary = "UNAVAILABLE" }
+            else
+                local ok, inspected = pcall(function() return Safe.inspectPropertyValue(target, propertyName) end)
+                if ok and type(inspected) == "table" then
+                    item = { target = targetName, target_full_name = targetFullName, property = propertyName,
+                        status = inspected.status, lua_type = inspected.lua_type, access = inspected.access,
+                        summary = inspected.summary, detail = inspected.detail }
+                    if item.status ~= "OBJECT_REFERENCE_FOUND" and item.status ~= "OPAQUE_USERDATA"
+                        and item.status ~= "PROPERTY_UNAVAILABLE" and item.status ~= "PROPERTY_READ_ERROR" then
+                        item.summary = "NON_OBJECT_VALUE_NOT_EXPANDED"
+                    end
+                else
+                    item = { target = targetName, target_full_name = targetFullName, property = propertyName,
+                        status = "AUDIT_ERROR", lua_type = "unknown", access = "NONE",
+                        summary = "VALUE_NOT_EXPANDED", detail = tostring(inspected) }
+                end
+            end
+            result.items[#result.items + 1] = item
+        end
+        end
+    end
+    result.requested_count = #result.items
+    local found, opaque, unavailable, failed = 0, 0, 0, 0
+    for _, item in ipairs(result.items) do
+        if item.status == "OBJECT_REFERENCE_FOUND" then found = found + 1
+        elseif item.status == "OPAQUE_USERDATA" then opaque = opaque + 1
+        elseif item.status == "PROPERTY_UNAVAILABLE" or item.status == "TARGET_NOT_FOUND" then unavailable = unavailable + 1
+        elseif item.status == "PROPERTY_READ_ERROR" or item.status == "AUDIT_ERROR" then failed = failed + 1 end
+    end
+    result.object_reference_count, result.opaque_userdata_count = found, opaque
+    result.unavailable_count, result.error_count = unavailable, failed
+    result.note = "Only the fixed controller and movement reference allowlists are read. UObject references are identified by full name only; opaque userdata, tables, and non-object values are not expanded. No gameplay functions are invoked."
+    return result
+end
 function M.propertyValueAudit(player, movement, names)
     local result = { status = "READ_ONLY_PROPERTY_VALUE_AUDIT", items = {} }
     local targets = { { name = "player", object = player }, { name = "movement", object = movement } }
