@@ -4,7 +4,7 @@ use crate::{
 use axum::{
     extract::{Query, State},
     http::{header, HeaderMap, HeaderValue, StatusCode},
-    response::{IntoResponse, Redirect, Response},
+    response::{Html, IntoResponse, Redirect, Response},
     routing::get,
     Json, Router,
 };
@@ -68,6 +68,16 @@ struct SessionResponse {
     account_id: String,
     csrf_token: String,
     expires_at: u64,
+}
+
+async fn account_home() -> Response {
+    let mut response = Html(include_str!("../../../apps/hogwartsrp-account-portal/src/account.html")).into_response();
+    no_store(&mut response);
+    response.headers_mut().insert(
+        header::X_CONTENT_TYPE_OPTIONS,
+        HeaderValue::from_static("nosniff"),
+    );
+    response
 }
 
 async fn login_start(State(state): State<PortalHttpState>, headers: HeaderMap) -> Response {
