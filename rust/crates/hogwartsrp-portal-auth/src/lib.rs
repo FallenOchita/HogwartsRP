@@ -344,8 +344,8 @@ impl AuthorizationTransactionStore {
         }
     }
 
-    /// Begin a sign-in attempt bound to the authenticated browser-session identifier.
-    /// The session identifier itself is never retained; only its SHA-256 hash is stored.
+    /// Begin a sign-in attempt bound to the browser pre-authentication session identifier.
+    /// The identifier itself is never retained; only its SHA-256 hash is stored.
     pub fn begin(
         &self,
         browser_session_id: &str,
@@ -443,6 +443,7 @@ mod transaction_tests {
         assert_eq!(request.code_challenge_method(), "S256");
         assert_eq!(request.state().len(), 43);
         assert_eq!(request.code_challenge().len(), 43);
+        assert_eq!(request.nonce().len(), 43);
         let consumed = store.consume(request.state(), "browser-session-a", 1_001).unwrap();
         assert_eq!(consumed.code_verifier().len(), 43);
         assert_eq!(store.len().unwrap(), 0);
