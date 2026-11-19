@@ -27,7 +27,6 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
     private readonly ILogger _logger;
     private readonly ICharacterSubmissionService _characterSubmissions;
     private readonly string _serverName;
-    private readonly BrowserAccountSessionStore? _browserAccountSessions;
     private readonly ConcurrentDictionary<string, ClientConnection> _clients = new(StringComparer.Ordinal);
     private WebApplication? _application;
 
@@ -39,15 +38,13 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
         ILoggerFactory loggerFactory,
         IJoinTicketExchange? ticketExchange = null,
         ICharacterSubmissionService? characterSubmissions = null,
-        string? serverName = null,
-        BrowserAccountSessionStore? browserAccountSessions = null)
+        string? serverName = null)
     {
         _listenUrl = ValidateListenUrl(listenUrl);
         _credentials = credentials;
         _ticketExchange = ticketExchange;
         _characterSubmissions = characterSubmissions ?? new UnavailableCharacterSubmissionService();
         _serverName = ValidateServerName(serverName);
-        _browserAccountSessions = browserAccountSessions;
         _eventPolicy = eventPolicy;
         _sessions = sessions;
         _logger = loggerFactory.CreateLogger<WebSocketNetworkingAdapter>();
@@ -68,8 +65,6 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
         application.UseWebSockets();
         application.MapGet("/health", () => Results.Ok(new { status = "ready" }));
         application.MapGet("/status", HandlePublicStatusAsync);
-        if (_browserAccountSessions is not null)
-            BrowserAccountSessionEndpoints.Map(application, _browserAccountSessions);
         application.MapGet("/auth/oidc/challenge", (Delegate)HandleOidcChallengeAsync);
         application.MapPost("/auth/tickets", (Delegate)HandleOidcTicketExchangeAsync);
         application.MapGet("/connect", HandleConnectionAsync);
