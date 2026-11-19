@@ -147,6 +147,26 @@ function M.capability(name)
     }
 end
 
+-- Inspect method exposure without invoking the method. This separates a
+-- missing Lua binding from a binding that exists but fails when called.
+function M.methodCapability(object, methodName)
+    local record = { method = methodName, exposed = false, status = "OBJECT_UNAVAILABLE" }
+    if not M.isValidObject(object) or type(methodName) ~= "string" then
+        record.status = "INVALID_INPUT"
+        return record
+    end
+    local ok, value = pcall(function() return object[methodName] end)
+    if not ok then
+        record.status = "LOOKUP_ERROR"
+        record.detail = conciseError(value)
+        return record
+    end
+    record.exposed = type(value) == "function"
+    record.status = record.exposed and "EXPOSED_NOT_INVOKED" or "METHOD_UNAVAILABLE"
+    record.lua_type = type(value)
+    return record
+end
+
 function M.findAll(className)
     if type(className) ~= "string" then return {}, "invalid class name" end
     local ok, fn = pcall(function() return _G.FindAllOf end)
