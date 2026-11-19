@@ -1,1 +1,22 @@
-{"name":"hogwartsrp-ticket-bot","version":"1.0.0","private":true,"main":"src/index.js","engines":{"node":">=22.0.0"},"scripts":{"start":"node src/index.js","dev":"node --watch src/index.js","deploy:commands":"node src/deploy-commands.js","check":"node --check src/index.js && node --check src/deploy-commands.js","test":"node --test"},"dependencies":{"discord.js":"^14.25.1","dotenv":"^16.4.7","mongoose":"^8.19.1","winston":"^3.17.0"}}
+{
+  "name": "hogwartsrp-ticket-bot",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "deploy:commands": "node src/deploy-commands.js",
+    "check": "find src test -name '*.js' -print0 | xargs -0 -n1 node --check",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "discord.js": "^14.25.1",
+    "dotenv": "^16.4.7",
+    "mongoose": "^8.19.1",
+    "winston": "^3.17.0"
+  }
+}
