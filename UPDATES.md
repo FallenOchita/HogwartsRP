@@ -1,3 +1,18 @@
+## 2026-11-19 — Named-property lookup status separation
+
+### Fixed
+
+- Separated the named-property result from the intentionally partial first-property enumeration result.
+- A completed direct `Reflection:GetProperty` lookup across the inspected class chain now reports `NOT_FOUND` when no descriptor exists.
+- An unavailable or failed direct lookup reports `LOOKUP_INCOMPLETE`.
+- Kept sample enumeration status and any enumeration error in their own fields rather than allowing a sampling diagnostic to overwrite the direct lookup result.
+
+### Validation boundary
+
+- Added regression coverage for completed direct lookup misses and failed direct lookup attempts.
+- The change remains read-only metadata inspection; it does not read property values, invoke gameplay UFunctions, write properties, add hooks, or perform network operations.
+- Hosted CI and a fresh live report are pending for this branch.
+
 ## 2026-11-19 — Read-only component property descriptor catalog
 
 ### Added
