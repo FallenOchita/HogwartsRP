@@ -577,3 +577,12 @@ This file records implementation details and milestone status. For user-facing f
 - Static source review confirms the new state sampler does not invoke gameplay functions.
 - Live UE4SS 4.0.0 behavior remains unverified until the user installs this branch and supplies the generated `PropertyReport` and `GameplayStateReport`.
 - The audit does not decode Unreal structs, inspect opaque userdata internals, write properties, or perform network operations.
+
+
+## 2026-11-18 — Movement-mode enum metadata audit
+
+- Added a PropertyReport audit for the reflected `MovementMode` property descriptor on the discovered movement component.
+- The audit records the descriptor's reflected property class and class hierarchy using metadata-only APIs.
+- UE4SS 4.0.0's documented Property API does not expose the associated `UEnum`; enum association and enumerator values therefore remain unverified, particularly for a possible `ByteProperty` representation.
+- Kept the raw numeric value unchanged and locomotion `UNCLASSIFIED`; no enum mapping is inferred from the number alone.
+- No gameplay functions, property writes, hooks, or network operations were added.
