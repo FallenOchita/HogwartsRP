@@ -4,7 +4,7 @@ use axum::{
     extract::{RawQuery, State},
     http::{header, HeaderMap, HeaderValue, StatusCode},
     response::{IntoResponse, Redirect, Response},
-    routing::post,
+    routing::{get, post},
     Json, Router,
 };
 use serde::Serialize;
@@ -31,7 +31,9 @@ impl SteamLinkConfig {
         let Some(redirect_uri) = env::var("HOGWARTSRP_STEAM_REDIRECT_URI").ok() else {
             return Ok(None);
         };
-        if !valid_redirect_uri(&redirect_uri) {
+        if !valid_redirect_uri(&redirect_uri)
+            || Url::parse(&redirect_uri).ok().is_none_or(|url| url.path() != "/account/links/steam/callback")
+        {
             return Err("Steam account-link redirect URI is invalid.".into());
         }
         Ok(Some(Self { redirect_uri }))
@@ -74,7 +76,9 @@ struct AuthorizationUrlResponse {
 }
 
 pub(super) fn router() -> Router<PortalHttpState> {
-    Router::new().route("/account/links/steam/start", post(start))
+    Router::new()
+        .route("/account/links/steam/start", post(start))
+        .route("/account/links/steam/callback", get(callback))
 }
 
 async fn start(State(state): State<PortalHttpState>, headers: HeaderMap) -> Response {
