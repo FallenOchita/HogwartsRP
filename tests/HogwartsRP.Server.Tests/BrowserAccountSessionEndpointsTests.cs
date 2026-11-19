@@ -1,6 +1,7 @@
 using System.Text;
 using HogwartsRP.Server.Accounts;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace HogwartsRP.Server.Tests;
 
@@ -52,7 +53,7 @@ public sealed class BrowserAccountSessionEndpointsTests
 
         Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
         Assert.True(store.TryGet(issued.SessionToken, out _));
-        Assert.Empty(context.Response.Headers["Set-Cookie"]);
+        Assert.Equal(0, context.Response.Headers["Set-Cookie"].Count);
     }
 
     [Fact]
@@ -96,6 +97,11 @@ public sealed class BrowserAccountSessionEndpointsTests
     private static DefaultHttpContext CreateContext(string? sessionToken = null)
     {
         var context = new DefaultHttpContext();
+        context.RequestServices = new ServiceCollection()
+            .AddLogging()
+            .AddOptions()
+            .AddRouting()
+            .BuildServiceProvider();
         context.Response.Body = new MemoryStream();
         context.Request.Scheme = "https";
         if (sessionToken is not null)
