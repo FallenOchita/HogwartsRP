@@ -25,9 +25,9 @@ public sealed class ResourceManager
         _configure = configure;
     }
 
-    public IReadOnlyList<ResourceInfo> Status => _running.Values.Select(x => x.Info).OrderBy(x => x.Info.Manifest.Name).ToArray();
+    public IReadOnlyList<ResourceInfo> Status => _running.Values.Select(x => x.Info).OrderBy(x => x.Manifest.Name).ToArray();
 
-    /// <summary>Raised when a Rust worker declares a server-approved inbound network event.</summary>
+    /// <summary>Raised when a Rust worker declares an inbound network event. The server must still authorize it.</summary>
     public event Action<string, string>? RustNetworkEventRegistered;
 
     /// <summary>Raised when a Rust worker registers a command.</summary>
@@ -71,10 +71,12 @@ public sealed class ResourceManager
                 {
                     var executable = ResolveResourcePath(dir, rustScript);
                     var worker = await RustWorkerProcessRuntime.StartAsync(executable, dir, cancellationToken: cancellationToken);
-                    worker.CommandRegistered += command => RustCommandRegistered?.Invoke(manifest.Name, command);
-                    worker.NetworkEventRegistered += eventName => RustNetworkEventRegistered?.Invoke(manifest.Name, eventName);
                     rustWorkers.Add(worker);
                     runtimes.Add(worker);
+                    worker.CommandRegistered += command => RustCommandRegistered?.Invoke(manifest.Name, command);
+                    worker.NetworkEventRegistered += eventName => RustNetworkEventRegistered?.Invoke(manifest.Name, eventName);
+                    foreach (var command in worker.RegisteredCommands) RustCommandRegistered?.Invoke(manifest.Name, command);
+                    foreach (var eventName in worker.RegisteredNetworkEvents) RustNetworkEventRegistered?.Invoke(manifest.Name, eventName);
                 }
 
                 _running[manifest.Name] = new(new(manifest, dir, ResourceState.Started), runtimes, rustWorkers);
