@@ -5,7 +5,8 @@
 - Added BrowserAccountSessionStore for process-local central browser account sessions.
 - Generated independent cryptographically random 256-bit bearer and CSRF tokens; retained only SHA-256 digests.
 - Bound sessions to account IDs supplied by trusted server-side authentication code; browser callers cannot select an account ID.
-- Added fixed expiry, bounded registry capacity, expiry pruning, constant-time CSRF comparison, and individual session revocation.
+- Added fixed expiry, concurrency-safe bounded registry capacity, expiry pruning, constant-time CSRF comparison, and individual session revocation.
+- Serialized session issuance around capacity checks so concurrent sign-ins cannot exceed the configured in-memory session limit.
 - Added regression tests for session issuance and account binding, malformed tokens, CSRF pairing, expiry, capacity, and revocation.
 - Added docs/browser-account-sessions.md with required cookie flags, CSRF header handling, HTTPS, origin checks, and deployment limitations.
 
