@@ -1,3 +1,16 @@
+## 2026-11-19 — Correct player metadata candidate classification
+
+### Fixed
+
+- Removed `CharMoveComp` from the player's descriptor-only metadata allowlist. The supplied live report completed direct lookup across the full player class chain and returned `NOT_FOUND` for that name.
+- Kept `CharacterMovement` as the reflected player property; its descriptor is `ObjectProperty /Script/Engine.Character:CharacterMovement`.
+- Clarified that `CharMoveComp` is the resolved movement-component instance name/path, not a confirmed reflected player property. Existing discovery and candidate-value probes still retain the name where needed.
+
+### Safety and validation boundary
+
+- This changes only the fixed descriptor candidate list and its documentation. It does not add property-value reads, invoke gameplay functions, write game state, install hooks, or perform network operations.
+- The live report already establishes the corrected distinction; a fresh report after this code change should show five requested player descriptors with no false `CharMoveComp` miss.
+
 ## 2026-11-19 — Correct PlayerState metadata audit routing
 
 ### Fixed

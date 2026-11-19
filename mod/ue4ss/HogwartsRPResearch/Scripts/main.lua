@@ -194,7 +194,7 @@ local function runResearch(targets, finalAttempt)
             end or nil),
             targeted_property_metadata = {
                 player = Reflection and Reflection.lookupNamedProperties(player, {
-                    "CharacterMovement", "CharMoveComp", "Mesh",
+                    "CharacterMovement", "Mesh",
                     "ConversationComponent", "ToolSetComponent", "AnimationArchitectComponent"
                 }) or { status = "REFLECTION_MODULE_UNAVAILABLE", items = {} },
                 controller = Reflection and Reflection.lookupNamedProperties(controller, {
