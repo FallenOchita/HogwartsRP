@@ -177,18 +177,25 @@ public class LifecycleTests
         var resourceDirectory = Path.Combine(root, "rust_sample");
         var binaryDirectory = Path.Combine(resourceDirectory, "bin");
         Directory.CreateDirectory(binaryDirectory);
-        var executableName = OperatingSystem.IsWindows() ? "test-worker.exe" : "test-worker";
-        var executable = Path.Combine(binaryDirectory, executableName);
-        File.Copy(workerPath!, executable);
+        var executableNameA = OperatingSystem.IsWindows() ? "test-worker-a.exe" : "test-worker-a";
+        var executableNameB = OperatingSystem.IsWindows() ? "test-worker-b.exe" : "test-worker-b";
+        var executableA = Path.Combine(binaryDirectory, executableNameA);
+        var executableB = Path.Combine(binaryDirectory, executableNameB);
+        File.Copy(workerPath!, executableA);
+        File.Copy(workerPath!, executableB);
         if (!OperatingSystem.IsWindows())
-            File.SetUnixFileMode(executable, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        {
+            var mode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+            File.SetUnixFileMode(executableA, mode);
+            File.SetUnixFileMode(executableB, mode);
+        }
 
         ResourceManager? manager = null;
         try
         {
             await File.WriteAllTextAsync(Path.Combine(resourceDirectory, "fxmanifest.lua"),
-                "fx_version 'cerulean'\ngame 'hogwartslegacy'\nrust_script 'bin/" + executableName +
-                "'\nrust_script 'bin/" + executableName + "'");
+                "fx_version 'cerulean'\ngame 'hogwartslegacy'\nrust_script 'bin/" + executableNameA +
+                "'\nrust_script 'bin/" + executableNameB + "'");
             manager = new ResourceManager(root, _ => new NativeLua54Runtime());
             await manager.StartAllAsync();
 
