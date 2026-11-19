@@ -19,6 +19,13 @@ All notable HogwartsRP changes are recorded here.
 - Rust workers currently run with the server account's OS permissions; this slice does not yet apply the Lua worker's OS memory/CPU limits. Treat Rust resources as trusted code.
 
 
+### Fixed — Movement-mode property audit enumeration
+
+- Reused the movement class hierarchy's existing reflected-property enumeration to capture `MovementMode`, avoiding a second `ForEachProperty` invocation and early callback termination.
+- Recorded the matched descriptor and declaring class from the same metadata pass used by the reflection report.
+- Preserved explicit incomplete/not-found outcomes when enumeration fails or reaches its configured cap.
+
+
 ### Improved — Movement-mode enum metadata audit
 
 - Added a read-only reflected-property descriptor audit for the movement component's `MovementMode` field, including its property class and declaring class hierarchy.

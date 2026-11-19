@@ -603,3 +603,11 @@ This file records implementation details and milestone status. For user-facing f
 - UE4SS 4.0.0's documented Property API does not expose the associated `UEnum`; enum association and enumerator values therefore remain unverified, particularly for a possible `ByteProperty` representation.
 - Kept the raw numeric value unchanged and locomotion `UNCLASSIFIED`; no enum mapping is inferred from the number alone.
 - No gameplay functions, property writes, hooks, or network operations were added.
+
+
+## 2026-11-19 — Movement-mode property audit enumeration correction
+
+- Fixed the live-report failure where the standalone `MovementMode` audit's separate `ForEachProperty` call returned `CALL_ERROR`.
+- The audit now captures `MovementMode` during the already-existing reflected class-hierarchy property pass, avoiding duplicate enumeration and early callback termination.
+- The report records the descriptor and declaring class only if that shared metadata pass actually finds it; otherwise it preserves an explicit incomplete/not-found status.
+- No property values are read by this metadata path and no gameplay functions, writes, hooks, or network operations are added.
