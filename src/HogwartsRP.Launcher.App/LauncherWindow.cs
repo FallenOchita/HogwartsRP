@@ -27,10 +27,17 @@ internal sealed class LauncherWindow : Form
     private ServerSelection? _selectedServer;
     private OidcJoinCredentialProvider? _oidc;
     private bool _closing;
+    private Icon? _launcherIcon;
 
     public LauncherWindow()
     {
         Text = "HogwartsRP Launcher";
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "HogwartsRP.ico");
+        if (File.Exists(iconPath))
+        {
+            _launcherIcon = new Icon(iconPath);
+            Icon = _launcherIcon;
+        }
         MinimumSize = new Size(760, 760);
         StartPosition = FormStartPosition.CenterScreen;
         BackColor = Color.FromArgb(20, 24, 35);
@@ -48,6 +55,7 @@ internal sealed class LauncherWindow : Form
                 try { await _connection.DisconnectAsync(); } catch { }
             }
             _oidc?.Dispose();
+            _launcherIcon?.Dispose();
         };
     }
 
