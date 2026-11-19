@@ -35,6 +35,12 @@ A Rust workspace contains a resource SDK and a native-core validation crate. The
 
 ## Rust resource process hosting
 
+Rust worker command declarations are now connected to the framework-wide `CommandRegistry`. The host assigns each command a server-controlled permission (`resource.<resource>.command.<command>` by default); operators may override it through `Resources:RustCommandPermissions:<resource>:<command>`. Resource manifests and worker code cannot choose or elevate this permission. The normal `PermissionService` check runs before the command handler is invoked. Duplicate command names are rejected by the shared registry and logged; a restarted worker reuses its existing route rather than attempting to register a second command.
+
+Inbound Rust network-event declarations are registered with the same `NetworkEventPolicy` used by the WebSocket adapter. Only authenticated client messages accepted by that allowlist are dispatched. The manager routes the event only to worker processes in the owning resource that declared that event. A resource may host multiple workers; commands are selected by the worker that declared the command, and ambiguous duplicate declarations fail closed. Lua and Rust workers in the same resource can both receive their own registered event handlers.
+
+
+
 The restricted resource manifest accepts repeated rust_script entries for precompiled executables relative to the resource directory. ResourceManager starts these workers after the resource's Lua server/shared scripts and stops them in reverse order. Executable paths are normalized and checked to remain under the resource directory. Rust workers use the JSON-lines protocol described in docs/rust-support.md; the host waits for a ready message before marking the resource started.
 
 RustWorkerProcessRuntime bounds UTF-8 protocol frames to 32 KiB, waits up to 10 seconds for startup, applies a 15-second request timeout, and requests graceful shutdown before terminating a worker process tree. The manager exposes command registration, network-event declarations, command invocation, and server-originated event dispatch. The network-event callback is only a declaration signal: the server's WebSocket adapter must still enforce identity, allowlists, and authorization before dispatching client-originated events. The manager does not yet automatically connect Rust command declarations to the framework-wide CommandRegistry or the WebSocket event policy.
