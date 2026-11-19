@@ -106,7 +106,8 @@ function M.writeAll(directory, catalog)
         ComponentReport = catalog.components,
         PropertyReport = catalog.properties,
         FunctionReport = catalog.functions,
-        GameplayStateReport = catalog.states
+        GameplayStateReport = catalog.states,
+        RelationshipReport = catalog.relationships
     }
 
     local written, failed = 0, 0
