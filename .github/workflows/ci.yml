@@ -29,6 +29,9 @@ jobs:
       - name: Build native Rust launcher (Windows)
         if: runner.os == 'Windows'
         run: cargo build --manifest-path rust/Cargo.toml --release -p hogwartsrp-launcher
+      - name: Test Rust launcher services (Windows)
+        if: runner.os == 'Windows'
+        run: cargo test --manifest-path rust/Cargo.toml -p hogwartsrp-launcher
       - run: dotnet restore HogwartsRP.slnx
       - run: dotnet build HogwartsRP.slnx --no-restore
       - run: dotnet test HogwartsRP.slnx --no-build
