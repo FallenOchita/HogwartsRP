@@ -8,18 +8,28 @@ public sealed class AccountLinkAuthorizationStoreTests
 {
     private static readonly Uri Callback = new("https://accounts.example.test/account/link/callback");
 
-    [Theory]
-    [InlineData(ExternalIdentityProvider.Discord)]
-    [InlineData(ExternalIdentityProvider.EpicGames)]
-    public void AuthorizationCodeProvidersReceiveS256Pkce(ExternalIdentityProvider provider)
+    [Fact]
+    public void DiscordAuthorizationCodeFlowReceivesS256Pkce()
     {
         var (store, sessions, issued) = CreateSession();
-        var start = store.Begin(issued.Info.AccountId, issued.SessionToken, provider, Callback, sessions);
+        var start = store.Begin(issued.Info.AccountId, issued.SessionToken, ExternalIdentityProvider.Discord, Callback, sessions);
 
         Assert.Equal(43, start.State.Length);
         Assert.Equal(43, start.CodeChallenge!.Length);
         Assert.Equal("S256", start.CodeChallengeMethod);
         Assert.DoesNotContain(issued.SessionToken, start.State);
+    }
+
+    [Fact]
+    public void EpicWebAuthorizationCodeFlowDoesNotCreateUndocumentedPkceValues()
+    {
+        var (store, sessions, issued) = CreateSession();
+        var start = store.Begin(issued.Info.AccountId, issued.SessionToken, ExternalIdentityProvider.EpicGames, Callback, sessions);
+
+        Assert.Null(start.CodeChallenge);
+        Assert.Null(start.CodeChallengeMethod);
+        Assert.True(store.TryConsume(start.State, ExternalIdentityProvider.EpicGames, Callback, issued.SessionToken, sessions, out var transaction));
+        Assert.Null(transaction!.CodeVerifier);
     }
 
     [Fact]
