@@ -48,6 +48,9 @@ impl PortalHttpState {
 
 pub fn router(state: PortalHttpState) -> Router {
     Router::new()
+        .route("/", get(account_home))
+        .route("/account", get(account_home))
+        .route("/account/assets/account.js", get(account_script))
         .route("/account/login", get(login_start))
         .route("/account/callback", get(login_callback))
         .route("/account/session", get(session_info))
