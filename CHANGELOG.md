@@ -4,6 +4,14 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Planned — Public directory and player account linking foundation
+
+- Added `docs/public-directory-and-account-linking.md` defining the architecture and security requirements for a central public server directory and browser-based player account connections for Discord, Steam, and Epic Games.
+- Specified independent optional provider links, server-verified identity, single-use state, PKCE where supported, stable provider identifiers, duplicate-link prevention, and unlink protections.
+- Defined directory registration, revocable server credentials, authenticated heartbeats, stale-server expiry, public-data privacy, endpoint validation, and launcher browser requirements.
+- This is a design/security foundation only. No provider OAuth integration, central account portal, public directory API, or launcher UI is implemented by this change.
+
+
 ### Added
 
 - Added the first Windows desktop launcher shell using WinForms, with server connection/sign-in, roleplay character registration, status feedback, and Steam game launch actions.
