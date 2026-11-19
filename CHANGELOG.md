@@ -24,7 +24,7 @@ All notable HogwartsRP changes are recorded here.
 
 ### Security and scope
 
-- Session issuance is a trusted server-side operation. No browser login route, cookie middleware, provider callback, account-link endpoint, or portal UI is exposed yet.
+- Session issuance remains a trusted server-side operation. These reusable session inspection/logout handlers do not expose a browser login route, provider callback, account-link endpoint, or portal UI.
 - Sessions are process-local and are invalidated on service restart; a production multi-instance portal requires a shared session backend.
 
 ### Planned — Public directory and player account linking foundation

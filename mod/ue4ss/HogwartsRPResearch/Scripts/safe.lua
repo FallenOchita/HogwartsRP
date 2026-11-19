@@ -6,10 +6,11 @@ local function callMethod(object, methodName, ...)
     local ok, method = pcall(function() return object[methodName] end)
     if not ok or type(method) ~= "function" then return false, "method unavailable" end
     local args = {...}
-    local result = { pcall(function() return method(object, table.unpack(args)) end) }
+    local unpackArgs = table.unpack or unpack
+    local result = { pcall(function() return method(object, unpackArgs(args)) end) }
     if not result[1] then return false, tostring(result[2]) end
     table.remove(result, 1)
-    return true, table.unpack(result)
+    return true, unpackArgs(result)
 end
 
 function M.isValidObject(object)
@@ -33,7 +34,6 @@ function M.safeProperty(object, propertyName)
         return nil, "invalid object or property name"
     end
 
-    -- UE4SS wrapper property access varies by build; prefer the explicit getter if present.
     local ok, getter = pcall(function() return object.GetPropertyValue end)
     if ok and type(getter) == "function" then
         local got, value = pcall(function() return getter(object, propertyName) end)
@@ -56,25 +56,47 @@ end
 function M.safeClassName(object)
     if not M.isValidObject(object) then return "INVALID" end
     local classObject = M.safeProperty(object, "Class")
-    if classObject == nil then
-        classObject = M.safeMethod(object, "GetClass")
-    end
+    if classObject == nil then classObject = M.safeMethod(object, "GetClass") end
     if classObject == nil then return "UNAVAILABLE" end
     return M.safeFullName(classObject)
 end
 
 function M.capability(name)
     local ok, value = pcall(function() return _G[name] end)
-    return { available = ok and type(value) == "function", detail = ok and type(value) == "function" and "present" or "not exposed" }
+    return {
+        available = ok and type(value) == "function",
+        detail = ok and type(value) == "function" and "present" or "not exposed"
+    }
+end
+
+function M.findAll(className)
+    if type(className) ~= "string" then return {}, "invalid class name" end
+    local ok, fn = pcall(function() return _G.FindAllOf end)
+    if not ok or type(fn) ~= "function" then return {}, "FindAllOf unavailable" end
+
+    local found, objects = pcall(function() return fn(className) end)
+    if not found then return {}, tostring(objects) end
+    if type(objects) ~= "table" then return {}, "no instances returned" end
+
+    local valid = {}
+    for _, object in pairs(objects) do
+        if M.isValidObject(object) then valid[#valid + 1] = object end
+    end
+    return valid, nil
 end
 
 function M.findFirst(className)
-    if type(className) ~= "string" then return nil end
+    if type(className) ~= "string" then return nil, "invalid class name" end
+
     local ok, fn = pcall(function() return _G.FindFirstOf end)
-    if not ok or type(fn) ~= "function" then return nil end
-    local found, object = pcall(function() return fn(className) end)
-    if found and M.isValidObject(object) then return object end
-    return nil
+    if ok and type(fn) == "function" then
+        local found, object = pcall(function() return fn(className) end)
+        if found and M.isValidObject(object) then return object, "FindFirstOf" end
+    end
+
+    local objects, allError = M.findAll(className)
+    if #objects > 0 then return objects[1], "FindAllOf fallback" end
+    return nil, allError or "no non-default instance found"
 end
 
 function M.describeObject(object)

@@ -1,3 +1,54 @@
+## 2026-11-18 — Read-only player object relationship validation
+
+### Added
+
+- Added `relationships.lua` to inspect the controller `AcknowledgedPawn` and `Pawn` properties and compare each returned object identity with the discovered player pawn.
+- Added a movement-component outer comparison against the player pawn.
+- Added independent class metadata resolution diagnostics using `GetClass()` and the class object full name, without conflating class lookup with object discovery.
+- Added `RelationshipReport.txt` with explicit `MATCH`, `MISMATCH`, `PROPERTY_UNAVAILABLE`, and unresolved states.
+- Kept owner resolution `NOT_PROBED`; no `GetOwner` or gameplay UFunction is invoked.
+- Updated the research toolkit documentation, `CHANGELOG.md`, and this update log.
+
+### Validation boundary
+
+- The implementation reads only the two named controller properties and object/class metadata. It does not write properties, invoke gameplay functions, call ProcessEvent, install hooks, or transmit data.
+- Source changes do not establish live UE4SS compatibility. Install this branch and inspect `RelationshipReport.txt`; only runtime `MATCH` results confirm the corresponding references in the tested game session.
+
+## 2026-11-18 — Delayed UE4SS player/controller discovery
+
+### Fixed
+
+- Replaced the one-shot startup lookup with a bounded retry process because the player controller and pawn may not exist when the Lua mod first loads.
+- Schedule retries using UE4SS `ExecuteWithDelay`, then dispatch UObject access through the documented `ExecuteInGameThread` API.
+- Retry every 2.5 seconds for up to 24 attempts; write a final diagnostic report if neither the player nor controller appears.
+- Added a `FindAllOf` fallback when `FindFirstOf` returns no valid instance.
+- Resolve the local pawn through the controller's `AcknowledgedPawn` or `Pawn` property when class lookup has not found it.
+- Resolve movement from the already known `CharMoveComp` or `CharacterMovement` properties before trying the component class lookup.
+- Register `hogwartsrp_research` as a manual console-command fallback when the UE4SS console handler is available.
+- Record the discovery attempt count, lookup source, and scheduler capabilities in the report.
+
+### Validation boundary
+
+- The supplied log only proves that the previous one-shot search ran before its three target objects were available or resolvable; it does not establish that the classes are absent.
+- The delayed retry implementation is committed for another in-game test. The target objects and reflection metadata remain unverified until the new reports show `FOUND` and `ENUMERATED` statuses.
+
+## 2026-11-18 — Read-only UE4SS reflection metadata discovery
+
+### Added
+
+- Added `reflection.lua` using the documented UE4SS 4.0.0 reflection APIs: `GetClass`, `ForEachProperty`, `ForEachFunction`, and `GetSuperStruct`.
+- Enumerated reflected property and function metadata for the already discovered player, controller, and movement objects, including superclass chains.
+- Recorded property identity and property-class metadata, function identity and raw flags, and UFunction-owned property descriptors.
+- Extended the existing PropertyReport.txt and FunctionReport.txt payloads while preserving the separate allowlisted candidate value/callable probes.
+- Added configurable hard limits to prevent unexpectedly large reports.
+- Added `docs/ue4ss-reflection-discovery.md` describing the APIs, output, safety boundary, and validation limits.
+
+### Safety and validation boundary
+
+- This pass enumerates metadata only. It does not read arbitrary property values, invoke UFunctions, call ProcessEvent, write to game objects, install gameplay hooks, or connect to a network.
+- The documented Lua API does not provide enough metadata in this pass to decode parameter direction or claim a complete function signature; the report does not guess these fields.
+- No in-game result is claimed yet. The next validation is to install this branch, launch the game, and inspect reflection statuses and the generated PropertyReport.txt and FunctionReport.txt for errors or truncation.
+
 ## 2026-11-18 — Research toolkit report path correction
 
 ### Fixed
@@ -12,6 +63,37 @@
 
 - The user's log confirms the mod loads and reaches the research pass; it showed only report/adapter output-path failures.
 - The corrected path resolver is committed for the next in-game test. Actual file creation still needs confirmation from a fresh UE4SS.log and the generated files on the user's installation.
+- Corrected report output resolution so the writer no longer assumes `Mods/HogwartsRPResearch/reports` is relative to the game's working directory.
+- Resolve the output directory from the installed `reports.lua` module path, with UE4SS `IterateGameDirectories()` as a fallback.
+- Added `mod/ue4ss/HogwartsRPResearch/Scripts/reports/.gitkeep` so the output directory is included in packaged checkouts.
+- Adapter output and all eight text reports now share the same resolved directory.
+- Added a clear diagnostic when the expected reports folder is missing, plus a successful/failed report count.
+
+### Validation boundary
+
+- The supplied log confirms the mod loads and reaches the research pass; it showed report and adapter output-path failures only.
+- The corrected resolver is committed for another in-game test. Actual file creation remains unverified until a fresh UE4SS.log and generated reports are checked.
+
+## 2026-11-19 — Central browser session HTTP handlers
+
+### Added
+
+- Added reusable `BrowserAccountSessionEndpoints` handlers for authenticated session inspection and logout.
+- Added `GET /account/session`, which reads the server-owned session cookie and returns only the bound central account ID and session timestamps.
+- Added `DELETE /account/session`, which requires the session's matching `X-HogwartsRP-CSRF` header, revokes only that session, and clears the cookie.
+- Added `SetSessionCookie` for trusted server-side sign-in completion code. The cookie is Secure, HttpOnly, SameSite=Strict, scoped to `/account`, and expires at the server-issued session expiry.
+- Added no-store response headers and regression tests for missing sessions, account binding, CSRF enforcement, logout isolation, and secure cookie attributes. Fixed the test host context to provide ASP.NET Core routing/options services required by typed HTTP result execution.
+- Updated `docs/browser-account-sessions.md`, `CHANGELOG.md`, and this update log.
+
+### Hosting and security boundary
+
+- The endpoint mapper is reusable by a future central account host and is deliberately not wired into the existing per-game-server WebSocket host. That host's current OIDC flow issues per-server join tickets, not central browser accounts.
+- No public login/session-issuance endpoint, provider callback, account-link endpoint, or browser UI is exposed. Trusted authentication code must verify the player first, call `BrowserAccountSessionStore.Issue`, set the cookie, and deliver the CSRF token through a no-store authenticated response.
+- These handlers do not establish a deployed central portal or production distributed session storage.
+
+### Next implementation gate
+
+Build the separate central account host and connect a verified central sign-in flow to session issuance. Keep Discord, Steam, and Epic account linking disabled until the central browser session is established and provider callback state is verified.
 
 ## 2026-11-19 — Browser account session foundation
 
