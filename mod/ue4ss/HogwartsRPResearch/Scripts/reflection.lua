@@ -150,8 +150,8 @@ local function enumerateProperties(struct, output, limit, namedPropertyAudit, de
     return callError and tostring(callError) or nil, diagnostic
 end
 
--- Audit only the documented metadata surface exposed by a property descriptor.
--- No descriptor method is invoked and no speculative enum accessor name is probed.
+-- Audit the documented metadata surface exposed by a property descriptor.
+-- No enum accessor or documented Property method is invoked; no speculative accessor is probed.
 local function enumAssociationCapabilityAudit(property, descriptor)
     local propertyClass = Safe.safeMethod(property, "GetClass")
     local methodCapabilities = {}
@@ -169,14 +169,14 @@ local function enumAssociationCapabilityAudit(property, descriptor)
     return {
         status = associationStatus,
         property_class = descriptor.property_class,
-        descriptor_class = Safe.safeFullName(propertyClass),
+        descriptor_property_class = descriptor.property_class,
         documented_property_method_capabilities = methodCapabilities,
         enum_reference_status = "NO_DOCUMENTED_BYTEPROPERTY_ENUM_ACCESSOR",
         enum_api_status = "UENUM_METHODS_REQUIRE_AN_EXISTING_UENUM_REFERENCE",
         enum_entries_status = "NOT_ENUMERATED_NO_VERIFIED_UENUM_REFERENCE",
         documentation_scope = "UE4SS_4.0.0_LUA_API",
         note = "The documented Property API exposes generic descriptor identity methods but no ByteProperty-to-UEnum accessor. UEnum lookup methods cannot identify the associated enum without an independently obtained UEnum reference.",
-        safety = "PROPERTY_DESCRIPTOR_MEMBER_LOOKUP_ONLY_NO_METHOD_INVOCATION_NO_PROPERTY_VALUE_READS_NO_ENUM_ENUMERATION"
+        safety = "PROPERTY_DESCRIPTOR_CAPABILITY_LOOKUPS_ONLY_NO_ENUM_ACCESSOR_OR_ENUMERATION_CALLS"
     }
 end
 -- Resolve one named descriptor through UE4SS's documented UObjectReflection API.
@@ -317,6 +317,7 @@ function M.inspect(object, options)
                 namedPropertyAudit.status = "FOUND"
                 namedPropertyAudit.descriptor = descriptor
                 namedPropertyAudit.lookup_scope_class = classFullName
+                namedPropertyAudit.enum_association_capability_audit = lookupDiagnostic.enum_association_capability_audit
                 namedPropertyAudit.enum_association_status = descriptor.property_class == "EnumProperty"
                     and "ENUM_PROPERTY_TYPE_CONFIRMED_ENUM_REFERENCE_UNAVAILABLE"
                     or (descriptor.property_class == "ByteProperty" and "BYTE_PROPERTY_ENUM_ASSOCIATION_UNVERIFIED"
