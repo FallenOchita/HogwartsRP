@@ -79,22 +79,36 @@ pub(crate) fn fetch_servers(
     }
     let result: DirectoryPage = serde_json::from_slice(&bytes)
         .map_err(|_| "Directory returned an invalid server-list response.".to_owned())?;
-    if result.page == 0
-        || result.page_size == 0
-        || result.servers.len() > result.page_size as usize
-        || result.servers.iter().any(|server| {
-            server.name.trim().is_empty()
-                || server.name.len() > 80
-                || server.endpoint.trim().is_empty()
-                || server.max_players == 0
-                || server.online_players > server.max_players
-                || !matches!(server.status.as_str(), "online" | "offline")
-                || server.game != "hogwarts-legacy-pc"
-        })
-    {
-        return Err("Directory returned server data that failed validation.".into());
-    }
+    validate_page(&result)?;
     Ok(result)
+}
+
+fn validate_page(result: &DirectoryPage) -> Result<(), String> {
+    if result.page == 0 || result.page_size == 0 || result.servers.len() > result.page_size as usize {
+        return Err("Directory returned invalid pagination metadata.".into());
+    }
+    for server in &result.servers {
+        let endpoint = Url::parse(&server.endpoint)
+            .map_err(|_| "Directory returned a server with an invalid endpoint.".to_owned())?;
+        if server.server_id.trim().is_empty()
+            || server.name.trim().is_empty()
+            || server.name.len() > 80
+            || !matches!(endpoint.scheme(), "http" | "https")
+            || endpoint.host_str().is_none()
+            || !endpoint.username().is_empty()
+            || endpoint.password().is_some()
+            || endpoint.query().is_some()
+            || endpoint.fragment().is_some()
+            || !matches!(endpoint.path(), "" | "/")
+            || server.max_players == 0
+            || server.online_players > server.max_players
+            || !matches!(server.status.as_str(), "online" | "offline")
+            || server.game != "hogwarts-legacy-pc"
+        {
+            return Err("Directory returned server data that failed validation.".into());
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -139,23 +153,27 @@ mod tests {
     }
 
     #[test]
-    fn rejects_invalid_listing_records() {
-        let invalid = DirectoryPage {
-            page: 1,
-            page_size: 25,
-            total: 1,
+    fn rejects_invalid_listing_records_and_endpoints() {
+        let invalid_game = DirectoryPage {
+            page: 1, page_size: 25, total: 1,
             servers: vec![DirectoryServer {
-                server_id: "x".into(),
-                name: "Bad listing".into(),
-                endpoint: "https://rp.example.net".into(),
-                game: "another-game".into(),
-                description: None,
-                online_players: 0,
-                max_players: 10,
-                status: "online".into(),
-                last_heartbeat: None,
+                server_id: "x".into(), name: "Bad listing".into(),
+                endpoint: "https://rp.example.net".into(), game: "another-game".into(),
+                description: None, online_players: 0, max_players: 10,
+                status: "online".into(), last_heartbeat: None,
             }],
         };
-        assert_ne!(invalid.servers[0].game, "hogwarts-legacy-pc");
+        assert!(validate_page(&invalid_game).is_err());
+
+        let invalid_endpoint = DirectoryPage {
+            page: 1, page_size: 25, total: 1,
+            servers: vec![DirectoryServer {
+                server_id: "x".into(), name: "Bad endpoint".into(),
+                endpoint: "file:///etc/passwd".into(), game: "hogwarts-legacy-pc".into(),
+                description: None, online_players: 0, max_players: 10,
+                status: "online".into(), last_heartbeat: None,
+            }],
+        };
+        assert!(validate_page(&invalid_endpoint).is_err());
     }
 }
