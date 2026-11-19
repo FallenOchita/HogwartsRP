@@ -142,12 +142,12 @@ equal(discovered.class_inventory.classes[1].count, 2, "duplicate class inventory
 -- Named-property resolution is independent from the intentionally partial
 -- first-property descriptor sample. A completed direct lookup across the class
 -- chain may report NOT_FOUND; an unavailable lookup must remain inconclusive.
-local function namedAuditClass(fullName, properties, parent, lookupFails)
+local function namedAuditClass(fullName, properties, parent, lookupFails, lookupProperty)
     local result = class(fullName, properties, parent)
     result.Reflection = function()
         if lookupFails then error("synthetic direct lookup failure") end
         return {
-            GetProperty = function() return nil end
+            GetProperty = function() return lookupProperty end
         }
     end
     result.ForEachFunction = function() return false end
@@ -178,5 +178,63 @@ local unavailableObject = {
 local unavailableAudit = Reflection.inspect(unavailableObject, { named_property = "MissingField" }).named_property_audit
 equal(unavailableAudit.direct_lookup_status, "LOOKUP_INCOMPLETE", "failed direct lookup status")
 equal(unavailableAudit.status, "LOOKUP_INCOMPLETE", "failed named-property audit status")
+
+-- A targeted exact lookup may corroborate the known engine enum without
+-- reading the MovementMode property value or enumerating unrelated UEnums.
+local enumClass = {
+    GetFullName = function() return "Class /Script/CoreUObject.Enum" end
+}
+local movementModeEnum = {
+    GetFullName = function() return "Enum /Script/Engine.EMovementMode" end,
+    GetClass = function() return enumClass end,
+    GetNameByValue = function(_, value)
+        equal(value, 3, "targeted enum value")
+        return nameObject("MOVE_FALLING")
+    end
+}
+local movementModeDescriptor = property(
+    "MovementMode",
+    "ByteProperty /Script/Engine.CharacterMovementComponent:MovementMode"
+)
+local movementModeClass = namedAuditClass(
+    "Class /Script/Phoenix.Biped_MovementComponent",
+    { property("UnrelatedFirstProperty", "BoolProperty /Script/Phoenix.Biped_MovementComponent:UnrelatedFirstProperty") },
+    nil,
+    false,
+    movementModeDescriptor
+)
+local movementModeObject = {
+    GetFullName = function() return "Biped_MovementComponent /Game/Test.Root.Player.CharMoveComp" end,
+    GetClass = function() return movementModeClass end
+}
+local originalStaticFindObject = _G.StaticFindObject
+_G.StaticFindObject = function(fullName)
+    equal(fullName, "Enum /Script/Engine.EMovementMode", "exact enum object path")
+    return movementModeEnum
+end
+local movementModeAudit = Reflection.inspect(
+    movementModeObject, { named_property = "MovementMode" }
+).named_property_audit
+_G.StaticFindObject = originalStaticFindObject
+
+equal(movementModeAudit.direct_lookup_status, "FOUND", "MovementMode direct lookup")
+equal(movementModeAudit.enum_association_status,
+    "ENGINE_ENUM_CANDIDATE_FOUND_ASSOCIATION_NOT_DIRECTLY_EXPOSED",
+    "candidate enum must not imply direct descriptor linkage")
+equal(movementModeAudit.enum_association_capability_audit.enum_reference_status,
+    "FOUND", "exact engine enum object lookup")
+equal(movementModeAudit.enum_entries[1].value, 3, "targeted enum value result")
+equal(movementModeAudit.enum_entries[1].name, "MOVE_FALLING", "targeted enum name result")
+
+_G.StaticFindObject = function() return nil end
+local missingEnumAudit = Reflection.inspect(
+    movementModeObject, { named_property = "MovementMode" }
+).named_property_audit
+_G.StaticFindObject = originalStaticFindObject
+equal(missingEnumAudit.enum_association_status,
+    "BYTE_PROPERTY_ENUM_ASSOCIATION_UNVERIFIED",
+    "missing enum object keeps association unverified")
+equal(missingEnumAudit.enum_association_capability_audit.enum_reference_status,
+    "ENUM_OBJECT_NOT_FOUND", "missing exact enum object status")
 
 print("component_property_catalog_spec: PASS")
