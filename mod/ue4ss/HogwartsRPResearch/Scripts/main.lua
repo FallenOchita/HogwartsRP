@@ -4,10 +4,6 @@
 
 local MOD = "HogwartsRPResearch"
 
-local function log(message)
-    pcall(function()
-        print("[" .. MOD .. "] " .. tostring(message) .. "\n")
-    end)
 local MAX_ATTEMPTS = 24
 local RETRY_DELAY_MS = 2500
 local attemptCount = 0
