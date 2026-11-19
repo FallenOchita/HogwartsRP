@@ -30,7 +30,7 @@ public sealed class AccountLinkEndpointsTests : IDisposable
     public async Task DiscordStartRedirectsWithStateAndS256Challenge()
     {
         var context = CreateContext();
-        var result = AccountLinkEndpoints.Start("discord", context, _options, _sessions, _transactions);
+        var result = AccountLinkEndpoints.Start("discord", context, _options, _sessions, _transactions, CreateDiscordClient(), null, null);
 
         await result.ExecuteAsync(context);
 
@@ -64,14 +64,14 @@ public sealed class AccountLinkEndpointsTests : IDisposable
         var options = _options with { DiscordClientId = null, EpicClientId = null };
         var steam = new SteamOpenIdAccountLinkClient(new HttpClient(new RejectHandler()), _identities);
         var steamContext = CreateContext();
-        var steamResult = AccountLinkEndpoints.Start("steam", steamContext, options, _sessions, _transactions);
+        var steamResult = AccountLinkEndpoints.Start("steam", steamContext, options, _sessions, _transactions, null, steam, null);
         await steamResult.ExecuteAsync(steamContext);
 
         Assert.Equal(StatusCodes.Status302Found, steamContext.Response.StatusCode);
         Assert.Contains("steamcommunity.com/openid/login", steamContext.Response.Headers.Location.ToString());
 
         var discordContext = CreateContext();
-        var discordResult = AccountLinkEndpoints.Start("discord", discordContext, options, _sessions, _transactions);
+        var discordResult = AccountLinkEndpoints.Start("discord", discordContext, options, _sessions, _transactions, null, steam, null);
         await discordResult.ExecuteAsync(discordContext);
         Assert.Equal(StatusCodes.Status503ServiceUnavailable, discordContext.Response.StatusCode);
     }
@@ -81,10 +81,7 @@ public sealed class AccountLinkEndpointsTests : IDisposable
     {
         var context = CreateContext();
         context.Request.QueryString = new QueryString("?code=not-a-real-code");
-        var discord = new DiscordAccountLinkClient(
-            new HttpClient(new RejectHandler()),
-            _identities,
-            new DiscordAccountLinkOptions("discord-client", "server-secret"));
+        var discord = CreateDiscordClient();
 
         var result = await AccountLinkEndpoints.CompleteDiscordAsync(
             context, _options, _sessions, _transactions, discord);
@@ -131,6 +128,10 @@ public sealed class AccountLinkEndpointsTests : IDisposable
         Assert.Contains("\"connected\":true", body, StringComparison.Ordinal);
         Assert.DoesNotContain("other-account", body, StringComparison.Ordinal);
     }
+
+    private DiscordAccountLinkClient CreateDiscordClient() =>
+        new(new HttpClient(new RejectHandler()), _identities,
+            new DiscordAccountLinkOptions("discord-client", "server-secret"));
 
     private DefaultHttpContext CreateContext()
     {
