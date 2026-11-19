@@ -1,3 +1,20 @@
+## 2026-11-19 — Rust resource SDK and native-core foundation
+
+### Added
+
+- Created the Rust workspace under rust/.
+- Added hogwartsrp-native-core with bounded resource-name, event-name, argument-count, and JSON-lines frame validation plus unit tests.
+- Added hogwartsrp-resource-sdk with Rust resource command/event registration and a bounded stdin/stdout JSON-lines worker loop.
+- Added the rust_greeter example resource.
+- Added docs/rust-support.md with the two Rust roles, build instructions, trust boundary, and integration roadmap.
+- Added stable Rust setup, workspace formatting, and Cargo tests to Ubuntu/Windows CI.
+
+### Integration boundary
+
+- The current C# ResourceManager still starts Lua workers only. Rust worker discovery, process supervision, command/event routing, lifecycle integration, and deployment packaging are not implemented in this milestone.
+- The native-core crate is currently a Rust library only; the .NET host does not yet load it through FFI. No native acceleration or runtime performance gain is claimed.
+- Rust resources are intended to run as separate processes. A process boundary alone is not a complete OS sandbox; the host must retain authority over player identity, permissions, event allowlists, networking, and persistence.
+
 ## 2026-11-19 — Hogwarts Legacy asset research toolkit baseline
 
 ### Added
