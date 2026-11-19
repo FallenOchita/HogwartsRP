@@ -119,17 +119,93 @@ local function probePropertyIteration(struct, stopAfterFirst)
     return probe
 end
 
--- Audit the documented metadata surface exposed by a property descriptor.
--- Capability methods are looked up only; no enum accessor is invoked or guessed.
+-- The MovementMode property is a ByteProperty in the live report. UE4SS
+-- does not expose a documented ByteProperty-to-UEnum accessor, so resolve
+-- only the known engine enum object by its exact UObject path.
+-- This is a targeted lookup, not an enumeration of arbitrary game enums.
+local MOVEMENT_MODE_ENUM_FULL_NAME = "Enum /Script/Engine.EMovementMode"
+local MOVEMENT_MODE_VALUE_TO_RESOLVE = 3
+
+local function resolveKnownMovementModeEnum()
+    local result = {
+        method = "StaticFindObject",
+        requested_full_name = MOVEMENT_MODE_ENUM_FULL_NAME,
+        status = "NOT_STARTED",
+        enum_entries = {}
+    }
+
+    local lookupOk, lookupFunction = pcall(function() return _G.StaticFindObject end)
+    if not lookupOk or type(lookupFunction) ~= "function" then
+        result.status = "STATIC_FIND_OBJECT_UNAVAILABLE"
+        return result
+    end
+
+    local callOk, enumObject = pcall(function()
+        return lookupFunction(MOVEMENT_MODE_ENUM_FULL_NAME)
+    end)
+    if not callOk then
+        result.status = "STATIC_LOOKUP_CALL_ERROR"
+        result.error = conciseDiagnostic(enumObject)
+        return result
+    end
+    if not Safe.isValidObject(enumObject) then
+        result.status = "ENUM_OBJECT_NOT_FOUND"
+        return result
+    end
+
+    result.full_name = Safe.safeFullName(enumObject)
+    result.class_name = Safe.safeClassName(enumObject)
+    if result.full_name ~= MOVEMENT_MODE_ENUM_FULL_NAME then
+        result.status = "ENUM_OBJECT_IDENTITY_MISMATCH"
+        return result
+    end
+    if not result.class_name:match("%.Enum$") then
+        result.status = "UNEXPECTED_ENUM_OBJECT_CLASS"
+        return result
+    end
+
+    local enumName, nameError, nameStatus = Safe.safeMethod(
+        enumObject, "GetNameByValue", MOVEMENT_MODE_VALUE_TO_RESOLVE
+    )
+    result.value_lookup_status = nameStatus or (nameError and "CALL_ERROR" or "UNKNOWN")
+    if enumName ~= nil then
+        local nameText, textError, textStatus = Safe.safeMethod(enumName, "ToString")
+        if nameText ~= nil then
+            result.enum_entries[1] = {
+                value = MOVEMENT_MODE_VALUE_TO_RESOLVE,
+                name = tostring(nameText)
+            }
+            result.value_lookup_status = "OK"
+        else
+            result.value_lookup_error = textError and conciseDiagnostic(textError) or nil
+            result.value_lookup_status = textStatus or "NAME_CONVERSION_UNAVAILABLE"
+        end
+    else
+        result.value_lookup_error = nameError and conciseDiagnostic(nameError) or nil
+    end
+
+    result.status = "FOUND"
+    return result
+end
+
+-- Audit descriptor capabilities separately from the exact engine-enum lookup.
+-- No descriptor accessor is guessed or invoked.
 local function enumAssociationCapabilityAudit(property, descriptor)
     local methodCapabilities = {}
     for _, methodName in ipairs({ "GetFullName", "GetFName", "GetClass", "IsA" }) do
         methodCapabilities[methodName] = Safe.methodCapability(property, methodName)
     end
 
+    local enumLookup = { status = "NOT_APPLICABLE", enum_entries = {} }
+    if descriptor.property_class == "ByteProperty" and descriptor.name == "MovementMode" then
+        enumLookup = resolveKnownMovementModeEnum()
+    end
+
     local associationStatus = "NOT_AN_ENUM_PROPERTY_CLASS"
     if descriptor.property_class == "ByteProperty" then
-        associationStatus = "BYTE_PROPERTY_ASSOCIATION_UNVERIFIED"
+        associationStatus = enumLookup.status == "FOUND"
+            and "ENGINE_ENUM_CANDIDATE_FOUND_NOT_DIRECT_PROPERTY_LINK"
+            or "BYTE_PROPERTY_ASSOCIATION_UNVERIFIED"
     elseif descriptor.property_class == "EnumProperty" then
         associationStatus = "ENUM_PROPERTY_TYPE_CONFIRMED_REFERENCE_UNAVAILABLE"
     end
@@ -138,13 +214,28 @@ local function enumAssociationCapabilityAudit(property, descriptor)
         status = associationStatus,
         descriptor_property_class = descriptor.property_class,
         documented_property_method_capabilities = methodCapabilities,
-        enum_reference_status = "NO_DOCUMENTED_BYTEPROPERTY_ENUM_ACCESSOR",
-        enum_api_status = "UENUM_METHODS_REQUIRE_AN_EXISTING_UENUM_REFERENCE",
-        enum_entries_status = "NOT_ENUMERATED_NO_VERIFIED_UENUM_REFERENCE",
+        enum_reference_status = enumLookup.status,
+        enum_object_lookup = enumLookup,
+        enum_api_status = enumLookup.status == "FOUND" and "UENUM_GETNAMEBYVALUE_LOOKUP_ATTEMPTED"
+            or "UENUM_METHODS_REQUIRE_AN_EXISTING_UENUM_REFERENCE",
+        enum_entries = enumLookup.enum_entries or {},
+        enum_entries_status = #enumLookup.enum_entries > 0
+            and "TARGETED_VALUE_LOOKUP_ONLY" or "NO_ENUM_ENTRY_RESOLVED",
         documentation_scope = "UE4SS_4.0.0_LUA_API",
-        note = "The documented Property API exposes generic descriptor identity methods but no ByteProperty-to-UEnum accessor. UEnum lookup methods cannot identify the associated enum without an independently obtained UEnum reference.",
-        safety = "PROPERTY_DESCRIPTOR_CAPABILITY_LOOKUPS_ONLY_NO_ENUM_ACCESSOR_OR_ENUMERATION_CALLS"
+        note = "The ByteProperty descriptor still exposes no direct UEnum reference. The toolkit performs one exact StaticFindObject lookup for /Script/Engine.EMovementMode and, if the returned object identity and UEnum class are confirmed, resolves only value 3 with UEnum:GetNameByValue. This is a corroborating engine-enum candidate, not a pointer extracted from the property descriptor.",
+        safety = "EXACT_STATIC_ENUM_OBJECT_LOOKUP_AND_TARGETED_UENUM_NAME_LOOKUP_NO_PROPERTY_VALUE_READS_NO_GAMEPLAY_FUNCTIONS"
     }
+end
+
+local function enumAssociationStatus(descriptor, capabilityAudit)
+    if descriptor.property_class == "ByteProperty" then
+        return capabilityAudit and capabilityAudit.status == "ENGINE_ENUM_CANDIDATE_FOUND_NOT_DIRECT_PROPERTY_LINK"
+            and "ENGINE_ENUM_CANDIDATE_FOUND_ASSOCIATION_NOT_DIRECTLY_EXPOSED"
+            or "BYTE_PROPERTY_ENUM_ASSOCIATION_UNVERIFIED"
+    elseif descriptor.property_class == "EnumProperty" then
+        return "ENUM_PROPERTY_TYPE_CONFIRMED_ENUM_REFERENCE_UNAVAILABLE"
+    end
+    return "NOT_AN_ENUM_PROPERTY_CLASS"
 end
 local function enumerateProperties(struct, output, limit, namedPropertyAudit, declaringClass)
     local diagnostic = {
@@ -184,13 +275,11 @@ local function enumerateProperties(struct, output, limit, namedPropertyAudit, de
                     namedPropertyAudit.descriptor = record
                     namedPropertyAudit.declaring_class = declaringClass
                     namedPropertyAudit.enum_association_capability_audit = enumAssociationCapabilityAudit(property, record)
-                    if record.property_class == "EnumProperty" then
-                        namedPropertyAudit.enum_association_status = "ENUM_PROPERTY_TYPE_CONFIRMED_ENUM_REFERENCE_UNAVAILABLE"
-                    elseif record.property_class == "ByteProperty" then
-                        namedPropertyAudit.enum_association_status = "BYTE_PROPERTY_ENUM_ASSOCIATION_UNVERIFIED"
-                    else
-                        namedPropertyAudit.enum_association_status = "NOT_AN_ENUM_PROPERTY_CLASS"
-                    end
+                    namedPropertyAudit.enum_association_status = enumAssociationStatus(
+                        record, namedPropertyAudit.enum_association_capability_audit
+                    )
+                    namedPropertyAudit.enum_entries =
+                        namedPropertyAudit.enum_association_capability_audit.enum_entries or {}
                 end
             end
             diagnostic.stop_reason = diagnostic.properties_captured > 0
@@ -263,6 +352,9 @@ local function lookupNamedProperty(struct, propertyName, lookupClass)
         local record = propertyRecord(property)
         diagnostic.descriptor = record
         diagnostic.enum_association_capability_audit = enumAssociationCapabilityAudit(property, record)
+        diagnostic.enum_association_status = enumAssociationStatus(
+            record, diagnostic.enum_association_capability_audit
+        )
         return record, diagnostic
     end
 
@@ -521,10 +613,10 @@ function M.inspect(object, options)
                 namedPropertyAudit.descriptor = descriptor
                 namedPropertyAudit.lookup_scope_class = classFullName
                 namedPropertyAudit.enum_association_capability_audit = lookupDiagnostic.enum_association_capability_audit
-                namedPropertyAudit.enum_association_status = descriptor.property_class == "EnumProperty"
-                    and "ENUM_PROPERTY_TYPE_CONFIRMED_ENUM_REFERENCE_UNAVAILABLE"
-                    or (descriptor.property_class == "ByteProperty" and "BYTE_PROPERTY_ENUM_ASSOCIATION_UNVERIFIED"
-                    or "NOT_AN_ENUM_PROPERTY_CLASS")
+                namedPropertyAudit.enum_association_status = lookupDiagnostic.enum_association_status
+                    or enumAssociationStatus(descriptor, lookupDiagnostic.enum_association_capability_audit)
+                namedPropertyAudit.enum_entries =
+                    namedPropertyAudit.enum_association_capability_audit.enum_entries or {}
             end
         end
 
