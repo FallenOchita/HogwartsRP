@@ -12,7 +12,8 @@ async function createTicket({client,guild,user,typeId,answers}){
  {id:user.id,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ReadMessageHistory,PermissionFlagsBits.AttachFiles,PermissionFlagsBits.EmbedLinks]},
  {id:client.user.id,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ReadMessageHistory,PermissionFlagsBits.ManageChannels,PermissionFlagsBits.AttachFiles]}
  ];
- const configuredStaffRole=roleFor(type);if(configuredStaffRole&&!guild.roles.cache.has(configuredStaffRole))throw new Error("Configured staff role for "+type.department+" was not found in this server.");const staffRole=configuredStaffRole;if(staffRole)overwrites.push({id:staffRole,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ReadMessageHistory,PermissionFlagsBits.AttachFiles]});
+ const configuredStaffRole=typeId==="report-staff"?null:roleFor(type);if(configuredStaffRole&&!guild.roles.cache.has(configuredStaffRole))throw new Error("Configured staff role for "+type.department+" was not found in this server.");const staffRole=configuredStaffRole;if(staffRole)overwrites.push({id:staffRole,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ReadMessageHistory,PermissionFlagsBits.AttachFiles]});
+ if(typeId==="report-staff")for(const adminRoleId of config.adminRoleIds)if(guild.roles.cache.has(adminRoleId))overwrites.push({id:adminRoleId,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ReadMessageHistory,PermissionFlagsBits.AttachFiles]});
  await userState.reserve(guild.id,user.id);
  try{
   channel=await guild.channels.create({name,type:ChannelType.GuildText,parent:categoryFor(type),topic:"HogwartsRP ticket "+ticketId+" | "+type.label+" | opener "+user.id,permissionOverwrites:overwrites,reason:"Ticket opened by "+user.tag});
