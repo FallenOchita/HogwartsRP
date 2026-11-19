@@ -75,22 +75,22 @@
           <h3>Discord</h3>
           <p>Connect your Discord identity to your HogwartsRP account.</p>
           <div class="state" data-provider-state="discord">Checking connection…</div>
-          <button class="secondary" type="button" data-unlink="discord" hidden>Disconnect Discord</button>
+          <div class="provider-actions"><button type="button" data-connect="discord">Connect Discord</button><button class="secondary" type="button" data-unlink="discord" hidden>Disconnect Discord</button></div>
         </article>
         <article class="provider">
           <h3>Steam</h3>
           <p>Connect your Steam identity to your HogwartsRP account.</p>
-          <div class="state" data-provider-state="steam">Checking connection…</div>
+          <div class="state" data-provider-state="steam">Not connected</div><div class="sub">Connection setup is coming in a later update.</div>
           <button class="secondary" type="button" data-unlink="steam" hidden>Disconnect Steam</button>
         </article>
         <article class="provider">
           <h3>Epic Games</h3>
           <p>Connect your Epic Games identity to your HogwartsRP account.</p>
-          <div class="state" data-provider-state="epic">Checking connection…</div>
+          <div class="state" data-provider-state="epic">Not connected</div><div class="sub">Connection setup is coming in a later update.</div>
           <button class="secondary" type="button" data-unlink="epic" hidden>Disconnect Epic Games</button>
         </article>
       </div>
-      <div class="notice">Connected-state and disconnect controls are available when signed in. Provider verification and connect flows are being integrated separately. A linked account proves identity only; it does not grant game ownership, server access, permissions, or Discord server membership.</div>
+      <div class="notice">Discord linking is available when configured by the portal operator. Steam and Epic linking are being integrated separately. A linked account proves identity only; it does not grant game ownership, server access, permissions, or Discord server membership.</div>
     </section>
     <footer>HogwartsRP · Central account portal</footer>
   </main>
