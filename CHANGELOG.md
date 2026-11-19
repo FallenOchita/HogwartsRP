@@ -11,7 +11,7 @@ All notable HogwartsRP changes are recorded here.
 - Caches one bounded metadata pass per reflected class and preserves partial captures with per-class enumeration diagnostics.
 - Adds explicit complete, partial, failed, and not-attempted outcomes; no failed enumeration is treated as proof that uncaptured properties are absent.
 - Raises report serialization depth to ten levels so grouped class hierarchies are fully visible, with a 50,000-line output ceiling and explicit truncation marker.
-- Adds standalone Lua regression coverage for successful catalogs, callback-continuation failures, and duplicate-class caching.
+- Adds standalone Lua regression coverage for successful catalogs, callback-continuation failures, and duplicate-class caching; the Linux CI job runs both the new catalog spec and the existing property-value audit spec.
 
 
 ### Added — Component class hierarchy inventory
