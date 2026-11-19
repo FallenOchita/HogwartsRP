@@ -6,8 +6,11 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon Condition="Exists('Assets/HogwartsRP.ico')">Assets/HogwartsRP.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="Assets/HogwartsRP.ico" CopyToOutputDirectory="PreserveNewest" Condition="Exists('Assets/HogwartsRP.ico')" />
+    <Content Include="Assets/HogwartsRP-Splash.jpg" CopyToOutputDirectory="PreserveNewest" Condition="Exists('Assets/HogwartsRP-Splash.jpg')" />
     <ProjectReference Include="..\\HogwartsRP.Launcher\\HogwartsRP.Launcher.csproj" />
     <ProjectReference Include="..\\HogwartsRP.Networking.Client\\HogwartsRP.Networking.Client.csproj" />
   </ItemGroup>
