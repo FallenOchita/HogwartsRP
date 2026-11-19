@@ -76,11 +76,11 @@ local function findTargets()
     }
 end
 
-local function inspectMetadata(object)
+local function inspectMetadata(object, options)
     if not Reflection then
         return { status = "REFLECTION_MODULE_UNAVAILABLE", properties = {}, functions = {}, class_chain = {} }
     end
-    local ok, result = pcall(function() return Reflection.inspect(object) end)
+    local ok, result = pcall(function() return Reflection.inspect(object, options) end)
     if ok and type(result) == "table" then return result end
     return { status = "REFLECTION_FAILED", error = tostring(result), properties = {}, functions = {}, class_chain = {} }
 end
@@ -127,7 +127,7 @@ local function runResearch(targets, finalAttempt)
 
         catalog.reflection.player = inspectMetadata(player)
         catalog.reflection.controller = inspectMetadata(controller)
-        catalog.reflection.movement = inspectMetadata(movement)
+        catalog.reflection.movement = inspectMetadata(movement, { named_property = "MovementMode" })
         if Reflection and Reflection.capabilityReport then
             catalog.reflection.provider_capabilities = Reflection.capabilityReport({
                 player = player, controller = controller, movement = movement
@@ -163,18 +163,14 @@ local function runResearch(targets, finalAttempt)
             controller_metadata = catalog.reflection.controller.properties,
             movement_metadata = catalog.reflection.movement.properties
         }
-        if Reflection and Reflection.inspectNamedProperty then
-            catalog.properties.movement_mode_enum_audit =
-                Reflection.inspectNamedProperty(movement, "MovementMode")
-        else
-            catalog.properties.movement_mode_enum_audit = {
+        catalog.properties.movement_mode_enum_audit =
+            catalog.reflection.movement.named_property_audit or {
                 status = "AUDIT_UNAVAILABLE",
                 property = "MovementMode",
                 enum_association_status = "NOT_ESTABLISHED",
                 enum_entries = {},
                 safety = "NO_PROPERTY_VALUE_READS_NO_GAMEPLAY_FUNCTION_INVOCATION"
             }
-        end
 
         catalog.functions = {
             candidate_presence_probes = Discovery.functions(player, {

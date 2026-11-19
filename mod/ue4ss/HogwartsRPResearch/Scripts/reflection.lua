@@ -68,19 +68,36 @@ local function functionRecord(fn, maxFields)
     }
 end
 
-local function enumerateProperties(struct, output, limit)
+local function enumerateProperties(struct, output, limit, namedPropertyAudit, declaringClass)
     local errorMessage = nil
     local ok, err = pcall(function()
         local result, callError = Safe.safeMethod(struct, "ForEachProperty", function(property)
             if #output >= limit then return true end
             if Safe.isValidObject(property) then
-                output[#output + 1] = propertyRecord(property)
+                local record = propertyRecord(property)
+                output[#output + 1] = record
+                if namedPropertyAudit and record.name == namedPropertyAudit.property then
+                    namedPropertyAudit.status = "FOUND"
+                    namedPropertyAudit.descriptor = record
+                    namedPropertyAudit.declaring_class = declaringClass
+                    if record.property_class == "EnumProperty" then
+                        namedPropertyAudit.enum_association_status = "ENUM_PROPERTY_TYPE_CONFIRMED_ENUM_REFERENCE_UNAVAILABLE"
+                    elseif record.property_class == "ByteProperty" then
+                        namedPropertyAudit.enum_association_status = "BYTE_PROPERTY_ENUM_ASSOCIATION_UNVERIFIED"
+                    else
+                        namedPropertyAudit.enum_association_status = "NOT_AN_ENUM_PROPERTY_CLASS"
+                    end
+                end
             end
             return false
         end)
         if result == nil and callError ~= nil then errorMessage = tostring(callError) end
     end)
     if not ok then errorMessage = tostring(err) end
+    if errorMessage and namedPropertyAudit and namedPropertyAudit.status ~= "FOUND" then
+        namedPropertyAudit.status = "ENUMERATION_INCOMPLETE"
+        namedPropertyAudit.enumeration_error = errorMessage
+    end
     return errorMessage
 end
 
@@ -154,6 +171,17 @@ function M.inspect(object, options)
     end
 
     local properties, functions, classChain = {}, {}, {}
+    local namedPropertyAudit = nil
+    if type(options.named_property) == "string" then
+        namedPropertyAudit = {
+            status = "PROPERTY_NOT_FOUND",
+            property = options.named_property,
+            object = Safe.safeFullName(object),
+            enum_association_status = "NOT_ESTABLISHED",
+            enum_entries = {},
+            safety = "REFLECTION_PROPERTY_ENUMERATION_METADATA_ONLY_NO_VALUE_READS_NO_ENUMERATION_OF_ENUM_VALUES"
+        }
+    end
     local seenClasses = {}
     local current = class
     local propertyErrors, functionErrors = {}, {}
@@ -167,7 +195,7 @@ function M.inspect(object, options)
         classChain[#classChain + 1] = classFullName
 
         if #properties < limits.max_properties then
-            local err = enumerateProperties(current, properties, limits.max_properties)
+            local err = enumerateProperties(current, properties, limits.max_properties, namedPropertyAudit, classFullName)
             if err then propertyErrors[#propertyErrors + 1] = {
                 class = classFullName, status = "PARTIAL_OR_FAILED", detail = err
             } end
@@ -186,6 +214,11 @@ function M.inspect(object, options)
         current = Safe.safeMethod(current, "GetSuperStruct")
     end
 
+    if namedPropertyAudit and namedPropertyAudit.status == "PROPERTY_NOT_FOUND"
+        and #properties >= limits.max_properties then
+        namedPropertyAudit.status = "ENUMERATION_LIMIT_REACHED"
+    end
+
     return {
         status = (#properties > 0 or #functions > 0) and "ENUMERATED" or "NO_METADATA_ENUMERATED",
         object = Safe.safeFullName(object),
@@ -198,79 +231,10 @@ function M.inspect(object, options)
         functions_truncated = #functions >= limits.max_functions,
         property_enumeration_errors = propertyErrors,
         function_enumeration_errors = functionErrors,
+        named_property_audit = namedPropertyAudit,
         safety = "METADATA_ONLY_NO_PROPERTY_VALUE_READS_NO_UFUNCTION_INVOCATION"
     }
 end
 
-
--- Inspect one named property descriptor across the object's reflected class
--- hierarchy. Only documented metadata identity APIs are used; the descriptor's
--- associated UEnum is not guessed or dereferenced.
-function M.inspectNamedProperty(object, propertyName)
-    local report = {
-        status = "NOT_FOUND",
-        property = propertyName,
-        object = Safe.isValidObject(object) and Safe.safeFullName(object) or "UNAVAILABLE",
-        class_chain = {},
-        enum_association_status = "NOT_ESTABLISHED",
-        enum_entries = {},
-        safety = "PROPERTY_DESCRIPTOR_METADATA_ONLY_NO_VALUE_READS_NO_ENUMERATION_OF_ENUM_VALUES"
-    }
-    if not Safe.isValidObject(object) or type(propertyName) ~= "string" then
-        report.status = "INVALID_INPUT"
-        return report
-    end
-
-    local current = Safe.safeMethod(object, "GetClass")
-    if not Safe.isValidObject(current) then
-        report.status = "CLASS_UNAVAILABLE"
-        return report
-    end
-
-    local seen, found = {}, nil
-    for _ = 1, DEFAULTS.max_super_depth do
-        if not Safe.isValidObject(current) then break end
-        local classFullName = Safe.safeFullName(current)
-        if seen[classFullName] then break end
-        seen[classFullName] = true
-        report.class_chain[#report.class_chain + 1] = classFullName
-
-        local _, enumError, enumStatus = Safe.safeMethod(current, "ForEachProperty", function(property)
-            if Safe.isValidObject(property) and fieldName(property) == propertyName then
-                found = {
-                    name = fieldName(property),
-                    full_name = Safe.safeFullName(property),
-                    property_class = fieldClassName(property),
-                    property_class_full_name = Safe.safeClassName(property)
-                }
-                return true
-            end
-            return false
-        end)
-        if found then break end
-        if enumError ~= nil then
-            report.enumeration_error = tostring(enumError)
-            report.enumeration_status = enumStatus or "CALL_ERROR"
-        end
-        current = Safe.safeMethod(current, "GetSuperStruct")
-    end
-
-    if not found then
-        report.status = report.enumeration_error and "ENUMERATION_INCOMPLETE" or "PROPERTY_NOT_FOUND"
-        return report
-    end
-
-    report.status = "FOUND"
-    report.descriptor = found
-    if found.property_class == "EnumProperty" then
-        report.enum_association_status = "ENUM_PROPERTY_TYPE_CONFIRMED_ENUM_REFERENCE_UNAVAILABLE"
-    elseif found.property_class == "ByteProperty" then
-        report.enum_association_status = "BYTE_PROPERTY_ENUM_ASSOCIATION_UNVERIFIED"
-    else
-        report.enum_association_status = "NOT_AN_ENUM_PROPERTY_CLASS"
-    end
-    report.note = "UE4SS 4.0.0 documents Property:GetClass/GetFName/GetFullName but does not document a property-to-UEnum accessor. The property class is reported without guessing an enum association; enum names and values remain unavailable."
-    return report
-end
 
 return M
