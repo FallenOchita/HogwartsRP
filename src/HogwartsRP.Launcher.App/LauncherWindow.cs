@@ -48,7 +48,6 @@ internal sealed class LauncherWindow : Form
                 try { await _connection.DisconnectAsync(); } catch { }
             }
             _oidc?.Dispose();
-            _network.Dispose();
         };
     }
 
