@@ -102,3 +102,13 @@ The MovementMode audit now supplements the class-by-class ForEachProperty invent
 The direct lookup has its own per-class diagnostics and an independent direct_lookup_status. Outcomes distinguish a descriptor found, a property not found on a queried class, and an incomplete lookup caused by an unavailable or failing reflection method. A descriptor's full name is retained as the evidence for its declaring type; lookup_scope_class is not automatically treated as the declaring class because the API documentation does not specify whether GetProperty includes inherited descriptors.
 
 This API returns property metadata only. It does not provide a documented property-to-UEnum accessor or enumerator list, so enum association remains unverified unless separately established. The existing ForEachProperty inventory and its diagnostics remain intact; a failed enumeration does not invalidate a successful direct lookup.
+
+## ByteProperty enum-association capability audit
+
+When the direct MovementMode lookup returns a ByteProperty, the report now records a capability audit of the descriptor's documented generic methods (GetFullName, GetFName, GetClass, and IsA). These are protected member lookups only; the methods are not invoked by this audit. It records the descriptor's property-class identity and explicitly marks the enum reference as unavailable through the documented UE4SS 4.0.0 Property API.
+
+The report exposes this as enum_association_capability_audit, including documented_property_method_capabilities, descriptor_property_class, enum_reference_status, enum_api_status, and enum_entries_status. Capability method results use the same EXPOSED_NOT_INVOKED / METHOD_UNAVAILABLE / LOOKUP_ERROR distinction as the existing provider audit. The shared object-validity guard may perform its normal validity check; the listed capability methods themselves are only looked up.
+
+The UE4SS 4.0.0 API documents UEnum lookup/enumeration methods, but those methods require an existing UEnum object. It does not document a ByteProperty accessor that supplies the associated enum reference. Therefore, the toolkit does not guess accessor names, inspect offsets, invoke undocumented methods, or enumerate arbitrary enums. The report retains BYTE_PROPERTY_ASSOCIATION_UNVERIFIED, NO_DOCUMENTED_BYTEPROPERTY_ENUM_ACCESSOR, and NOT_ENUMERATED_NO_VERIFIED_UENUM_REFERENCE until a supported reference path is established.
+
+This capability audit is metadata-only. It does not read the live property value, inspect opaque userdata, call gameplay UFunctions, write properties, or enumerate enum entries.

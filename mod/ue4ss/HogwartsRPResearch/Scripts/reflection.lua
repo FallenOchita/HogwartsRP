@@ -75,6 +75,33 @@ local function conciseDiagnostic(value)
     return message
 end
 
+-- Audit the documented metadata surface exposed by a property descriptor.
+-- Capability methods are looked up only; no enum accessor is invoked or guessed.
+local function enumAssociationCapabilityAudit(property, descriptor)
+    local methodCapabilities = {}
+    for _, methodName in ipairs({ "GetFullName", "GetFName", "GetClass", "IsA" }) do
+        methodCapabilities[methodName] = Safe.methodCapability(property, methodName)
+    end
+
+    local associationStatus = "NOT_AN_ENUM_PROPERTY_CLASS"
+    if descriptor.property_class == "ByteProperty" then
+        associationStatus = "BYTE_PROPERTY_ASSOCIATION_UNVERIFIED"
+    elseif descriptor.property_class == "EnumProperty" then
+        associationStatus = "ENUM_PROPERTY_TYPE_CONFIRMED_REFERENCE_UNAVAILABLE"
+    end
+
+    return {
+        status = associationStatus,
+        descriptor_property_class = descriptor.property_class,
+        documented_property_method_capabilities = methodCapabilities,
+        enum_reference_status = "NO_DOCUMENTED_BYTEPROPERTY_ENUM_ACCESSOR",
+        enum_api_status = "UENUM_METHODS_REQUIRE_AN_EXISTING_UENUM_REFERENCE",
+        enum_entries_status = "NOT_ENUMERATED_NO_VERIFIED_UENUM_REFERENCE",
+        documentation_scope = "UE4SS_4.0.0_LUA_API",
+        note = "The documented Property API exposes generic descriptor identity methods but no ByteProperty-to-UEnum accessor. UEnum lookup methods cannot identify the associated enum without an independently obtained UEnum reference.",
+        safety = "PROPERTY_DESCRIPTOR_CAPABILITY_LOOKUPS_ONLY_NO_ENUM_ACCESSOR_OR_ENUMERATION_CALLS"
+    }
+end
 local function enumerateProperties(struct, output, limit, namedPropertyAudit, declaringClass)
     local diagnostic = {
         class = declaringClass,
@@ -104,6 +131,7 @@ local function enumerateProperties(struct, output, limit, namedPropertyAudit, de
                     namedPropertyAudit.status = "FOUND"
                     namedPropertyAudit.descriptor = record
                     namedPropertyAudit.declaring_class = declaringClass
+                    namedPropertyAudit.enum_association_capability_audit = enumAssociationCapabilityAudit(property, record)
                     if record.property_class == "EnumProperty" then
                         namedPropertyAudit.enum_association_status = "ENUM_PROPERTY_TYPE_CONFIRMED_ENUM_REFERENCE_UNAVAILABLE"
                     elseif record.property_class == "ByteProperty" then
@@ -171,6 +199,7 @@ local function lookupNamedProperty(struct, propertyName, lookupClass)
         diagnostic.status = "FOUND"
         local record = propertyRecord(property)
         diagnostic.descriptor = record
+        diagnostic.enum_association_capability_audit = enumAssociationCapabilityAudit(property, record)
         return record, diagnostic
     end
 
@@ -260,6 +289,7 @@ function M.inspect(object, options)
             property = options.named_property,
             object = Safe.safeFullName(object),
             enum_association_status = "NOT_ESTABLISHED",
+            enum_association_capability_audit = { status = "NOT_ATTEMPTED" },
             enum_entries = {},
             direct_lookup_diagnostics = {},
             direct_lookup_status = "NOT_ATTEMPTED",
@@ -285,6 +315,7 @@ function M.inspect(object, options)
                 namedPropertyAudit.status = "FOUND"
                 namedPropertyAudit.descriptor = descriptor
                 namedPropertyAudit.lookup_scope_class = classFullName
+                namedPropertyAudit.enum_association_capability_audit = lookupDiagnostic.enum_association_capability_audit
                 namedPropertyAudit.enum_association_status = descriptor.property_class == "EnumProperty"
                     and "ENUM_PROPERTY_TYPE_CONFIRMED_ENUM_REFERENCE_UNAVAILABLE"
                     or (descriptor.property_class == "ByteProperty" and "BYTE_PROPERTY_ENUM_ASSOCIATION_UNVERIFIED"
