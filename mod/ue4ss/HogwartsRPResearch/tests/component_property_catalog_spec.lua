@@ -36,8 +36,11 @@ local function class(fullName, properties, parent, failAfterFirst)
         GetSuperStruct = function() return parent end,
         ForEachProperty = function(_, callback)
             if failAfterFirst then
-                if properties[1] then callback(properties[1]) end
-                error(type(failAfterFirst) == "string" and failAfterFirst or "synthetic continuation failure")
+                local shouldStop = properties[1] and callback(properties[1]) or false
+                if not shouldStop then
+                    error(type(failAfterFirst) == "string" and failAfterFirst or "synthetic continuation failure")
+                end
+                return false
             end
             for _, item in ipairs(properties) do
                 if callback(item) then break end
@@ -69,6 +72,11 @@ equal(complete.class_diagnostics[1].iteration_probe.status, "OK", "successful mi
 equal(complete.class_diagnostics[1].iteration_probe.callback_invocations, 1, "successful minimal probe callback count")
 equal(complete.class_diagnostics[1].iteration_probe.callback_invocations,
     complete.class_diagnostics[1].callback_invocations, "successful probe/detail callback count parity")
+equal(complete.class_diagnostics[1].iteration_stop_probe.status, "OK", "successful early-stop probe status")
+equal(complete.class_diagnostics[1].iteration_stop_probe.callback_mode,
+    "COUNT_ONLY_STOP_AFTER_FIRST_RETURN_TRUE", "early-stop callback mode")
+equal(complete.class_diagnostics[1].iteration_stop_probe.callback_invocations, 1,
+    "successful early-stop callback count")
 
 local longSyntheticError = "synthetic continuation failure " .. string.rep("diagnostic-detail-", 24)
 local failingClass = class("Class /Script/Test.FailingComponent", {
@@ -87,6 +95,8 @@ equal(failingDiagnostic.iteration_probe.status, "CALL_ERROR_AFTER_CALLBACK", "mi
 equal(failingDiagnostic.iteration_probe.callback_invocations, 1, "minimal probe callback count")
 equal(failingDiagnostic.iteration_probe.callback_invocations,
     failingDiagnostic.callback_invocations, "failing probe/detail callback count parity")
+equal(failingDiagnostic.iteration_stop_probe.status, "OK", "early-stop probe should avoid continuation failure")
+equal(failingDiagnostic.iteration_stop_probe.callback_invocations, 1, "early-stop probe callback count")
 assert(failingDiagnostic.iteration_probe.error:find("synthetic continuation failure", 1, true),
     "minimal probe should preserve the original error text")
 assert(failingDiagnostic.iteration_probe.error_length > 180,

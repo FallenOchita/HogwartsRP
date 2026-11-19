@@ -5,6 +5,13 @@
 All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
+### Added — ForEachProperty early-stop comparison
+
+- Added a second count-only probe that returns `true` on its first callback, exercising the documented early-stop path without inspecting the property descriptor.
+- Reports the early-stop result separately from the existing `false`-return continuation probe and the detailed descriptor pass, making it possible to distinguish continuation failures from failures that occur even when iteration is stopped immediately.
+- Added regression coverage showing that a synthetic continuation failure is avoided by the early-stop probe while the `false`-return probe still reproduces it.
+- The probes remain read-only reflection metadata operations; no property values, gameplay functions, or game state are accessed or changed.
+
 
 ### Added — ForEachProperty callback diagnostics
 
