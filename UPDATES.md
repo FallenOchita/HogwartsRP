@@ -1,3 +1,26 @@
+## 2026-11-19 — Hogwarts Legacy asset research toolkit baseline
+
+### Added
+
+- Added tools/asset-research/asset_research.py, a standard-library Python scanner, classifier, metadata heuristic, report generator, and search CLI.
+- Added a PowerShell launcher and example configuration for Steam or Epic installation paths.
+- Added SHA-256 streaming hashes, timestamps, relative paths, file sizes, file extensions, and container flags for all discovered regular files.
+- Added loose Unreal asset candidates, path/name-based categories, printable-string reference candidates, and a dependency graph whose edges are explicitly marked unverified.
+- Added JSON/Markdown/HTML outputs for file inventory and candidate Blueprint, character, animation, audio, world/map/level, localization, DataTable, Enum, and Struct catalogs.
+- Added synthetic unit tests and architecture/roadmap documentation.
+
+### Safety and validation boundary
+
+- The game installation is a read-only source. Reports/logs are written outside the game root; the CLI rejects output nested inside the scanned installation.
+- .pak/.utoc/.ucas files are inventoried only. No extraction, decryption, key recovery, DRM/authentication bypass, anti-cheat circumvention, executable patching, or asset modification is implemented.
+- Loose .uasset/.umap metadata is heuristic. This baseline does not claim full Blueprint variables/functions/interfaces/components or authoritative package dependencies.
+- .locres resources are inventoried but not decoded in this baseline.
+- Automated tests and live Steam/Epic scans must be run before this implementation is considered validated.
+
+### Next step
+
+Run the Python test suite, scan the user's installation with the report output outside the game directory, and review RunSummary.json and the candidate catalogs. Then select a documented UE4.27 parser adapter for deeper metadata extraction.
+
 ## 2026-11-19 — Research toolkit Lua startup syntax correction
 
 ### Fixed
