@@ -4,7 +4,7 @@
 
 - Fixed a timing race where the worker stdout pipe could close just before the process handle reported termination, causing the supervisor to publish a null exit code.
 - The supervisor now awaits process termination before reading `ExitCode` and notifying worker-exit observers.
-- Added the correction to the existing PR #45 milestone; a fresh Windows and Ubuntu CI run is required to verify it.
+- A fresh Windows and Ubuntu CI run is required to verify this correction.
 
 ## 2026-11-18 — Rust worker integration tests and exit supervision
 
