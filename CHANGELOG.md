@@ -4,6 +4,11 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Fixed — Rust worker exit supervision race
+
+- Wait for the worker process to fully exit after stdout reaches EOF before reading its exit code or notifying observers.
+- Prevented a timing race that could report a null exit code on Unix even when the worker exited with a known nonzero code.
+
 ### Added — Rust resource runtime integration
 
 - Added precompiled Rust worker declarations through repeated `rust_script` manifest entries, with resource-relative path validation.

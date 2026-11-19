@@ -1,0 +1,8 @@
+[package]
+name = "hogwartsrp-test-worker"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+hogwartsrp-resource-sdk = { path = "../../crates/hogwartsrp-resource-sdk" }
+serde_json = "1"

@@ -1,3 +1,25 @@
+## 2026-11-19 — Rust worker exit-code race correction
+
+### Fixed
+
+- Fixed a timing race where the worker stdout pipe could close just before the process handle reported termination, causing the supervisor to publish a null exit code.
+- The supervisor now awaits process termination before reading `ExitCode` and notifying worker-exit observers.
+- A fresh Windows and Ubuntu CI run is required to verify this correction.
+
+## 2026-11-18 — Rust worker integration tests and exit supervision
+
+### Added
+
+- Added a dedicated Rust test worker fixture used by the .NET integration suite on Windows and Ubuntu.
+- Added real process tests for worker readiness, command and network-event registration, command invocation, event dispatch, and stderr delivery.
+- Added a controlled worker-exit scenario to verify exit notification and failure of pending requests.
+
+### Improved
+
+- Exposed worker running/exit state and an exit notification for host lifecycle tracking.
+- Isolated exceptions thrown by registration and diagnostic observers so they cannot break protocol processing.
+- Rejected unexpected response message types instead of treating them as successful requests.
+
 ## 2026-11-18 — Rust resource runtime integration (first slice)
 
 ### Added

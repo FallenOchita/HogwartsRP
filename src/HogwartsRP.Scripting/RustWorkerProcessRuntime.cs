@@ -30,11 +30,14 @@ public sealed class RustWorkerProcessRuntime : IDisposable
 
     public string ExecutablePath { get; }
     public int ProcessId => _process.Id;
+    public bool IsRunning { get { try { return !_process.HasExited; } catch (InvalidOperationException) { return false; } } }
+    public int? ExitCode { get { try { return _process.HasExited ? _process.ExitCode : null; } catch (InvalidOperationException) { return null; } } }
     public IReadOnlyCollection<string> RegisteredCommands => _registeredCommands.Keys.ToArray();
     public IReadOnlyCollection<string> RegisteredNetworkEvents => _registeredNetworkEvents.Keys.ToArray();
     public event Action<string>? CommandRegistered;
     public event Action<string>? NetworkEventRegistered;
     public event Action<string>? WorkerOutput;
+    public event Action<int?>? WorkerExited;
 
     private RustWorkerProcessRuntime(Process process, string executablePath, TimeSpan requestTimeout)
     {
@@ -127,6 +130,7 @@ public sealed class RustWorkerProcessRuntime : IDisposable
                 throw;
             }
             if (response.Type == "request_error") throw new InvalidOperationException(response.Error ?? "Rust resource request failed.");
+            if (response.Type != "request_result") throw new InvalidDataException($"Unexpected Rust worker response type: {response.Type}.");
             return response;
         }
         finally { _pending.TryRemove(id, out _); }
@@ -158,13 +162,13 @@ public sealed class RustWorkerProcessRuntime : IDisposable
                 if (response.Type == "command_registered" && response.Name is not null)
                 {
                     _registeredCommands.TryAdd(response.Name, 0);
-                    CommandRegistered?.Invoke(response.Name);
+                    Notify(CommandRegistered, response.Name);
                     continue;
                 }
                 if (response.Type == "network_event_registered" && response.Name is not null)
                 {
                     _registeredNetworkEvents.TryAdd(response.Name, 0);
-                    NetworkEventRegistered?.Invoke(response.Name);
+                    Notify(NetworkEventRegistered, response.Name);
                     continue;
                 }
                 if (response.Id is not null && _pending.TryGetValue(response.Id, out var completion))
@@ -177,9 +181,16 @@ public sealed class RustWorkerProcessRuntime : IDisposable
         {
             if (!_ready.Task.IsCompleted)
                 _ready.TrySetException(new InvalidOperationException("Rust resource exited before its ready message."));
+
+            // stdout can reach EOF just before the process handle reports termination.
+            // Wait for the process itself before reading ExitCode or notifying observers.
+            try { await _process.WaitForExitAsync(); }
+            catch (InvalidOperationException) { }
+
             var exitCode = -1;
             try { if (_process.HasExited) exitCode = _process.ExitCode; } catch (InvalidOperationException) { }
             FailPending(new InvalidOperationException($"Rust resource exited (code {exitCode})."));
+            Notify(WorkerExited, exitCode < 0 ? null : exitCode);
         }
     }
 
@@ -188,10 +199,20 @@ public sealed class RustWorkerProcessRuntime : IDisposable
         try
         {
             while (await _process.StandardError.ReadLineAsync(_lifetime.Token) is { } line)
-                WorkerOutput?.Invoke(line);
+                Notify(WorkerOutput, line);
         }
         catch (OperationCanceledException) { }
         catch (ObjectDisposedException) { }
+    }
+
+    private static void Notify<T>(Action<T>? handlers, T value)
+    {
+        if (handlers is null) return;
+        foreach (Action<T> handler in handlers.GetInvocationList())
+        {
+            try { handler(value); }
+            catch { /* A host observer must not be able to break the worker protocol pump. */ }
+        }
     }
 
     private void FailPending(Exception exception)
