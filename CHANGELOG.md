@@ -6,10 +6,11 @@ All notable HogwartsRP changes are recorded here.
 
 ### Added
 
+- Added a launcher-side character creation draft model that trims and validates names, Hogwarts houses, roleplay text, and optional wand details before building a typed submission.
+- Added dedicated launcher tests for valid draft mapping, invalid names/houses, wand-length bounds, and omitted optional fields.
 - Added dedicated WebSocket client protocol tests covering concurrent character submissions with out-of-order responses and connection loss before a response.
 - Added authenticated WebSocket character submissions backed by the JSON character repository, with server-derived account ownership and correlated results.
 - Wired the character repository into server startup with a configurable `Storage:CharactersPath`.
-
 - A harmless UE4SS Lua diagnostic mod for the Steam PC version, with installation and log-verification instructions.
 - A local PowerShell helper that produces a sanitized UE4SS diagnostic report without uploading or exposing unrelated log content.
 - Regression tests for sanitized UE4SS reports, including status detection, missing logs, optional report output, and exclusion of arbitrary log payloads.
@@ -32,10 +33,10 @@ All notable HogwartsRP changes are recorded here.
 
 ### Limitations
 
+- The launcher character creation draft is a reusable model, not a graphical character-creation screen; the launcher remains a console preview.
 - The JSON character repository is a single-server persistence adapter; it is not a multi-instance database or backup system.
 - Character submission is available through the authenticated launcher/server WebSocket protocol and JSON repository, but it does not create or modify a character inside Hogwarts Legacy.
 - When OIDC is not configured, the console launcher uses a development-ticket prompt for loopback servers only.
 - OIDC sign-in requires issuer and public-client configuration on both launcher and server; RS256 is the only currently accepted ID-token signing algorithm.
 - The launcher owns the current network session. Hogwarts Legacy itself has no compatible multiplayer adapter yet.
 - Direct character-creation entry, game-client event transport, and in-game multiplayer remain unavailable.
-
