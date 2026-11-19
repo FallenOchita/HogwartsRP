@@ -1,3 +1,17 @@
+## 2026-11-19 — Correct MovementMode enum object lookup path
+
+### Fixed
+
+- Separated the `StaticFindObject` object-path argument (`/Script/Engine.EMovementMode`) from the reflected full-name identity (`Enum /Script/Engine.EMovementMode`).
+- Retained exact full-name and UEnum class validation before the targeted `GetNameByValue(3)` call.
+- Added a regression assertion that the lookup receives the object path without the reflected type prefix.
+
+### Safety and validation boundary
+
+- The lookup remains a single exact read-only object lookup and resolves only enum value 3 if the returned object validates.
+- It does not enumerate arbitrary enums, read property values, inspect offsets, invoke gameplay UFunctions, write properties, add hooks, or perform network operations.
+- A fresh in-game PropertyReport is still required to establish whether Hogwarts Legacy's UE4SS runtime resolves the object and returns the expected enum name.
+
 ## 2026-11-19 — Targeted MovementMode enum-object lookup
 
 ### Added
