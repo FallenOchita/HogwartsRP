@@ -66,3 +66,10 @@ For each UFunction, the toolkit records its full name, name, raw function flags,
 Enumeration is bounded to 16 superclass levels, 512 properties, 512 functions, and 96 UFunction-owned property descriptors per function. A report reaching a limit is marked as truncated. Limits can be adjusted in the call to `Reflection.inspect` after observing the cost and output size in the target game.
 
 The first in-game run is the compatibility test. A successful Lua load does not guarantee that every reflected class supports every metadata method in the live Hogwarts Legacy build. Review the reflection status and any enumeration errors in the generated reports before promoting a field into the multiplayer adapter contract.
+
+
+## Movement-mode enum metadata audit
+
+The PropertyReport includes `movement_mode_enum_audit` for the reflected `MovementMode` property on the discovered movement component. The audit walks the reflected class hierarchy and records only the property descriptor's name, full name, property-class name, and class identity. It uses the documented `GetClass`, `GetFName`, `GetFullName`, `ForEachProperty`, and `GetSuperStruct` metadata APIs; it does not read the property value or invoke gameplay functions.
+
+UE4SS 4.0.0's documented Property API does not expose a property-to-`UEnum` accessor. Consequently, an `EnumProperty` descriptor can be identified as enum-backed, but its associated enum object and enumerator names/values cannot be claimed from this API surface. A `ByteProperty` descriptor is especially inconclusive because it may or may not carry enum metadata. The report therefore leaves enum association and enum entries unverified rather than assuming that raw value `3` means `MOVE_Falling`. The live movement value remains raw and locomotion remains `UNCLASSIFIED` until the association is independently established.
