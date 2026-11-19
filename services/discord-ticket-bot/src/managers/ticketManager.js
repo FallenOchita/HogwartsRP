@@ -5,7 +5,7 @@ const roleFor=type=>config.roles[type.department]||null;const categoryFor=type=>
 async function createTicket({client,guild,user,typeId,answers}){
  const type=types[typeId];if(!type)throw new Error("Unknown ticket type");
  const duplicate=await Ticket.findOne({guildId:guild.id,userId:user.id,ticketType:typeId,status:"open"});if(duplicate)throw new Error("You already have an open ticket: <#"+duplicate.channelId+">");
- await userState.reserve(guild.id,user.id);let channel=null,ticket=null;
+ let channel=null,ticket=null;
  const ticketId=ticketNumber(),name=(type.group==="APPEALS"?"appeal":type.group==="REPORTS"?"report":"ticket")+"-"+slug(user.username)+"-"+ticketId;
  const overwrites=[
  {id:guild.roles.everyone.id,deny:[PermissionFlagsBits.ViewChannel]},
