@@ -1,3 +1,16 @@
+### Added — Rust resource SDK and native-core foundation
+
+- Added a Rust workspace with a process-oriented resource SDK, an example Rust resource, and a native-core crate for bounded validation primitives.
+- Added resource/event name validation, argument-count limits, and protocol-frame size limits with unit tests.
+- Added a JSON-lines worker SDK with command/event registration and an explicit server-authoritative trust boundary.
+- Added Ubuntu and Windows CI steps to format and test the Rust workspace.
+- Documented the Rust resource and native-component architecture, security boundaries, and staged integration requirements.
+
+### Scope and integration status
+
+- This is a foundation milestone, not end-to-end Rust resource hosting. The current C# ResourceManager still launches Lua workers only; Rust worker discovery, build/deployment, process supervision, command/event routing, and shutdown integration remain future work.
+- The Rust native-core crate is not yet loaded by .NET through FFI and is not yet on the framework hot path. No performance improvement is claimed.
+
 # Changelog
 
 All notable HogwartsRP changes are recorded here.
