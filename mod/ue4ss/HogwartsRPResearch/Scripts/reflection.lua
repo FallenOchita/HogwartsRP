@@ -214,6 +214,11 @@ function M.inspect(object, options)
         current = Safe.safeMethod(current, "GetSuperStruct")
     end
 
+    if namedPropertyAudit and namedPropertyAudit.status == "PROPERTY_NOT_FOUND"
+        and #properties >= limits.max_properties then
+        namedPropertyAudit.status = "ENUMERATION_LIMIT_REACHED"
+    end
+
     return {
         status = (#properties > 0 or #functions > 0) and "ENUMERATED" or "NO_METADATA_ENUMERATED",
         object = Safe.safeFullName(object),
