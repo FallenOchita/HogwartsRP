@@ -65,3 +65,10 @@ The solution includes `HogwartsRP.Networking.Client.Tests`. Its in-process WebSo
 ## Launcher character draft tests
 
 The solution includes `HogwartsRP.Launcher.Tests`, covering draft-to-submission mapping, field normalization, invalid names and houses, wand-length bounds, and optional fields. These tests do not replace server validation or establish in-game character creation.
+
+
+## Interactive console character creation
+
+After authenticating to a selected server, the console launcher offers roleplay character registration. If accepted, it collects a character name and Hogwarts house, with optional background, biography, and wand details. The draft is validated locally and submitted through the authenticated WebSocket connection. The launcher displays the server's acceptance or rejection result. Declining registration continues the existing launch flow.
+
+This is a console interaction, not a graphical launcher screen. Successful registration stores roleplay metadata on the server; it does not create a character inside Hogwarts Legacy or synchronize appearance, house, wand, position, or other game state.

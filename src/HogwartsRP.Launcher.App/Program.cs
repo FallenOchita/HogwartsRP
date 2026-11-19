@@ -53,6 +53,13 @@ catch (Exception exception)
     return 1;
 }
 
+Console.WriteLine();
+var characterFlow = new CharacterCreationConsoleFlow(
+    Console.In,
+    Console.Out,
+    connection.SubmitCharacterAsync);
+await characterFlow.RunAsync();
+
 var launcher = new LauncherService(new WindowsGameInstallationDetector(), new SteamGameLauncher());
 launcher.StatusChanged += status => Console.WriteLine($"[{status.State}] {status.Message}");
 var result = await launcher.PlayAsync(server);
