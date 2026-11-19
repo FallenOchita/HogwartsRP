@@ -9,7 +9,7 @@ use std::{
     fs,
     io::Write,
     path::PathBuf,
-    sync::mpsc::{self, Receiver},
+    sync::{mpsc::{self, Receiver}, Arc, Mutex},
     thread,
     time::Duration,
 };
@@ -41,6 +41,15 @@ struct HogwartsRpLauncher {
     server_status: String,
     status_receiver: Option<Receiver<Result<String, String>>>,
     account_portal: String,
+    connection: Arc<Mutex<Option<network::WebSocketPlayerNetworkClient>>>,
+    character_name: String,
+    character_house: String,
+    character_background: String,
+    character_biography: String,
+    wand_wood: String,
+    wand_core: String,
+    wand_length: String,
+    wand_flexibility: String,
 }
 
 impl Default for HogwartsRpLauncher {
@@ -56,6 +65,15 @@ impl Default for HogwartsRpLauncher {
             server_status: "Not checked".into(),
             status_receiver: None,
             account_portal,
+            connection: Arc::new(Mutex::new(None)),
+            character_name: String::new(),
+            character_house: "Gryffindor".into(),
+            character_background: String::new(),
+            character_biography: String::new(),
+            wand_wood: String::new(),
+            wand_core: String::new(),
+            wand_length: String::new(),
+            wand_flexibility: String::new(),
         }
     }
 }
@@ -143,6 +161,89 @@ impl HogwartsRpLauncher {
         }
     }
 
+    fn connect_server(&mut self) {
+        let address = self.server_address.trim().to_owned();
+        let issuer = std::env::var("HOGWARTSRP_OIDC_ISSUER").unwrap_or_default();
+        let client_id = std::env::var("HOGWARTSRP_OIDC_CLIENT_ID").unwrap_or_default();
+        let connection = Arc::clone(&self.connection);
+        let (sender, receiver) = mpsc::channel();
+        self.status_receiver = Some(receiver);
+        self.server_status = "Signing in…".into();
+        self.status_message = "Complete sign-in in your browser to connect to the selected server.".into();
+        thread::spawn(move || {
+            let result = (|| {
+                let provider = oidc::OidcJoinCredentialProvider::new(&issuer, &client_id)?;
+                let credential = provider.get_join_credential(&address)?;
+                let client = network::WebSocketPlayerNetworkClient::connect(&address, &credential)?;
+                let display_name = client.session().display_name.clone();
+                let mut slot = connection.lock().map_err(|_| "Launcher connection state is unavailable.".to_owned())?;
+                if let Some(mut previous) = slot.take() { previous.disconnect(); }
+                *slot = Some(client);
+                Ok(format!("Connected as {display_name}."))
+            })();
+            let _ = sender.send(result);
+        });
+    }
+
+    fn disconnect_server(&mut self) {
+        match self.connection.lock() {
+            Ok(mut slot) => {
+                if let Some(mut client) = slot.take() { client.disconnect(); }
+                self.server_status = "Disconnected".into();
+                self.status_message = "Disconnected from the selected server.".into();
+            }
+            Err(_) => self.status_message = "Could not access the launcher connection.".into(),
+        }
+    }
+
+    fn submit_character(&mut self) {
+        let wand_length = if self.wand_length.trim().is_empty() {
+            None
+        } else {
+            match self.wand_length.trim().parse::<f64>() {
+                Ok(value) => Some(value),
+                Err(_) => {
+                    self.status_message = "Wand length must be a number between 4 and 16 inches.".into();
+                    return;
+                }
+            }
+        };
+        let draft = launcher_core::CharacterCreationDraft {
+            name: self.character_name.clone(),
+            house: self.character_house.clone(),
+            background: (!self.character_background.trim().is_empty()).then(|| self.character_background.clone()),
+            biography: (!self.character_biography.trim().is_empty()).then(|| self.character_biography.clone()),
+            wand_wood: (!self.wand_wood.trim().is_empty()).then(|| self.wand_wood.clone()),
+            wand_core: (!self.wand_core.trim().is_empty()).then(|| self.wand_core.clone()),
+            wand_length,
+            wand_flexibility: (!self.wand_flexibility.trim().is_empty()).then(|| self.wand_flexibility.clone()),
+        };
+        let submission = match draft.try_build_submission() {
+            Ok(value) => value,
+            Err(errors) => {
+                self.status_message = format!("Character was not submitted: {}", errors.join(" "));
+                return;
+            }
+        };
+        let connection = Arc::clone(&self.connection);
+        let (sender, receiver) = mpsc::channel();
+        self.status_receiver = Some(receiver);
+        self.status_message = "Submitting character to the selected server…".into();
+        thread::spawn(move || {
+            let result = (|| {
+                let mut slot = connection.lock().map_err(|_| "Launcher connection state is unavailable.".to_owned())?;
+                let client = slot.as_mut().ok_or_else(|| "Connect to a server before submitting a character.".to_owned())?;
+                let response = client.submit_character(&submission)?;
+                if !response.success {
+                    return Err(response.error.unwrap_or_else(|| "The server rejected the character.".into()));
+                }
+                let name = response.character.as_ref().map(|character| character.name.as_str()).unwrap_or(&submission.name);
+                Ok(format!("Character registered: {name}. This stores RP data on the server; it does not create an in-game character."))
+            })();
+            let _ = sender.send(result);
+        });
+    }
+
     fn open_account_portal(&mut self) {
         if self.account_portal.trim().is_empty() {
             self.status_message = "Account portal URL is not configured yet.".into();
@@ -162,17 +263,17 @@ impl HogwartsRpLauncher {
         match receiver.try_recv() {
             Ok(Ok(status)) => {
                 self.server_status = status;
-                self.status_message = "Server status check completed.".into();
+                self.status_message = status;
                 self.status_receiver = None;
             }
             Ok(Err(error)) => {
                 self.server_status = "Unavailable".into();
-                self.status_message = format!("Server status check failed: {error}");
+                self.status_message = format!("Background launcher operation failed: {error}");
                 self.status_receiver = None;
             }
             Err(mpsc::TryRecvError::Disconnected) => {
                 self.server_status = "Unavailable".into();
-                self.status_message = "Server status worker stopped unexpectedly.".into();
+                self.status_message = "Launcher background operation stopped unexpectedly.".into();
                 self.status_receiver = None;
             }
             Err(mpsc::TryRecvError::Empty) => ctx.request_repaint_after(Duration::from_millis(100)),
@@ -231,6 +332,46 @@ impl eframe::App for HogwartsRpLauncher {
                     if ui.button("Check status").clicked() { self.check_server_status(); }
                 });
                 ui.label(format!("Status: {}", self.server_status));
+            });
+
+            ui.horizontal(|ui| {
+                if ui.button("Connect / Sign in").clicked() { self.connect_server(); }
+                if ui.button("Disconnect").clicked() { self.disconnect_server(); }
+            });
+
+            ui.add_space(10.0);
+            ui.group(|ui| {
+                ui.heading("Roleplay character");
+                ui.horizontal(|ui| {
+                    ui.label("Name");
+                    ui.text_edit_singleline(&mut self.character_name);
+                    ui.label("House");
+                    egui::ComboBox::from_id_salt("character-house")
+                        .selected_text(&self.character_house)
+                        .show_ui(ui, |ui| {
+                            for house in ["Gryffindor", "Hufflepuff", "Ravenclaw", "Slytherin"] {
+                                ui.selectable_value(&mut self.character_house, house.to_owned(), house);
+                            }
+                        });
+                });
+                ui.label("Background");
+                ui.text_edit_multiline(&mut self.character_background);
+                ui.label("Biography");
+                ui.text_edit_multiline(&mut self.character_biography);
+                ui.horizontal(|ui| {
+                    ui.label("Wand wood");
+                    ui.text_edit_singleline(&mut self.wand_wood);
+                    ui.label("Core");
+                    ui.text_edit_singleline(&mut self.wand_core);
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Length (in)");
+                    ui.text_edit_singleline(&mut self.wand_length);
+                    ui.label("Flexibility");
+                    ui.text_edit_singleline(&mut self.wand_flexibility);
+                });
+                if ui.button("Submit roleplay character").clicked() { self.submit_character(); }
+                ui.small("The server validates and stores roleplay metadata; this does not create a Hogwarts Legacy game character.");
             });
 
             ui.add_space(10.0);
