@@ -6,7 +6,7 @@ All notable HogwartsRP changes are recorded here.
 
 ### Improved — UE4SS reflection-provider capability audit
 
-- Added read-only member-exposure checks for reflected struct and function-descriptor methods, without invoking those methods.
+- Added read-only member-exposure checks for reflected class enumeration methods, without invoking those methods.
 - Added provider capability details to the generated reflection report so method exposure is separated from successful metadata enumeration.
 - Preserved distinct per-function outcomes for unavailable methods, lookup failures, and call failures; a call failure is not reported as proof that the underlying Unreal function is absent.
 - Kept the research boundary unchanged: no gameplay UFunction invocation, ProcessEvent calls, property writes, hooks, or network operations.
