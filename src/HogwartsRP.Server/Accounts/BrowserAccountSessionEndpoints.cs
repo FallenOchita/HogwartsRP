@@ -17,6 +17,22 @@ public static class BrowserAccountSessionEndpoints
         application.MapDelete("/account/session", (HttpContext context) => RevokeSession(context, sessions));
     }
 
+    /// <summary>Sets the opaque session cookie after a trusted sign-in handler issues the session.</summary>
+    public static void SetSessionCookie(HttpContext context, IssuedBrowserAccountSession issued)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(issued);
+        context.Response.Cookies.Append(CookieName, issued.SessionToken, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict,
+            Path = "/account",
+            Expires = issued.Info.ExpiresAtUtc,
+            IsEssential = true
+        });
+    }
+
     public static IResult GetSession(HttpContext context, BrowserAccountSessionStore sessions)
     {
         SetNoStoreHeaders(context);
@@ -48,7 +64,7 @@ public static class BrowserAccountSessionEndpoints
         context.Response.Cookies.Delete(CookieName, new CookieOptions
         {
             HttpOnly = true,
-            Secure = context.Request.IsHttps,
+            Secure = true,
             SameSite = SameSiteMode.Strict,
             Path = "/account"
         });
