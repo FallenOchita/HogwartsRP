@@ -126,7 +126,7 @@ The report writer now permits ten nested table levels so class hierarchy chains 
 
 ## Targeted MovementMode enum-object lookup
 
-The MovementMode audit now performs one additional, narrowly scoped lookup when the direct property descriptor is a ByteProperty named MovementMode. It calls the documented UE4SS 4.0.0 StaticFindObject API with the exact object path "Enum /Script/Engine.EMovementMode". If the returned object's full name and UEnum class identity match, it calls the documented UEnum:GetNameByValue(3) method and records only that requested name/value pair.
+The MovementMode audit now performs one additional, narrowly scoped lookup when the direct property descriptor is a ByteProperty named MovementMode. It calls the documented UE4SS 4.0.0 StaticFindObject API with the UObject path "/Script/Engine.EMovementMode" (without the reflected type prefix). The returned object must still have the exact reflected full name "Enum /Script/Engine.EMovementMode" and UEnum class identity before the documented UEnum:GetNameByValue(3) method is called. The report records the lookup path and expected full name separately, along with only that requested name/value pair.
 
 This does not extract a UEnum pointer from the ByteProperty. The report therefore uses ENGINE_ENUM_CANDIDATE_FOUND_ASSOCIATION_NOT_DIRECTLY_EXPOSED, not a direct-association claim. The lookup is corroborative: Epic's UE4.27 MovementMode reference documents the engine movement-mode enum and identifies value 3 as MOVE_FALLING. The live report must still confirm that the exact UEnum object is present and resolves the value as expected.
 

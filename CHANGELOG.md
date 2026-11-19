@@ -6,6 +6,12 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Fixed — MovementMode enum object path
+
+- Passes `/Script/Engine.EMovementMode` (the UObject lookup path) to `StaticFindObject` while retaining `Enum /Script/Engine.EMovementMode` as the exact reflected full-name identity check.
+- Reports both values separately and preserves the UEnum class validation plus the targeted value-3 lookup.
+- Adds a regression assertion for the lookup argument. No broad enum enumeration or gameplay access is introduced.
+
 ### Added — Targeted MovementMode enum-object lookup
 
 - Added one exact StaticFindObject lookup for Enum /Script/Engine.EMovementMode when the named MovementMode descriptor is a ByteProperty.
