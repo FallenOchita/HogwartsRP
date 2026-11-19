@@ -550,7 +550,7 @@ end
 -- Follow only two verified controller references one level deeper:
 -- LocalPlayer.PlayerController and PlayerState.PawnPrivate. Both hops are fixed
 -- allowlists; only valid UObject full-name identities are emitted.
-function M.relatedObjectReferenceAudit(controller, routes)
+function M.relatedObjectReferenceAudit(controller, routes, metadataLookup)
     local result = {
         status = "READ_ONLY_SECOND_HOP_REFERENCE_AUDIT",
         routes = {},
@@ -606,6 +606,23 @@ function M.relatedObjectReferenceAudit(controller, routes)
             items = {}
         }
         if root.status == "OBJECT_REFERENCE_FOUND" then
+            if type(metadataLookup) == "function" and type(route.metadata_properties) == "table" then
+                local metadataOk, metadataResult = pcall(metadataLookup, root.object, route.metadata_properties)
+                if metadataOk and type(metadataResult) == "table" then
+                    routeResult.metadata_audit = metadataResult
+                else
+                    routeResult.metadata_audit = {
+                        status = "METADATA_LOOKUP_FAILED",
+                        error = tostring(metadataResult),
+                        requested_count = #route.metadata_properties
+                    }
+                end
+            elseif type(route.metadata_properties) == "table" then
+                routeResult.metadata_audit = {
+                    status = "METADATA_LOOKUP_UNAVAILABLE",
+                    requested_count = #route.metadata_properties
+                }
+            end
             result.root_reference_count = result.root_reference_count + 1
             for _, propertyName in ipairs(route.properties or {}) do
                 local item = readReference(root.object, propertyName)
