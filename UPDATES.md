@@ -1,5 +1,21 @@
 # Detailed Updates
 
+## 2026-11-18 — Launcher character creation console flow
+
+### Added
+
+- Added `CharacterCreationConsoleFlow` to collect a character name, Hogwarts house, optional roleplay background/biography, and optional wand details.
+- Connected the flow to `ServerConnectionService.SubmitCharacterAsync`, using the existing authenticated WebSocket session and correlated response protocol.
+- Displayed server acceptance/rejection and transport failures without reporting failed submissions as successful.
+- Allowed users to decline character registration and continue the existing game-launch flow.
+- Added automated tests for successful submission, invalid draft rejection without a network call, declined creation, and server-side rejection.
+
+### Validation boundary
+
+- This flow stores roleplay metadata on the server only. It does not create or modify a Hogwarts Legacy character.
+- The launcher remains a console preview; a graphical launcher UI is a separate milestone.
+- Hosted Windows and Ubuntu CI must complete before this branch can be called verified.
+
 ## 2026-11-18 — Experimental UE4SS player-state adapter
 
 ### Added

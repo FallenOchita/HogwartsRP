@@ -6,6 +6,8 @@ All notable HogwartsRP changes are recorded here.
 
 ### Added
 
+- Added an interactive console character-creation flow to the launcher, connected to the authenticated character-submission endpoint.
+- Added launcher-flow tests for successful submission, client-side validation rejection, server rejection, and skipping character creation.
 - Added an experimental read-only Hogwarts Legacy UE4SS player-state adapter with local controller/pawn discovery, confirmed position/control-rotation reads, velocity and movement-component probes, and exploratory jump/sprint/animation diagnostics. Added separate installation and verification instructions. Live adapter installation and multiplayer synchronization remain unverified.
 
 ### Added
@@ -31,13 +33,16 @@ All notable HogwartsRP changes are recorded here.
 
 ### Changed
 
+- The console launcher now offers character registration after server authentication and before launching Hogwarts Legacy.
+- Character registration reports server acceptance or rejection; declining the prompt leaves the existing launch flow unchanged.
 - Added the missing `HogwartsRP.GameIntegration.Abstractions` project reference to `HogwartsRP.Server`, resolving the character repository contract types during compilation.
 - The diagnostic report helper now emits only normalized known markers and constrained version tokens instead of echoing arbitrary log lines.
 - CI now runs the PowerShell diagnostic-report regression tests on Windows and Ubuntu.
 
 ### Limitations
 
-- The launcher character creation draft is a reusable model, not a graphical character-creation screen; the launcher remains a console preview.
+- Character creation is currently a console form, not a graphical launcher screen or Hogwarts Legacy in-game character creator.
+- Character submissions persist roleplay metadata on the server; they do not apply house, wand, appearance, or character data to the game.
 - The JSON character repository is a single-server persistence adapter; it is not a multi-instance database or backup system.
 - Character submission is available through the authenticated launcher/server WebSocket protocol and JSON repository, but it does not create or modify a character inside Hogwarts Legacy.
 - When OIDC is not configured, the console launcher uses a development-ticket prompt for loopback servers only.
