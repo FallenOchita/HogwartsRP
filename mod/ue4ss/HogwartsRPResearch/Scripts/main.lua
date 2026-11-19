@@ -123,7 +123,7 @@ local function runResearch(targets, finalAttempt)
         catalog.objects.player = Safe.describeObject(player)
         catalog.objects.controller = Safe.describeObject(controller)
         catalog.objects.movement = Safe.describeObject(movement)
-        catalog.components = Discovery.components(player)
+        catalog.components = Discovery.components(player, Reflection and Reflection.catalogComponentProperties or nil)
 
         catalog.reflection.player = inspectMetadata(player)
         catalog.reflection.controller = inspectMetadata(controller)
@@ -201,7 +201,8 @@ local function runResearch(targets, finalAttempt)
         log("Component discovery status: " .. tostring(catalog.components.status) ..
             "; query results: " .. tostring(catalog.components.component_objects_returned or "UNAVAILABLE") ..
             "; player-owned matches: " .. tostring(catalog.components.player_owned_matches or 0) ..
-            "; unresolved outer chains: " .. tostring(catalog.components.unresolved_outer_chains or 0))
+            "; unresolved outer chains: " .. tostring(catalog.components.unresolved_outer_chains or 0)
+            "; property catalog: " .. tostring(catalog.components.property_catalog_status or "UNAVAILABLE"))
 
         local written, failed = Reports.writeAll(reportDir, catalog)
 

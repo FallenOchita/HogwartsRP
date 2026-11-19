@@ -207,7 +207,7 @@ local function crossCheckPropertyReferences(propertyCandidates, items)
     return checks
 end
 
-function M.components(actor)
+function M.components(actor, propertyCataloger)
     if not Safe.isValidObject(actor) then
         return {
             status = "PLAYER_NOT_FOUND",
@@ -270,6 +270,7 @@ function M.components(actor)
     local unresolvedCount, nonMatchingCount, depthLimitCount = 0, 0, 0
     local items = {}
     local hierarchyCache = {}
+    local propertyCatalogCache = {}
     local hierarchyDepth = 16
     for _, component in pairs(objects) do
         if Safe.isValidObject(component) then
@@ -286,6 +287,30 @@ function M.components(actor)
                     if hierarchyCache[hierarchyKey] == nil then
                         hierarchyCache[hierarchyKey] = componentClassHierarchy(component, hierarchyDepth)
                     end
+                    if propertyCatalogCache[hierarchyKey] == nil then
+                        if type(propertyCataloger) == "function" then
+                            local catalogOk, catalogResult = pcall(propertyCataloger, component)
+                            if catalogOk and type(catalogResult) == "table" then
+                                propertyCatalogCache[hierarchyKey] = catalogResult
+                            else
+                                propertyCatalogCache[hierarchyKey] = {
+                                    status = "CATALOG_CALL_FAILED",
+                                    class_full_name = componentClass or "UNAVAILABLE",
+                                    error = tostring(catalogResult)
+                                }
+                            end
+                        else
+                            propertyCatalogCache[hierarchyKey] = {
+                                status = "NOT_ATTEMPTED",
+                                class_full_name = componentClass or "UNAVAILABLE",
+                                properties = {},
+                                class_diagnostics = {}
+                            }
+                        end
+                    end
+                    local propertyEntry = propertyCatalogCache[hierarchyKey]
+                    propertyEntry.component_count = (propertyEntry.component_count or 0) + 1
+                    propertyEntry.sample_component_path = propertyEntry.sample_component_path or componentPath
                     items[#items + 1] = {
                         status = "PLAYER_OUTER_MATCH",
                         full_path = componentPath,
@@ -307,6 +332,45 @@ function M.components(actor)
     end
 
     local inventory = buildComponentInventory(items)
+    local propertyCatalogClasses = {}
+    local propertyCatalogComplete, propertyCatalogPartial, propertyCatalogFailed = 0, 0, 0
+    for _, entry in pairs(propertyCatalogCache) do
+        propertyCatalogClasses[#propertyCatalogClasses + 1] = entry
+        if entry.status == "COMPLETE" then
+            propertyCatalogComplete = propertyCatalogComplete + 1
+        elseif entry.status == "PARTIAL" then
+            propertyCatalogPartial = propertyCatalogPartial + 1
+        elseif entry.status == "NOT_ATTEMPTED" then
+            -- Kept distinct from a failed attempt.
+        else
+            propertyCatalogFailed = propertyCatalogFailed + 1
+        end
+    end
+    table.sort(propertyCatalogClasses, function(a, b)
+        return tostring(a.class_full_name or "") < tostring(b.class_full_name or "")
+    end)
+    local propertyCatalogStatus = "NOT_ATTEMPTED"
+    if type(propertyCataloger) == "function" then
+        if propertyCatalogFailed > 0 and propertyCatalogComplete == 0 and propertyCatalogPartial == 0 then
+            propertyCatalogStatus = "FAILED"
+        elseif propertyCatalogPartial > 0 or propertyCatalogFailed > 0 then
+            propertyCatalogStatus = "PARTIAL"
+        elseif propertyCatalogComplete == #propertyCatalogClasses and #propertyCatalogClasses > 0 then
+            propertyCatalogStatus = "COMPLETE"
+        elseif #propertyCatalogClasses > 0 then
+            propertyCatalogStatus = "FAILED"
+        end
+    end
+    local componentPropertyCatalog = {
+        status = propertyCatalogStatus,
+        unique_class_count = #propertyCatalogClasses,
+        complete_class_count = propertyCatalogComplete,
+        partial_class_count = propertyCatalogPartial,
+        failed_class_count = propertyCatalogFailed,
+        classes = propertyCatalogClasses,
+        safety = "READ_ONLY_PROPERTY_DESCRIPTOR_METADATA_ONLY_NO_PROPERTY_VALUE_READS_NO_GAMEPLAY_FUNCTIONS",
+        note = "Catalog covers only classes from confirmed player Outer matches. A partial ForEachProperty pass is retained as partial metadata and is not evidence that uncaptured properties are absent."
+    }
     return {
         status = "ENUMERATED",
         discovery_mode = "FIND_OBJECTS_ACTOR_COMPONENT",
@@ -344,7 +408,8 @@ function M.components(actor)
             max_super_depth = hierarchyDepth,
             note = "Class hierarchy is resolved through GetClass and GetSuperStruct only. It does not establish component ownership beyond the separately reported Outer match, and does not enumerate property values."
         },
-        property_catalog_status = "NOT_ATTEMPTED",
+        property_catalog_status = propertyCatalogStatus,
+        component_property_catalog = componentPropertyCatalog,
         note = "Enumeration success means the UE4SS query returned a table. PLAYER_OUTER_MATCH confirms the Outer relationship only. Class metadata is grouped separately; unusual class names remain flagged for review even when a hierarchy is available."
     }
 end

@@ -124,6 +124,7 @@ local function enumerateProperties(struct, output, limit, namedPropertyAudit, de
             end
             if Safe.isValidObject(property) then
                 local record = propertyRecord(property)
+                record.declaring_class = declaringClass
                 output[#output + 1] = record
                 diagnostic.last_property_name = record.name
                 diagnostic.properties_captured = #output - diagnostic.properties_before
@@ -227,6 +228,140 @@ local function enumerateFunctions(struct, output, limit, maxFields)
     if not ok then errorMessage = tostring(err) end
     return errorMessage
 end
+
+
+-- Build a bounded property-descriptor catalog for one confirmed component.
+-- The caller caches this result by class identity so duplicate instances do
+-- not trigger repeated reflection passes. Each class receives one
+-- ForEachProperty attempt; partial results and callback errors are preserved.
+function M.catalogComponentProperties(component, options)
+    options = options or {}
+    local maxDepth = options.max_super_depth or DEFAULTS.max_super_depth
+    local maxProperties = options.max_properties or 256
+    local result = {
+        status = "NOT_STARTED",
+        component_full_name = Safe.safeFullName(component),
+        class_full_name = "UNAVAILABLE",
+        class_chain = {},
+        class_hierarchy_status = "NOT_STARTED",
+        properties = {},
+        class_diagnostics = {},
+        max_super_depth = maxDepth,
+        max_properties = maxProperties,
+        properties_truncated = false,
+        safety = "CLASS_PROPERTY_DESCRIPTOR_METADATA_ONLY_NO_PROPERTY_VALUE_READS_NO_GAMEPLAY_UFUNCTIONS"
+    }
+
+    if not Safe.isValidObject(component) then
+        result.status = "COMPONENT_NOT_FOUND"
+        result.class_hierarchy_status = "NOT_ATTEMPTED"
+        return result
+    end
+
+    local class, classError, classStatus = Safe.safeMethod(component, "GetClass")
+    if not Safe.isValidObject(class) then
+        result.status = "CLASS_UNAVAILABLE"
+        result.class_hierarchy_status = classStatus or "CLASS_LOOKUP_FAILED"
+        result.error = classError and conciseDiagnostic(classError) or nil
+        return result
+    end
+
+    result.class_full_name = Safe.safeFullName(class)
+    local current = class
+    local seen = {}
+    local hierarchyComplete = false
+    local partial = false
+
+    for _ = 1, maxDepth do
+        if not Safe.isValidObject(current) then
+            result.class_hierarchy_status = "PARTIAL"
+            result.hierarchy_termination = "INVALID_SUPERCLASS_REFERENCE"
+            partial = true
+            break
+        end
+
+        local classFullName = Safe.safeFullName(current)
+        if not classFullName or classFullName == "INVALID" or classFullName:match("^UNAVAILABLE") then
+            result.class_hierarchy_status = "PARTIAL"
+            result.hierarchy_termination = "CLASS_IDENTITY_UNAVAILABLE"
+            partial = true
+            break
+        end
+        if seen[classFullName] then
+            result.class_hierarchy_status = "PARTIAL"
+            result.hierarchy_termination = "CLASS_CYCLE_DETECTED"
+            partial = true
+            break
+        end
+        seen[classFullName] = true
+        result.class_chain[#result.class_chain + 1] = classFullName
+
+        if #result.properties < maxProperties then
+            local enumerationError, diagnostic = enumerateProperties(
+                current, result.properties, maxProperties, nil, classFullName
+            )
+            result.class_diagnostics[#result.class_diagnostics + 1] = diagnostic
+            if enumerationError then
+                partial = true
+                diagnostic.error = conciseDiagnostic(enumerationError)
+            end
+        else
+            result.properties_truncated = true
+            partial = true
+            result.class_diagnostics[#result.class_diagnostics + 1] = {
+                class = classFullName,
+                method = "ForEachProperty",
+                status = "NOT_RUN_PROPERTY_LIMIT_REACHED",
+                properties_before = #result.properties,
+                properties_after = #result.properties,
+                properties_captured = 0,
+                callback_invocations = 0,
+                last_property_name = "UNAVAILABLE"
+            }
+        end
+
+        if #result.properties >= maxProperties then
+            result.properties_truncated = true
+            partial = true
+            result.class_hierarchy_status = "NOT_CONTINUED_PROPERTY_LIMIT_REACHED"
+            result.hierarchy_termination = "PROPERTY_LIMIT_REACHED"
+            break
+        end
+
+        local parent, parentError, parentStatus = Safe.safeMethod(current, "GetSuperStruct")
+        if parentError ~= nil or (parentStatus ~= nil and parentStatus ~= "OK") then
+            result.class_hierarchy_status = "PARTIAL"
+            result.hierarchy_termination = parentStatus or "SUPERCLASS_LOOKUP_FAILED"
+            result.hierarchy_error = parentError and conciseDiagnostic(parentError) or nil
+            partial = true
+            break
+        end
+        if not Safe.isValidObject(parent) then
+            result.class_hierarchy_status = "COMPLETE"
+            result.hierarchy_termination = "NO_SUPERSTRUCT_RETURNED"
+            hierarchyComplete = true
+            break
+        end
+        current = parent
+    end
+
+    if not hierarchyComplete and result.class_hierarchy_status == "NOT_STARTED" then
+        result.class_hierarchy_status = "DEPTH_LIMIT_REACHED"
+        result.hierarchy_termination = "MAX_SUPER_DEPTH"
+        partial = true
+    end
+
+    result.property_count = #result.properties
+    result.class_count = #result.class_chain
+    if partial then
+        result.status = result.property_count > 0 and "PARTIAL" or "FAILED"
+    else
+        result.status = "COMPLETE"
+    end
+    result.note = "Only property descriptor names, full names, property classes, and declaring classes are recorded. ForEachProperty failures retain captured metadata and are never treated as proof that uncaptured properties are absent."
+    return result
+end
+
 
 -- Capability report only reads Lua member exposure; it does not invoke any
 -- reflected method. A method marked EXPOSED_NOT_INVOKED may still fail at call time.

@@ -1,6 +1,8 @@
 -- Text report writer. Output is resolved relative to this module's actual
 -- installed location, not the game's current working directory.
 local M = {}
+local MAX_REPORT_DEPTH = 10
+local MAX_REPORT_LINES = 50000
 
 local function safeString(value)
     if value == nil then return "UNAVAILABLE" end
@@ -64,22 +66,36 @@ end
 
 local function linesFor(title, data)
     local lines = { "HogwartsRP Research Toolkit", title, "Mode: READ_ONLY", "" }
+    local reportTruncated = false
+    local function append(line)
+        if #lines >= MAX_REPORT_LINES then
+            if not reportTruncated then
+                lines[#lines + 1] = "REPORT_OUTPUT_TRUNCATED = MAX_REPORT_LINES_REACHED"
+                reportTruncated = true
+            end
+            return false
+        end
+        lines[#lines + 1] = line
+        return true
+    end
     local function walk(prefix, value, depth)
-        if depth > 5 then
-            lines[#lines + 1] = prefix .. " = [DEPTH_LIMIT]"
+        if reportTruncated then return end
+        if depth > MAX_REPORT_DEPTH then
+            append(prefix .. " = [DEPTH_LIMIT]")
             return
         end
         if type(value) == "table" then
             local ok, err = pcall(function()
                 for key, child in pairs(value) do
+                    if reportTruncated then break end
                     walk(prefix .. "." .. tostring(key), child, depth + 1)
                 end
             end)
             if not ok then
-                lines[#lines + 1] = prefix .. " = [ENUMERATION_FAILED: " .. safeString(err) .. "]"
+                append(prefix .. " = [ENUMERATION_FAILED: " .. safeString(err) .. "]")
             end
         else
-            lines[#lines + 1] = prefix .. " = " .. safeString(value)
+            append(prefix .. " = " .. safeString(value))
         end
     end
     walk("data", data, 0)
@@ -104,6 +120,10 @@ function M.writeAll(directory, catalog)
         MovementReport = catalog.objects and catalog.objects.movement,
         NPCReport = { status = "NOT_YET_DISCOVERED", note = "NPC class catalog is not yet validated." },
         ComponentReport = catalog.components,
+        ComponentPropertyCatalog = (catalog.components and catalog.components.component_property_catalog) or {
+            status = "NOT_ATTEMPTED", classes = {}, unique_class_count = 0,
+            note = "Component discovery did not produce a property catalog."
+        },
         PropertyReport = catalog.properties,
         FunctionReport = catalog.functions,
         GameplayStateReport = catalog.states,

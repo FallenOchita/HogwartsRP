@@ -111,3 +111,14 @@ The report exposes this as enum_association_capability_audit, including document
 The UE4SS 4.0.0 API documents UEnum lookup/enumeration methods, but those methods require an existing UEnum object. It does not document a ByteProperty accessor that supplies the associated enum reference. Therefore, the toolkit does not guess accessor names, inspect offsets, invoke undocumented methods, or enumerate arbitrary enums. The report retains BYTE_PROPERTY_ASSOCIATION_UNVERIFIED, NO_DOCUMENTED_BYTEPROPERTY_ENUM_ACCESSOR, and NOT_ENUMERATED_NO_VERIFIED_UENUM_REFERENCE until a supported reference path is established.
 
 This capability audit is metadata-only. It does not read the live property value, inspect opaque userdata, call gameplay UFunctions, write properties, or enumerate enum entries.
+
+
+## Confirmed-component property descriptor catalog
+
+The ComponentReport pass now produces a separate `ComponentPropertyCatalog.txt` for classes represented by confirmed player-Outer-matched components. The catalog is grouped by reflected class identity, and duplicate component instances reuse one class-level metadata pass. Each property record contains only its descriptor name, full name, property-class identity, and declaring class.
+
+The catalog walks the component's reflected class hierarchy using `GetClass()` and `GetSuperStruct()`. It performs at most one `ForEachProperty(callback)` attempt per class in that walk, with a 256-property cap per component class catalog and a 16-level superclass cap. It does not retry a failed enumeration. Captured descriptors and per-class diagnostics are retained when UE4SS reports `CALL_ERROR_AFTER_CALLBACK`, `CALL_ERROR_BEFORE_CALLBACK`, `CALLBACK_ERROR`, `METHOD_UNAVAILABLE`, or `LOOKUP_ERROR`. Such a catalog is marked `PARTIAL` or `FAILED`; uncaptured properties are not treated as absent.
+
+The catalog is limited to classes discovered through the existing `FindObjects(0, "ActorComponent", nil, 0, 0, false)` query and confirmed by an Outer chain that resolves to the player pawn. It does not associate the 3,811 unresolved Outer-chain objects with the player. No component property values are read, opaque userdata is not dereferenced, and no gameplay UFunctions, setters, hooks, or network operations are invoked.
+
+The report writer now permits ten nested table levels so class hierarchy chains in the grouped class inventory are visible. It also enforces a 50,000-line output ceiling and records an explicit truncation marker if that ceiling is reached. The separate property catalog status and per-class diagnostics remain the authority for whether descriptor enumeration completed.

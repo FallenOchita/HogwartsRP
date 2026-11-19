@@ -22,6 +22,7 @@
 - [ ] Include metadata source and confidence in every report row.
 
 ## Phase 4 — Actor and component catalog
+- [x] Add a bounded property-descriptor catalog for confirmed player-Outer-matched component classes (metadata only; partial enumeration is retained explicitly).
 - [ ] Add bounded GUObjectArray-backed discovery only through a supported UE4SS API.
 - [ ] Classify actors by verified parent class and observed component signatures.
 - [ ] Record full name, class, outer, world, owner, and parent class.
