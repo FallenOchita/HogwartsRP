@@ -122,3 +122,12 @@ The catalog walks the component's reflected class hierarchy using `GetClass()` a
 The catalog is limited to classes discovered through the existing `FindObjects(0, "ActorComponent", nil, 0, 0, false)` query and confirmed by an Outer chain that resolves to the player pawn. It does not associate the 3,811 unresolved Outer-chain objects with the player. No component property values are read, opaque userdata is not dereferenced, and no gameplay UFunctions, setters, hooks, or network operations are invoked.
 
 The report writer now permits ten nested table levels so class hierarchy chains in the grouped class inventory are visible. It also enforces a 50,000-line output ceiling and records an explicit truncation marker if that ceiling is reached. The separate property catalog status and per-class diagnostics remain the authority for whether descriptor enumeration completed.
+
+
+## Targeted MovementMode enum-object lookup
+
+The MovementMode audit now performs one additional, narrowly scoped lookup when the direct property descriptor is a ByteProperty named MovementMode. It calls the documented UE4SS 4.0.0 StaticFindObject API with the exact object path "Enum /Script/Engine.EMovementMode". If the returned object's full name and UEnum class identity match, it calls the documented UEnum:GetNameByValue(3) method and records only that requested name/value pair.
+
+This does not extract a UEnum pointer from the ByteProperty. The report therefore uses ENGINE_ENUM_CANDIDATE_FOUND_ASSOCIATION_NOT_DIRECTLY_EXPOSED, not a direct-association claim. The lookup is corroborative: Epic's UE4.27 MovementMode reference documents the engine movement-mode enum and identifies value 3 as MOVE_FALLING. The live report must still confirm that the exact UEnum object is present and resolves the value as expected.
+
+The lookup does not enumerate arbitrary UEnums, read the MovementMode property value, inspect offsets, dereference opaque userdata, invoke gameplay UFunctions, or modify game state. If the exact object cannot be resolved or validated, enum association remains unverified.
