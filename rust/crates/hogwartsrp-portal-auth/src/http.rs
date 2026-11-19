@@ -11,8 +11,8 @@ use axum::{
 };
 use openidconnect::{
     core::{CoreClient, CoreProviderMetadata},
-    AuthenticationFlow, ClientId, ClientSecret, CsrfToken, Nonce, PkceCodeChallenge,
-    Scope,
+    core::CoreAuthenticationFlow, ClientId, ClientSecret, CsrfToken, Nonce, PkceCodeChallenge,
+    RedirectUrl, Scope,
 };
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
@@ -83,10 +83,13 @@ async fn login_start(State(state): State<PortalHttpState>, headers: HeaderMap) -
     let client = CoreClient::from_provider_metadata(
         (*state.metadata).clone(),
         ClientId::new(state.config.client_id().to_owned()),
-        None::<ClientSecret>,
-    );
+        state.config.client_secret.clone().map(ClientSecret::new),
+    ).set_redirect_uri(match RedirectUrl::new(state.config.callback_uri().to_owned()) {
+        Ok(value) => value,
+        Err(_) => return generic_error(StatusCode::INTERNAL_SERVER_ERROR),
+    });
     let mut request = client.authorize_url(
-        AuthenticationFlow::AuthorizationCode,
+        CoreAuthenticationFlow::AuthorizationCode,
         || CsrfToken::new(transaction.state().to_owned()),
         || Nonce::new(transaction.nonce().to_owned()),
     ).set_pkce_challenge(PkceCodeChallenge::new(transaction.code_challenge().to_owned()));
