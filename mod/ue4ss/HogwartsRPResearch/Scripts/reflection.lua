@@ -231,8 +231,10 @@ local function enumerateProperties(struct, output, limit, namedPropertyAudit, de
         diagnostic.callback_error_length = #callbackError
     end
 
-    if callError and namedPropertyAudit and namedPropertyAudit.status ~= "FOUND" then
-        namedPropertyAudit.status = "ENUMERATION_INCOMPLETE"
+    if callError and namedPropertyAudit then
+        -- Keep sample-enumeration failure separate from the named lookup result.
+        -- Reflection:GetProperty is audited independently across the class chain.
+        namedPropertyAudit.enumeration_status = "INCOMPLETE"
         namedPropertyAudit.enumeration_error = diagnostic.error
     end
     return callError and tostring(callError) or nil, diagnostic
@@ -566,9 +568,9 @@ function M.inspect(object, options)
             or (directLookupIncomplete and "LOOKUP_INCOMPLETE" or "NOT_FOUND")
         namedPropertyAudit.sample_scope = "FIRST_PROPERTY_PER_CLASS_ONLY"
         namedPropertyAudit.enumeration_complete = false
-        if namedPropertyAudit.status == "PROPERTY_NOT_FOUND" then
-            namedPropertyAudit.status = directLookupIncomplete and "LOOKUP_INCOMPLETE"
-                or "NOT_FOUND_IN_DIRECT_LOOKUP_SAMPLE_INCOMPLETE"
+        namedPropertyAudit.enumeration_status = namedPropertyAudit.enumeration_status or "FIRST_PROPERTY_SAMPLE_ONLY"
+        if namedPropertyAudit.status ~= "FOUND" then
+            namedPropertyAudit.status = directLookupIncomplete and "LOOKUP_INCOMPLETE" or "NOT_FOUND"
         end
     end
 
