@@ -6,7 +6,6 @@ use serde_json::Value;
 use std::{
     collections::VecDeque,
     net::TcpStream,
-    time::Duration,
 };
 use tungstenite::{connect, stream::MaybeTlsStream, Message, WebSocket};
 use url::Url;
