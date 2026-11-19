@@ -166,6 +166,13 @@ local function runResearch(targets, finalAttempt)
             player_metadata = catalog.reflection.player.properties,
             controller_metadata = catalog.reflection.controller.properties,
             movement_metadata = catalog.reflection.movement.properties,
+            reference_value_audit = Discovery.objectReferenceAudit(
+                { controller = controller, movement = movement },
+                {
+                    controller = { "AcknowledgedPawn", "Pawn", "Player", "PlayerState" },
+                    movement = { "CharacterOwner", "PawnOwner", "UpdatedComponent" }
+                }
+            ),
             targeted_property_metadata = {
                 player = Reflection and Reflection.lookupNamedProperties(player, {
                     "CharacterMovement", "CharMoveComp", "Mesh",
