@@ -15,7 +15,7 @@ Discord.js v14 ticket, moderation appeal, character application, whitelist and d
 ## Quick start
 1. Create a Discord application and bot in the Developer Portal.
 2. Invite with bot and applications.commands scopes. Grant View Channels, Send Messages, Embed Links, Attach Files, Read Message History and Manage Channels. Avoid Administrator.
-3. Copy .env.example to .env and configure tokens, Mongo URI, category IDs, role IDs and log channels.
+3. Copy .env.example to .env and configure Discord credentials, MongoDB root credentials and authenticated Mongo URI, role IDs and log channels. URL-encode special characters in the MongoDB URI password. Category channels are created by /setup-tickets unless IDs are configured.
 4. Install dependencies with npm install.
 5. Deploy commands with npm run deploy:commands.
 6. Start with npm start, or use docker compose up -d --build.
@@ -31,4 +31,4 @@ DISCORD_TOKEN, CLIENT_ID and MONGO_URI are required. GUILD_ID is optional for fa
 Back up MongoDB and transcript storage together. Keep credentials in a secret manager. Restrict transcript channel visibility. Review bot permissions and staff roles. Never log modal answer bodies. HTML transcript content is escaped. Use a shared rate limiter before running multiple bot instances.
 
 ## Known boundaries
-Application decisions are recorded in the audit log but do not yet call a separate whitelist/character service. Cooldowns are in-memory and per process. Assignment/reassignment UI, transcript retry queue, dashboard pagination, automated channel reconciliation and multi-instance rate limiting are future hardening tasks. The service is a production-oriented baseline, not a claim of completed live-guild validation. Run npm test and exercise the complete permission matrix in a staging Discord guild before public deployment.
+Application decisions are recorded in the audit log but do not yet call a separate whitelist/character service. Ticket quotas and cooldowns are persisted in MongoDB and reconciled on startup. Transcript retry queue, dashboard pagination, channel repair automation and monitoring/alerting remain future hardening tasks. The service is a production-oriented baseline, not a claim of completed live-guild validation. Run npm test and exercise the complete permission matrix in a staging Discord guild before public deployment.
