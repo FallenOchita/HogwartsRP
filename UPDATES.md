@@ -747,3 +747,17 @@ This file records implementation details and milestone status. For user-facing f
 
 - Fixed a missing Lua concatenation operator in the component discovery status log that caused `attempt to call a string value` after discovery and relationship validation.
 - The change is limited to report-status logging; component discovery, property catalog behavior, and read-only safeguards are unchanged.
+
+
+## 2026-11-19 — Isolated ForEachProperty callback diagnostics
+
+### Added
+
+- Added a count-only `ForEachProperty` probe before descriptor inspection. Its callback only increments a counter and returns `false`, so its result can be compared with the normal property-metadata callback.
+- Preserved the complete enumeration method error up to 2,048 characters and recorded the original error length plus an explicit truncation flag.
+- Added regression assertions for successful minimal probes, callback-continuation failures, and errors longer than the previous 180-character diagnostic cap.
+
+### Validation boundary
+
+- The new probe is read-only reflection metadata enumeration. It does not inspect descriptor fields, read property values, invoke gameplay UFunctions, write properties, or change game state.
+- Automated regression tests are included; hosted CI and a fresh live UE4SS 4.0.0 report are required before diagnosing the underlying runtime failure.
