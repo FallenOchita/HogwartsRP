@@ -89,17 +89,59 @@ var resources = new ResourceManager(root, resourceName =>
     return worker;
 });
 
+var registeredRustCommands = new ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
+resources.RustCommandRegistered += (resourceName, commandName) =>
+{
+    var permissionKey = $"Resources:RustCommandPermissions:{resourceName}:{commandName}";
+    var permission = builder.Configuration[permissionKey]
+        ?? $"resource.{resourceName}.command.{commandName}";
+    try
+    {
+        if (!registeredRustCommands.TryAdd(commandName, 0))
+            throw new InvalidOperationException($"A command named '{commandName}' is already reserved.");
+        commands.Register(commandName, permission,
+            (_, commandArgs) => resources.InvokeRustCommandAsync(resourceName, commandName, commandArgs, CancellationToken.None));
+        logger.LogInformation("Registered Rust command {CommandName} for resource {ResourceName} with permission {Permission}",
+            commandName, resourceName, permission);
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning("Rejected Rust command {CommandName} from resource {ResourceName}: {Message}",
+            commandName, resourceName, ex.Message);
+    }
+};
+resources.RustNetworkEventRegistered += (resourceName, eventName) =>
+{
+    try
+    {
+        eventPolicy.RegisterClientEvent(resourceName, eventName);
+        logger.LogInformation("Allowlisted client event {EventName} for Rust resource {ResourceName}", eventName, resourceName);
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning("Rejected Rust network event {EventName} from resource {ResourceName}: {Message}",
+            eventName, resourceName, ex.Message);
+    }
+};
+
 networking.ServerEventReceived += async networkEvent =>
 {
     foreach (var resourceName in eventPolicy.GetOwners(networkEvent.Name))
     {
-        if (!resourceWorkers.TryGetValue(resourceName, out var target)) continue;
         var arguments = new object?[] { networkEvent.Player.Id, networkEvent.Player.DisplayName }
             .Concat(networkEvent.Arguments).ToArray();
-        try { await target.DispatchEventAsync(networkEvent.Name, arguments); }
+        if (resourceWorkers.TryGetValue(resourceName, out var target))
+        {
+            try { await target.DispatchEventAsync(networkEvent.Name, arguments); }
+            catch (Exception ex)
+            {
+                logger.LogWarning("Client event {EventName} failed in Lua resource {ResourceName}: {Message}", networkEvent.Name, resourceName, ex.Message);
+            }
+        }
+        try { await resources.DispatchRustEventToResourceAsync(resourceName, networkEvent.Name, arguments); }
         catch (Exception ex)
         {
-            logger.LogWarning("Client event {EventName} failed in resource {ResourceName}: {Message}", networkEvent.Name, resourceName, ex.Message);
+            logger.LogWarning("Client event {EventName} failed in Rust resource {ResourceName}: {Message}", networkEvent.Name, resourceName, ex.Message);
         }
     }
 };
