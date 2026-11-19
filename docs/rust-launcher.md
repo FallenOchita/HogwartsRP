@@ -17,6 +17,8 @@ The Rust launcher uses eframe/egui for its native desktop UI. Server profiles ar
 ## Current Rust launcher features
 
 - Native desktop UI built and started by Rust.
+- Public server browser backed by the Rust directory API, with name search, bounded pagination, listing validation, online state, and player counts.
+- Selecting a directory listing fills the existing server connection profile; it does not yet authenticate or join the game server.
 - Add, save, select, and remove server profiles.
 - Read-only `GET /status` checks with a five-second timeout.
 - Open the central browser account portal when `HOGWARTSRP_ACCOUNT_PORTAL_URL` is configured.
@@ -31,13 +33,13 @@ The Rust binary is the only active launcher application, but this is not yet fea
 - Server connection lifecycle, authenticated network event delivery, and reconnect handling.
 - Character creation draft UI and authenticated character submission.
 - Steam library discovery beyond the conventional paths, Epic installation/launch support, and direct update delivery.
-- Public server directory browsing and account-linking controls beyond opening the configured browser portal.
+- Authenticated OIDC + PKCE join authentication, WebSocket session lifecycle, and character submission remain future Rust milestones. The public server directory browser is implemented in the launcher; the directory service must still be deployed and configured for shared public listings.
 
 The Rust launcher does not call the legacy C# launcher library. That library remains in the .NET solution temporarily because its existing tests and contracts are still useful during migration; it is not the launcher executable and is not used by the Rust app. It can be retired after the remaining flows are ported and their behavior is covered by Rust tests.
 
 ## Configuration
 
-Set `HOGWARTSRP_ACCOUNT_PORTAL_URL` to the deployed central account portal's HTTPS URL to enable the account-portal button. No production URL or credentials are hard-coded.
+Set `HOGWARTSRP_ACCOUNT_PORTAL_URL` to the deployed central account portal's HTTPS URL to enable the account-portal button. Set `HOGWARTSRP_DIRECTORY_URL` to the directory service origin (for example, `http://127.0.0.1:8790` for local development). No production URL or credentials are hard-coded.
 
 ## Validation
 
