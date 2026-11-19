@@ -1,0 +1,17 @@
+{
+  "Portal": {
+    "PublicBaseUrl": "https://accounts.example.com"
+  },
+  "Authentication": {
+    "PortalOidc": {
+      "Authority": "https://identity.example.com",
+      "ClientId": "hogwartsrp-account-portal",
+      "CallbackUri": "https://accounts.example.com/account/signin-oidc",
+      "Scopes": [
+        "openid",
+        "profile"
+      ],
+      "DisplayNameClaim": "name"
+    }
+  }
+}
