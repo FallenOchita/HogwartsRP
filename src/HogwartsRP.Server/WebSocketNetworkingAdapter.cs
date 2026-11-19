@@ -18,8 +18,6 @@ namespace HogwartsRP.Server;
 public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
 {
     private const int MaxMessageBytes = 32 * 1024;
-    private const string BrowserSessionCookieName = "HogwartsRP.AccountSession";
-    private const string BrowserCsrfHeaderName = "X-HogwartsRP-CSRF";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly string _listenUrl;
     private readonly IPlayerCredentialValidator _credentials;
@@ -70,8 +68,8 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
         application.UseWebSockets();
         application.MapGet("/health", () => Results.Ok(new { status = "ready" }));
         application.MapGet("/status", HandlePublicStatusAsync);
-        application.MapGet("/account/session", HandleBrowserSessionGetAsync);
-        application.MapDelete("/account/session", HandleBrowserSessionDeleteAsync);
+        if (_browserAccountSessions is not null)
+            BrowserAccountSessionEndpoints.Map(application, _browserAccountSessions);
         application.MapGet("/auth/oidc/challenge", (Delegate)HandleOidcChallengeAsync);
         application.MapPost("/auth/tickets", (Delegate)HandleOidcTicketExchangeAsync);
         application.MapGet("/connect", HandleConnectionAsync);
@@ -112,50 +110,6 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
     }
 
     public async ValueTask DisposeAsync() => await StopAsync();
-
-    private IResult HandleBrowserSessionGetAsync(HttpContext context)
-    {
-        SetNoStoreHeaders(context);
-        if (_browserAccountSessions is null)
-            return Results.Problem("Browser account sessions are not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
-
-        var token = context.Request.Cookies[BrowserSessionCookieName];
-        if (!_browserAccountSessions.TryGet(token, out var session) || session is null)
-            return Results.Unauthorized();
-
-        return Results.Json(new
-        {
-            authenticated = true,
-            accountId = session.AccountId,
-            createdAtUtc = session.CreatedAtUtc,
-            expiresAtUtc = session.ExpiresAtUtc
-        });
-    }
-
-    private IResult HandleBrowserSessionDeleteAsync(HttpContext context)
-    {
-        SetNoStoreHeaders(context);
-        if (_browserAccountSessions is null)
-            return Results.Problem("Browser account sessions are not configured.", statusCode: StatusCodes.Status503ServiceUnavailable);
-
-        var token = context.Request.Cookies[BrowserSessionCookieName];
-        if (!_browserAccountSessions.TryGet(token, out var session) || session is null)
-            return Results.Unauthorized();
-
-        var csrfToken = context.Request.Headers[BrowserCsrfHeaderName].FirstOrDefault();
-        if (!_browserAccountSessions.ValidateCsrf(token, csrfToken))
-            return Results.StatusCode(StatusCodes.Status403Forbidden);
-
-        _browserAccountSessions.Revoke(token);
-        context.Response.Cookies.Delete(BrowserSessionCookieName, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = context.Request.IsHttps,
-            SameSite = SameSiteMode.Strict,
-            Path = "/account"
-        });
-        return Results.NoContent();
-    }
 
     private IResult HandlePublicStatusAsync(HttpContext context)
     {
