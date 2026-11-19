@@ -77,8 +77,11 @@ referenceUserdata:close()
 
 
 -- Exercise the bounded second-hop lookup with userdata-backed UObject fixtures.
+local fakeHandles = {}
 local function fakeUObject(fullName, fields)
     local handle = assert(io.tmpfile(), "could not create fake UObject userdata")
+    local closeOriginal = handle.close
+    fakeHandles[#fakeHandles + 1] = { handle = handle, close = closeOriginal }
     local original = debug.getmetatable(handle)
     local originalIndex = original and original.__index
     debug.setmetatable(handle, {
@@ -133,9 +136,12 @@ local opaqueRelated = Discovery.relatedObjectReferenceAudit(opaqueController, {
 equal(opaqueRelated.routes[1].root_status, "OPAQUE_USERDATA", "opaque root status")
 equal(#opaqueRelated.routes[1].items, 0, "opaque root is not expanded")
 
-for _, handle in ipairs({ localPlayerController, localPlayer, playerPawn, playerState, opaqueRoot }) do
-    handle:close()
+-- Restore the original file close operation captured before replacing each
+-- userdata metatable; the test doubles must not change file-handle cleanup.
+for _, entry in ipairs(fakeHandles) do
+    entry.close(entry.handle)
 end
+opaqueRoot:close()
 
 print("object_reference_audit_spec: PASS")
 
