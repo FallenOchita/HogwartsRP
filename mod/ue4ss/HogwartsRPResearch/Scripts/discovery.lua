@@ -74,6 +74,65 @@ local function belongsToActor(object, actorName)
     return false, "OUTER_DEPTH_LIMIT", chain
 end
 
+-- Resolve the reflected class chain for a confirmed component using only
+-- documented UE4SS class metadata. No component property values are inspected.
+local function componentClassHierarchy(component, maxDepth)
+    local result = {
+        status = "CLASS_UNAVAILABLE",
+        class_full_name = "UNAVAILABLE",
+        class_chain = {},
+        max_depth = maxDepth
+    }
+    local class, classError, classStatus = Safe.safeMethod(component, "GetClass")
+    if not Safe.isValidObject(class) then
+        result.lookup_status = classStatus or "LOOKUP_FAILED"
+        if classError then result.error = tostring(classError) end
+        return result
+    end
+
+    result.class_full_name = objectIdentity(class) or Safe.safeFullName(class)
+    local current = class
+    local seen = {}
+    for _ = 1, maxDepth do
+        if not Safe.isValidObject(current) then
+            result.status = "PARTIAL"
+            result.termination = "INVALID_SUPERCLASS_REFERENCE"
+            return result
+        end
+        local name = objectIdentity(current) or Safe.safeFullName(current)
+        if not name or name == "UNAVAILABLE" then
+            result.status = "PARTIAL"
+            result.termination = "CLASS_IDENTITY_UNAVAILABLE"
+            return result
+        end
+        if seen[name] then
+            result.status = "PARTIAL"
+            result.termination = "CLASS_CYCLE_DETECTED"
+            return result
+        end
+        seen[name] = true
+        result.class_chain[#result.class_chain + 1] = name
+
+        local parent, parentError, parentStatus = Safe.safeMethod(current, "GetSuperStruct")
+        if parentError ~= nil or (parentStatus ~= nil and parentStatus ~= "OK") then
+            result.status = "PARTIAL"
+            result.termination = parentStatus or "SUPERCLASS_LOOKUP_FAILED"
+            result.error = parentError and tostring(parentError) or nil
+            return result
+        end
+        if not Safe.isValidObject(parent) then
+            result.status = "COMPLETE"
+            result.termination = "NO_SUPERSTRUCT_RETURNED"
+            return result
+        end
+        current = parent
+    end
+
+    result.status = "DEPTH_LIMIT_REACHED"
+    result.termination = "MAX_SUPER_DEPTH"
+    return result
+end
+
 local function buildComponentInventory(items)
     local groups = {}
     local reviewItems = {}
@@ -81,7 +140,7 @@ local function buildComponentInventory(items)
         local className = item.class or "CLASS_UNAVAILABLE"
         local group = groups[className]
         if not group then
-            group = { class = className, count = 0, full_paths = {} }
+            group = { class = className, count = 0, full_paths = {}, class_hierarchy = item.class_hierarchy or { status = "NOT_ATTEMPTED", class_chain = {} } }
             groups[className] = group
         end
         group.count = group.count + 1
@@ -210,6 +269,8 @@ function M.components(actor)
     local returnedCount, matchedCount = 0, 0
     local unresolvedCount, nonMatchingCount, depthLimitCount = 0, 0, 0
     local items = {}
+    local hierarchyCache = {}
+    local hierarchyDepth = 16
     for _, component in pairs(objects) do
         if Safe.isValidObject(component) then
             returnedCount = returnedCount + 1
@@ -219,10 +280,17 @@ function M.components(actor)
             if matches then
                 matchedCount = matchedCount + 1
                 if #items < MAX_COMPONENT_REPORTS then
+                    local componentPath = objectIdentity(component) or "UNAVAILABLE"
+                    local componentClass = Safe.safeClassName(component)
+                    local hierarchyKey = componentClass or "CLASS_UNAVAILABLE"
+                    if hierarchyCache[hierarchyKey] == nil then
+                        hierarchyCache[hierarchyKey] = componentClassHierarchy(component, hierarchyDepth)
+                    end
                     items[#items + 1] = {
                         status = "PLAYER_OUTER_MATCH",
-                        full_path = objectIdentity(component) or "UNAVAILABLE",
-                        class = Safe.safeClassName(component),
+                        full_path = componentPath,
+                        class = componentClass,
+                        class_hierarchy = hierarchyCache[hierarchyKey],
                         outer_depth = depth,
                         outer_chain = outerChain
                     }
@@ -256,7 +324,28 @@ function M.components(actor)
         property_reference_candidates = propertyCandidates,
         property_reference_crosscheck = crossCheckPropertyReferences(propertyCandidates, items),
         class_inventory = inventory,
-        note = "Enumeration success means the UE4SS query returned a table. PLAYER_OUTER_MATCH confirms the Outer relationship only. Class metadata is grouped separately; unusual class names require hierarchy validation before being treated as conventional components."
+        class_hierarchy = {
+            status = "METADATA_ONLY",
+            unique_class_count = inventory.unique_class_count,
+            complete_class_count = (function()
+                local count = 0
+                for _, group in ipairs(inventory.classes) do
+                    if group.class_hierarchy and group.class_hierarchy.status == "COMPLETE" then count = count + 1 end
+                end
+                return count
+            end)(),
+            partial_class_count = (function()
+                local count = 0
+                for _, group in ipairs(inventory.classes) do
+                    if group.class_hierarchy and group.class_hierarchy.status ~= "COMPLETE" then count = count + 1 end
+                end
+                return count
+            end)(),
+            max_super_depth = hierarchyDepth,
+            note = "Class hierarchy is resolved through GetClass and GetSuperStruct only. It does not establish component ownership beyond the separately reported Outer match, and does not enumerate property values."
+        },
+        property_catalog_status = "NOT_ATTEMPTED",
+        note = "Enumeration success means the UE4SS query returned a table. PLAYER_OUTER_MATCH confirms the Outer relationship only. Class metadata is grouped separately; unusual class names remain flagged for review even when a hierarchy is available."
     }
 end
 

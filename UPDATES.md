@@ -1,3 +1,18 @@
+## 2026-11-19 — Read-only component class hierarchy inventory
+
+### Added
+
+- Added class identity and superclass-chain metadata for components whose Outer chain independently matches the discovered player pawn.
+- Cached hierarchy results by reported class name so duplicate component instances reuse the same metadata record.
+- Added per-class hierarchy status, termination reason, maximum-depth reporting, and aggregate complete/partial counts.
+- Preserved class inventory grouping, duplicate groups, unusual class metadata review entries, and unresolved Outer-chain counts.
+
+### Safety and validation boundary
+
+- Uses only documented UE4SS 4.0.0 metadata methods `GetClass()` and `GetSuperStruct()`; no component property values or gameplay UFunctions are read or invoked.
+- Hierarchy metadata does not replace or expand the existing Outer ownership proof. A component remains player-associated only when its Outer chain matches the player pawn.
+- Broad component property enumeration is deferred because live reports show `ForEachProperty` callback-continuation failures. This change does not claim a complete property catalog.
+- No setters, hooks, network operations, or game-state changes are introduced. Live validation is still required.
 ## 2026-11-19 — ByteProperty enum-association capability audit
 
 ### Added
