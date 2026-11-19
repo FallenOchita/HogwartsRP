@@ -5,6 +5,10 @@ const roleFor=type=>config.roles[type.department]||null;const categoryFor=type=>
 async function createTicket({client,guild,user,typeId,answers}){
  const type=types[typeId];if(!type)throw new Error("Unknown ticket type");
  const duplicate=await Ticket.findOne({guildId:guild.id,userId:user.id,ticketType:typeId,status:"open"});if(duplicate)throw new Error("You already have an open ticket: <#"+duplicate.channelId+">");
+ if(typeId==="report-staff"){
+  if(!config.adminRoleIds.length||!config.auditChannelId)throw new Error("Staff reports require ADMIN_ROLE_IDS and AUDIT_CHANNEL to be configured.");
+  for(const id of config.adminRoleIds)if(!guild.roles.cache.has(id))throw new Error("An ADMIN_ROLE_IDS entry does not exist in this server.");
+ }
  let channel=null,ticket=null;
  const ticketId=ticketNumber(),name=(type.group==="APPEALS"?"appeal":type.group==="REPORTS"?"report":"ticket")+"-"+slug(user.username)+"-"+ticketId;
  const overwrites=[
@@ -18,7 +22,8 @@ async function createTicket({client,guild,user,typeId,answers}){
  try{
   channel=await guild.channels.create({name,type:ChannelType.GuildText,parent:categoryFor(type),topic:"HogwartsRP ticket "+ticketId+" | "+type.label+" | opener "+user.id,permissionOverwrites:overwrites,reason:"Ticket opened by "+user.tag});
   ticket=await Ticket.create({ticketId,ticketType:typeId,userId:user.id,channelId:channel.id,guildId:guild.id,priority:type.priority,answers});
-  await channel.send({content:(staffRole?"<@&"+staffRole+"> ":"")+"<@"+user.id+">",embeds:[require("../embeds/ticketEmbed").opened(ticket,type)],components:require("../embeds/ticketEmbed").controls(typeId)});
+  const staffMentions=typeId==="report-staff"?config.adminRoleIds.map(id=>"<@&"+id+">").join(" "):(staffRole?"<@&"+staffRole+">":"");
+  await channel.send({content:(staffMentions?staffMentions+" ":"")+"<@"+user.id+">",embeds:[require("../embeds/ticketEmbed").opened(ticket,type)],components:require("../embeds/ticketEmbed").controls(typeId)});
   const increments=[["opened",1]];
   if(type.group==="APPEALS")increments.push(["appealed",1]);
   if(type.group==="APPLICATIONS")increments.push(["applications",1]);
