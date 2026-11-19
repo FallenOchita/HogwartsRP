@@ -1,5 +1,5 @@
 use crate::{
-    AccountLinkProvider, AccountLinkStatus, AuthorizationTransactionStore, BrowserSessionStore, JsonAccountLinkStore, JsonPortalAccountStore, PortalOidcConfig,
+    AccountLinkProvider, AuthorizationTransactionStore, BrowserSessionStore, JsonAccountLinkStore, JsonPortalAccountStore, PortalOidcConfig,
 };
 use axum::{
     extract::{Path, Query, State},
