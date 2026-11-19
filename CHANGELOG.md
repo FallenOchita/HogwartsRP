@@ -6,6 +6,11 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Fixed — PlayerState metadata route
+
+- Corrected the PlayerState route so only `PawnPrivate` is read as a second-hop object reference; the PlayerState candidate list is now passed to the descriptor-only metadata lookup.
+- Prevents accidental reads of PlayerState property values such as `PlayerId`, `PlayerNamePrivate`, spectator flags, score, and ping during the metadata audit.
+
 ### Added — Targeted LocalPlayer and PlayerState property metadata
 
 - Reuses the two validated second-hop UObject references to inspect only explicit LocalPlayer and PlayerState property-descriptor allowlists.
