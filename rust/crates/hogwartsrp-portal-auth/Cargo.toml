@@ -3,14 +3,17 @@ name = "hogwartsrp-portal-auth"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "Rust central-account portal OpenID Connect configuration and discovery"
+description = "Rust central-account portal OpenID Connect authentication and browser sessions"
 
 [dependencies]
+axum = "0.8"
 base64 = "0.22"
 openidconnect = "4"
 rand = "0.8"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 sha2 = "0.10"
+subtle = "2"
 thiserror = "2"
 url = "2"

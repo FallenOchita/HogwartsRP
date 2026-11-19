@@ -1,0 +1,8 @@
+{
+  "Authority": "https://YOUR-OIDC-ISSUER/",
+  "ClientId": "YOUR-PORTAL-CLIENT-ID",
+  "ClientSecret": null,
+  "CallbackUri": "https://accounts.example.com/account/callback",
+  "Scopes": ["openid", "profile"],
+  "AllowLoopbackHttp": false
+}
