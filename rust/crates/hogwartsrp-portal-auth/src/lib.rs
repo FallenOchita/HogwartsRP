@@ -510,8 +510,10 @@ mod authentication;
 pub use authentication::{PortalOidcAuthenticationError, VerifiedPortalIdentity};
 
 mod accounts;
+mod account_links;
 mod sessions;
 mod http;
 pub use accounts::{JsonPortalAccountStore, PortalAccountStoreError};
+pub use account_links::{AccountLinkProvider, AccountLinkStatus, AccountLinkStoreError, JsonAccountLinkStore};
 pub use sessions::{BrowserSessionError, BrowserSessionStore, IssuedBrowserSession};
 pub use http::{router as portal_router, PortalHttpState};
