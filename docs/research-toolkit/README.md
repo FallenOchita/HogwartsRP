@@ -28,6 +28,12 @@ These are evidence-backed starting points, not assumptions about every game buil
 
 UE4SS Lua bindings differ between builds and object wrappers. The toolkit calls APIs only after checking their presence and protects every call with `pcall`. If a binding cannot enumerate a property or UFunction on the current build, the report records `UNAVAILABLE`; it does not attempt unsafe native memory traversal.
 
+## Player relationship validation
+
+The toolkit records the controller `AcknowledgedPawn` and `Pawn` property references and compares their object full names with the discovered player pawn. It also compares the movement component outer with the player pawn. These are independent read-only observations; missing or mismatched references are reported without guessing.
+
+Class metadata resolution is reported separately from object discovery. A valid object full name does not guarantee that `GetClass()` or the class object full name is exposed by the installed UE4SS wrapper. Owner is deliberately marked `NOT_PROBED`: this pass does not invoke `GetOwner` or any gameplay UFunction. `Outer`, `World`, and owner are distinct relationships.
+
 ## Reports
 
 The runtime creates the following files under its configured reports directory:
@@ -40,6 +46,7 @@ The runtime creates the following files under its configured reports directory:
 - PropertyReport.txt
 - FunctionReport.txt
 - GameplayStateReport.txt
+- RelationshipReport.txt
 
 A machine-readable catalog can be added after the text report schema stabilizes.
 
