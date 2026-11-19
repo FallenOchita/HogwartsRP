@@ -1,4 +1,4 @@
-# PR #57 — Discord account-link verification adapter
+# PR #58 — Discord account-link verification adapter
 
 ## Delivered
 
