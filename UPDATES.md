@@ -1,3 +1,18 @@
+## 2026-11-19 — Rust resource health supervision
+
+### Improved
+
+- Connected the Rust worker exit notification to the owning ResourceManager entry.
+- Unexpected worker termination now changes a Starting or Started resource to Failed and records the exit code when available.
+- Added a host-level worker-exit event for diagnostics; observer exceptions are isolated from the worker protocol pump.
+- Made the Started transition race-safe so a fast worker exit during startup cannot be overwritten by a later successful-start assignment.
+- Added an integration test that starts the compiled Rust worker through ResourceManager, triggers exit code 23, and verifies the resource is marked Failed.
+
+### Boundary
+
+- This milestone reports failure; it does not automatically restart a worker or restart dependent resources.
+- Rust worker OS resource limits and sandboxing remain separate follow-up work.
+
 ## 2026-11-19 — Rust worker exit-code race correction
 
 ### Fixed
