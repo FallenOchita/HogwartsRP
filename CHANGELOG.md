@@ -4,6 +4,14 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Improved — Rust resource health supervision
+
+- Propagate unexpected Rust worker exits into the owning resource's lifecycle status and mark the resource Failed with its exit code when available.
+- Expose a ResourceManager worker-exit notification for host diagnostics while isolating observer exceptions.
+- Preserve a failure that occurs during startup instead of accidentally overwriting it with a later Started transition.
+- Added a ResourceManager integration test that starts the compiled Rust fixture, triggers its controlled exit, and verifies the resource status transition.
+
+
 ### Fixed — Rust worker exit supervision race
 
 - Wait for the worker process to fully exit after stdout reaches EOF before reading its exit code or notifying observers.
