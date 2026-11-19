@@ -5,6 +5,7 @@ using HogwartsRP.Networking.Abstractions;
 using HogwartsRP.Resources;
 using HogwartsRP.Scripting;
 using HogwartsRP.Server;
+using HogwartsRP.Server.Accounts;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -57,7 +58,8 @@ using var oidcTicketExchange = string.IsNullOrWhiteSpace(oidcAuthority)
 var eventPolicy = new NetworkEventPolicy();
 var sessions = new PlayerSessionRegistry();
 var serverName = builder.Configuration["Server:Name"] ?? "HogwartsRP Server";
-await using var networking = new WebSocketNetworkingAdapter(listenUrl, joinTickets, eventPolicy, sessions, loggerFactory, oidcTicketExchange, characterSubmissions, serverName);
+var browserAccountSessions = new BrowserAccountSessionStore();
+await using var networking = new WebSocketNetworkingAdapter(listenUrl, joinTickets, eventPolicy, sessions, loggerFactory, oidcTicketExchange, characterSubmissions, serverName, browserAccountSessions);
 networking.PlayerConnected += session =>
     logger.LogInformation("Player {DisplayName} connected with session {SessionId}", session.DisplayName, session.Id);
 networking.PlayerDisconnected += session =>
