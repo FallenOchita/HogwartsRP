@@ -150,6 +150,8 @@ local function enumerateProperties(struct, output, limit, namedPropertyAudit, de
     local diagnostic = {
         class = declaringClass,
         method = "ForEachProperty",
+        enumeration_mode = "FIRST_PROPERTY_SAMPLE_EARLY_STOP",
+        property_sample_limit = 1,
         status = "NOT_STARTED",
         properties_before = #output,
         properties_after = #output,
@@ -191,7 +193,9 @@ local function enumerateProperties(struct, output, limit, namedPropertyAudit, de
                     end
                 end
             end
-            return false
+            diagnostic.stop_reason = diagnostic.properties_captured > 0
+                and "FIRST_PROPERTY_SAMPLE_CAPTURED" or "FIRST_CALLBACK_CONSUMED"
+            return true
         end)
         if not callbackOk then
             callbackError = conciseDiagnostic(shouldStop)
@@ -207,6 +211,8 @@ local function enumerateProperties(struct, output, limit, namedPropertyAudit, de
     diagnostic.invocation_status = callStatus or (callError and "CALL_ERROR" or "OK")
     if callbackError then
         diagnostic.status = "CALLBACK_ERROR"
+    elseif callStatus == "OK" and diagnostic.callback_invocations == 0 then
+        diagnostic.status = "NO_CALLBACKS_DELIVERED"
     elseif callStatus == "CALL_ERROR" and diagnostic.callback_invocations > 0 then
         diagnostic.status = "CALL_ERROR_AFTER_CALLBACK"
     elseif callStatus == "CALL_ERROR" then
@@ -287,8 +293,9 @@ end
 -- Build a bounded property-descriptor catalog for one confirmed component.
 -- The caller caches this result by class identity so duplicate instances do
 -- not trigger repeated reflection passes. Each class receives one
--- ForEachProperty metadata pass plus count-only continue and early-stop probes;
--- partial results and full bounded error diagnostics are preserved.
+-- ForEachProperty first-property samples plus count-only continue and early-stop
+-- probes; catalogs are deliberately partial because each class stops after one
+-- callback. Partial samples and bounded diagnostic errors are preserved.
 function M.catalogComponentProperties(component, options)
     options = options or {}
     local maxDepth = options.max_super_depth or DEFAULTS.max_super_depth
@@ -304,6 +311,9 @@ function M.catalogComponentProperties(component, options)
         max_super_depth = maxDepth,
         max_properties = maxProperties,
         properties_truncated = false,
+        property_catalog_mode = "FIRST_PROPERTY_SAMPLE_PER_CLASS",
+        property_sample_limit_per_class = 1,
+        property_catalog_complete = false,
         safety = "CLASS_PROPERTY_DESCRIPTOR_METADATA_ONLY_NO_PROPERTY_VALUE_READS_NO_GAMEPLAY_UFUNCTIONS"
     }
 
@@ -325,7 +335,9 @@ function M.catalogComponentProperties(component, options)
     local current = class
     local seen = {}
     local hierarchyComplete = false
-    local partial = false
+    -- A first-property sample is never a complete property catalog, even when
+    -- the class hierarchy itself is traversed successfully.
+    local partial = true
 
     for _ = 1, maxDepth do
         if not Safe.isValidObject(current) then
@@ -414,7 +426,7 @@ function M.catalogComponentProperties(component, options)
     else
         result.status = "COMPLETE"
     end
-    result.note = "Only property descriptor names, full names, property classes, and declaring classes are recorded. ForEachProperty failures retain captured metadata and are never treated as proof that uncaptured properties are absent."
+    result.note = "This is a first-property sample for each class, not a complete property catalog. Each descriptor pass stops after its first callback because live UE4SS 4.0.0 reports continuation errors. Only descriptor names, full names, property classes, and declaring classes are recorded; uncaptured properties are unknown, not absent."
     return result
 end
 
