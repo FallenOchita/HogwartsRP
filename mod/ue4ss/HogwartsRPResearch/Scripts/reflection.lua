@@ -123,13 +123,15 @@ end
 -- does not expose a documented ByteProperty-to-UEnum accessor, so resolve
 -- only the known engine enum object by its exact UObject path.
 -- This is a targeted lookup, not an enumeration of arbitrary game enums.
+local MOVEMENT_MODE_ENUM_OBJECT_PATH = "/Script/Engine.EMovementMode"
 local MOVEMENT_MODE_ENUM_FULL_NAME = "Enum /Script/Engine.EMovementMode"
 local MOVEMENT_MODE_VALUE_TO_RESOLVE = 3
 
 local function resolveKnownMovementModeEnum()
     local result = {
         method = "StaticFindObject",
-        requested_full_name = MOVEMENT_MODE_ENUM_FULL_NAME,
+        requested_object_path = MOVEMENT_MODE_ENUM_OBJECT_PATH,
+        expected_full_name = MOVEMENT_MODE_ENUM_FULL_NAME,
         status = "NOT_STARTED",
         enum_entries = {}
     }
@@ -141,7 +143,7 @@ local function resolveKnownMovementModeEnum()
     end
 
     local callOk, enumObject = pcall(function()
-        return lookupFunction(MOVEMENT_MODE_ENUM_FULL_NAME)
+        return lookupFunction(MOVEMENT_MODE_ENUM_OBJECT_PATH)
     end)
     if not callOk then
         result.status = "STATIC_LOOKUP_CALL_ERROR"
@@ -222,7 +224,7 @@ local function enumAssociationCapabilityAudit(property, descriptor)
         enum_entries_status = #enumLookup.enum_entries > 0
             and "TARGETED_VALUE_LOOKUP_ONLY" or "NO_ENUM_ENTRY_RESOLVED",
         documentation_scope = "UE4SS_4.0.0_LUA_API",
-        note = "The ByteProperty descriptor still exposes no direct UEnum reference. The toolkit performs one exact StaticFindObject lookup for /Script/Engine.EMovementMode and, if the returned object identity and UEnum class are confirmed, resolves only value 3 with UEnum:GetNameByValue. This is a corroborating engine-enum candidate, not a pointer extracted from the property descriptor.",
+        note = "The ByteProperty descriptor still exposes no direct UEnum reference. The toolkit passes the exact object path /Script/Engine.EMovementMode to StaticFindObject, then validates the reflected full name Enum /Script/Engine.EMovementMode and UEnum class before resolving only value 3 with UEnum:GetNameByValue. This is a corroborating engine-enum candidate, not a pointer extracted from the property descriptor.",
         safety = "EXACT_STATIC_ENUM_OBJECT_LOOKUP_AND_TARGETED_UENUM_NAME_LOOKUP_NO_PROPERTY_VALUE_READS_NO_GAMEPLAY_FUNCTIONS"
     }
 end
