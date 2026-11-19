@@ -1,0 +1,11 @@
+[package]
+name = "hogwartsrp-directory-service"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Standalone HogwartsRP public server directory host"
+
+[dependencies]
+axum = "0.8"
+hogwartsrp-directory = { path = "../../crates/hogwartsrp-directory" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
