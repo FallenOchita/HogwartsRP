@@ -1,3 +1,21 @@
+## 2026-11-18 — Delayed UE4SS player/controller discovery
+
+### Fixed
+
+- Replaced the one-shot startup lookup with a bounded retry process because the player controller and pawn may not exist when the Lua mod first loads.
+- Schedule retries using UE4SS `ExecuteWithDelay`, then dispatch UObject access through the documented `ExecuteInGameThread` API.
+- Retry every 2.5 seconds for up to 24 attempts; write a final diagnostic report if neither the player nor controller appears.
+- Added a `FindAllOf` fallback when `FindFirstOf` returns no valid instance.
+- Resolve the local pawn through the controller's `AcknowledgedPawn` or `Pawn` property when class lookup has not found it.
+- Resolve movement from the already known `CharMoveComp` or `CharacterMovement` properties before trying the component class lookup.
+- Register `hogwartsrp_research` as a manual console-command fallback when the UE4SS console handler is available.
+- Record the discovery attempt count, lookup source, and scheduler capabilities in the report.
+
+### Validation boundary
+
+- The supplied log only proves that the previous one-shot search ran before its three target objects were available or resolvable; it does not establish that the classes are absent.
+- The delayed retry implementation is committed for another in-game test. The target objects and reflection metadata remain unverified until the new reports show `FOUND` and `ENUMERATED` statuses.
+
 ## 2026-11-18 — Read-only UE4SS reflection metadata discovery
 
 ### Added

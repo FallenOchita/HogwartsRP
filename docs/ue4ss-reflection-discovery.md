@@ -15,6 +15,12 @@ The implementation uses the documented APIs:
 
 These methods are documented in the UE4SS 4.0.0 Lua API. The implementation does not depend on experimental development-only APIs.
 
+## Discovery timing and object lookup
+
+The research pass no longer assumes that the player exists when UE4SS first loads the Lua mod. It retries the known player/controller class lookups every 2.5 seconds, for up to 24 attempts. The timer callback dispatches object access through the documented `ExecuteInGameThread` API. `FindAllOf` is used as a fallback if `FindFirstOf` does not return a valid object. If the controller is found first, the toolkit checks its `AcknowledgedPawn` and `Pawn` references for the local pawn. Movement discovery first checks the known `CharMoveComp` and `CharacterMovement` properties.
+
+A manual `hogwartsrp_research` console command is registered when UE4SS exposes `RegisterConsoleCommandHandler`. The final report records the number of attempts and the lookup source. A timeout with no player/controller is reported as a discovery failure, not a reflection failure.
+
 ## Safety boundary
 
 The reflection pass is metadata-only:

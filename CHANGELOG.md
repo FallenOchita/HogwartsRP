@@ -4,6 +4,15 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Fixed — Delayed player/controller discovery
+
+- Avoid running the one-shot object lookup during early mod initialization, when the Hogwarts Legacy world and local player may not exist yet.
+- Retry the known player/controller class lookups on the game thread every 2.5 seconds, up to 24 attempts.
+- Use the controller's read-only `AcknowledgedPawn`/`Pawn` references as a fallback for local pawn discovery.
+- Resolve the movement component from the known `CharMoveComp`/`CharacterMovement` properties before trying its class lookup.
+- Add a `FindAllOf` fallback, explicit discovery-source diagnostics, and a `hogwartsrp_research` console command for manual retries.
+- Keep the final no-player result explicit after the bounded retry window; do not claim reflection was tested when no target object was found.
+
 ### Added — Read-only UE4SS reflection metadata discovery
 
 - Added a bounded reflection pass for the discovered player, controller, and movement objects using UE4SS 4.0.0 `UStruct:ForEachProperty`, `UStruct:ForEachFunction`, and `GetSuperStruct`.
