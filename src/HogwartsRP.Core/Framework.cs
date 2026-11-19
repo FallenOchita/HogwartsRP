@@ -3,13 +3,17 @@ using System.Text.RegularExpressions;
 
 namespace HogwartsRP.Core;
 
-public sealed record ResourceManifest(string Name, string FxVersion, string Game, string? Author, string? Description, string? Version, IReadOnlyList<string> ServerScripts, IReadOnlyList<string> ClientScripts, IReadOnlyList<string> SharedScripts, IReadOnlyList<string> Dependencies);
+public sealed record ResourceManifest(string Name, string FxVersion, string Game, string? Author, string? Description, string? Version, IReadOnlyList<string> ServerScripts, IReadOnlyList<string> ClientScripts, IReadOnlyList<string> SharedScripts, IReadOnlyList<string> Dependencies)
+{
+    /// <summary>Precompiled Rust worker executables, relative to the resource directory.</summary>
+    public IReadOnlyList<string> RustScripts { get; init; } = [];
+}
 
 /// <summary>Parses a deliberately restricted fxmanifest subset. Manifests are data; no Lua code is evaluated.</summary>
 public static partial class ManifestParser
 {
-    [GeneratedRegex("^(?<key>[a-z_]+)\\s+['\"](?<value>[^'\"]+)['\"]\\s*$", RegexOptions.IgnoreCase)] private static partial Regex ScalarLine();
-    [GeneratedRegex("^(?<key>server_script|client_script|shared_script|dependency|dependencies)\\s+['\"](?<value>[^'\"]+)['\"]\\s*$", RegexOptions.IgnoreCase)] private static partial Regex ListLine();
+    [GeneratedRegex("^(?<key>[a-z_]+)\\s+['\\\"](?<value>[^'\\\"]+)['\\\"]\\s*$", RegexOptions.IgnoreCase)] private static partial Regex ScalarLine();
+    [GeneratedRegex("^(?<key>server_script|client_script|shared_script|rust_script|dependency|dependencies)\\s+['\\\"](?<value>[^'\\\"]+)['\\\"]\\s*$", RegexOptions.IgnoreCase)] private static partial Regex ListLine();
 
     public static ResourceManifest Parse(string text, string folderName)
     {
@@ -36,7 +40,10 @@ public static partial class ManifestParser
         var fx = values.GetValueOrDefault("fx_version") ?? throw new FormatException("fx_version is required.");
         var game = values.GetValueOrDefault("game") ?? throw new FormatException("game is required.");
         List<string> Get(params string[] keys) => keys.SelectMany(k => lists.GetValueOrDefault(k) ?? []).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        return new(name, fx, game, values.GetValueOrDefault("author"), values.GetValueOrDefault("description"), values.GetValueOrDefault("version"), Get("server_script"), Get("client_script"), Get("shared_script"), Get("dependency", "dependencies"));
+        return new(name, fx, game, values.GetValueOrDefault("author"), values.GetValueOrDefault("description"), values.GetValueOrDefault("version"), Get("server_script"), Get("client_script"), Get("shared_script"), Get("dependency", "dependencies"))
+        {
+            RustScripts = Get("rust_script")
+        };
     }
 }
 
