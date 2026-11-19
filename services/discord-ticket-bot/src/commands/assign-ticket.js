@@ -5,10 +5,10 @@ module.exports={data:new SlashCommandBuilder().setName("assign-ticket").setDescr
  async execute(i){
   const ticket=await Ticket.findOne({channelId:i.channelId,status:"open"});if(!ticket)return i.reply({content:"This is not an open ticket.",ephemeral:true});
   const type=types[ticket.ticketType],role=config.roles[type.department];
-  if(!isAdmin(i.member)&&!canManageTickets(i.member,role))return i.reply({content:"Department staff access required.",ephemeral:true});
+  if(!isAdmin(i.member)&&(ticket.ticketType==="report-staff"||!canManageTickets(i.member,role)))return i.reply({content:"Department staff access required.",ephemeral:true});
   const targetUser=i.options.getUser("member"),target=await i.guild.members.fetch(targetUser.id).catch(()=>null),action=i.options.getString("action");
   if(!target)return i.reply({content:"Member is not in this server.",ephemeral:true});
-  if(action==="assign"&&!isAdmin(target)&&!canManageTickets(target,role))return i.reply({content:"The selected member does not have the required department role.",ephemeral:true});
+  if(action==="assign"&&(ticket.ticketType==="report-staff"?!isAdmin(target):(!isAdmin(target)&&!canManageTickets(target,role))))return i.reply({content:"The selected member does not have the required department role.",ephemeral:true});
   if(action==="assign"){
    if(!ticket.assignedStaff.includes(target.id))ticket.assignedStaff.push(target.id);
    await i.channel.permissionOverwrites.edit(target.id,{ViewChannel:true,SendMessages:true,ReadMessageHistory:true,AttachFiles:true});
