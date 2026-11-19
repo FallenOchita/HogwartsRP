@@ -271,15 +271,31 @@ public sealed class ResourceManager
             await worker.DispatchEventAsync(eventName, arguments, cancellationToken);
     }
 
+    /// <summary>Invokes the unique worker that declared the named command. A resource may host multiple workers.</summary>
     public ValueTask<string?> InvokeRustCommandAsync(string resourceName, string command, object?[] arguments, CancellationToken cancellationToken = default)
     {
         if (!_running.TryGetValue(resourceName, out var resource))
-            throw new KeyNotFoundException($"No running Rust worker exists for resource '{resourceName}'.");
-        RustWorkerProcessRuntime worker;
-        try { worker = resource.GetSingleWorker(); }
-        catch (KeyNotFoundException) { throw new KeyNotFoundException($"No running Rust worker exists for resource '{resourceName}'."); }
-        catch (InvalidOperationException ex) { throw new InvalidOperationException($"Resource '{resourceName}' has multiple Rust workers; command routing is ambiguous.", ex); }
-        return worker.InvokeCommandAsync(command, arguments, cancellationToken);
+            throw new KeyNotFoundException($"No running Rust resource exists for '{resourceName}'.");
+
+        var matches = resource.WorkerSnapshot()
+            .Where(worker => worker.RegisteredCommands.Contains(command, StringComparer.OrdinalIgnoreCase))
+            .ToArray();
+        if (matches.Length == 0)
+            throw new KeyNotFoundException($"Rust command '{command}' is not registered by resource '{resourceName}'.");
+        if (matches.Length > 1)
+            throw new InvalidOperationException($"Rust command '{command}' is registered by multiple workers in resource '{resourceName}'.");
+        return matches[0].InvokeCommandAsync(command, arguments, cancellationToken);
+    }
+
+    /// <summary>Dispatches an approved client event only to workers in the owning resource that declared it.</summary>
+    public async ValueTask DispatchRustEventToResourceAsync(string resourceName, string eventName, object?[] arguments, CancellationToken cancellationToken = default)
+    {
+        if (!_running.TryGetValue(resourceName, out var resource)) return;
+        var targets = resource.WorkerSnapshot()
+            .Where(worker => worker.RegisteredNetworkEvents.Contains(eventName, StringComparer.Ordinal))
+            .ToArray();
+        foreach (var worker in targets)
+            await worker.DispatchEventAsync(eventName, arguments, cancellationToken);
     }
 
     private static string ResolveResourcePath(string resourceDirectory, string relativePath)
