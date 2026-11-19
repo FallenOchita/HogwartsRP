@@ -103,31 +103,22 @@ end
 -- Capability report only reads Lua member exposure; it does not invoke any
 -- reflected method. A method marked EXPOSED_NOT_INVOKED may still fail at call time.
 function M.capabilityReport(objects)
-    local report = { status = "INSPECTED", safety = "MEMBER_LOOKUP_ONLY_NO_METHOD_INVOCATION", targets = {} }
+    local report = {
+        status = "INSPECTED",
+        safety = "CLASS_LOOKUP_AND_MEMBER_EXPOSURE_ONLY_NO_ENUMERATION",
+        targets = {}
+    }
     local methods = { "ForEachProperty", "ForEachFunction", "GetSuperStruct" }
     for targetName, object in pairs(objects or {}) do
         local target = { status = Safe.isValidObject(object) and "FOUND" or "NOT_FOUND", methods = {} }
         if Safe.isValidObject(object) then
+            -- GetClass is the same read-only identity lookup used by inspect().
+            -- No ForEach* or UFunction descriptor method is invoked here.
             local class = Safe.safeMethod(object, "GetClass")
             target.class = Safe.safeFullName(class)
             if Safe.isValidObject(class) then
                 for _, methodName in ipairs(methods) do
                     target.methods[methodName] = Safe.methodCapability(class, methodName)
-                end
-                local firstFunction = nil
-                local _, _, enumStatus = Safe.safeMethod(class, "ForEachFunction", function(fn)
-                    if Safe.isValidObject(fn) then firstFunction = fn; return true end
-                    return false
-                end)
-                target.function_discovery_status = enumStatus or "UNKNOWN"
-                if Safe.isValidObject(firstFunction) then
-                    target.function_descriptor_methods = {
-                        ForEachProperty = Safe.methodCapability(firstFunction, "ForEachProperty"),
-                        GetFunctionFlags = Safe.methodCapability(firstFunction, "GetFunctionFlags"),
-                        GetFName = Safe.methodCapability(firstFunction, "GetFName")
-                    }
-                else
-                    target.function_descriptor_methods = { status = "NO_FUNCTION_DESCRIPTOR_AVAILABLE" }
                 end
             else
                 target.status = "CLASS_UNAVAILABLE"
