@@ -1,3 +1,21 @@
+## 2026-11-19 — Read-only component property descriptor catalog
+
+### Added
+
+- Added a dedicated `ComponentPropertyCatalog.txt` containing property descriptor names, full names, property-class identities, and declaring classes for confirmed player-owned component classes.
+- Reuses one bounded metadata pass per unique reflected class, including duplicate component instances.
+- Adds per-class `ForEachProperty` diagnostics and preserves partial captures instead of treating failed continuation as a complete catalog.
+- Added a 16-level superclass limit and a 256-property catalog cap.
+- Increased report serialization depth to ten levels so grouped class hierarchies are no longer hidden behind the old depth-five limit; added a 50,000-line safety ceiling with an explicit truncation marker.
+- Added standalone Lua regression tests for complete metadata, partial enumeration, and duplicate-class caching.
+
+### Safety and validation boundary
+
+- Catalog scope is limited to the 34 confirmed Outer matches in the supplied live report; unresolved Outer chains are not associated with the player.
+- Only property descriptor metadata is collected. No component property values, opaque userdata, gameplay UFunctions, setters, hooks, network operations, or game-state changes are involved.
+- A `PARTIAL` or `FAILED` catalog does not imply that uncaptured properties are absent.
+- Live validation with Hogwarts Legacy and UE4SS 4.0.0 is still required.
+
 ## 2026-11-19 — Read-only component class hierarchy inventory
 
 ### Added
