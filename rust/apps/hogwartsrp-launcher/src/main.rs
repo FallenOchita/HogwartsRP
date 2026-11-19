@@ -1,5 +1,6 @@
 pub mod launcher_core;
 pub mod oidc;
+pub mod network;
 
 use directories::ProjectDirs;
 use eframe::egui;
