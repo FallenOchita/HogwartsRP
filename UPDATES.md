@@ -780,3 +780,20 @@ This file records implementation details and milestone status. For user-facing f
 ### Validation boundary
 
 - Regression assertions are included. Hosted CI and a fresh live UE4SS 4.0.0 `ComponentPropertyCatalog` report are required to validate runtime behavior.
+
+
+## 2026-11-19 — Safe first-property sampling for UE4SS component catalogs
+
+### Changed
+
+- Replaced the full continuation-based component property descriptor pass with a one-callback sample that returns `true` to stop iteration immediately.
+- Each class diagnostic now identifies `FIRST_PROPERTY_SAMPLE_EARLY_STOP`, a sample limit of one, and whether a descriptor was captured or no callback was delivered.
+- Kept the count-only `false`-return continuation probe and the count-only early-stop probe so future live reports retain a direct comparison of both iterator paths.
+- Marked component property catalog output as `FIRST_PROPERTY_SAMPLE_PER_CLASS`, with `property_catalog_complete = false`; the overall catalog remains `PARTIAL` even if hierarchy traversal completes.
+- Marked named-property fallback enumeration as sample-incomplete so an uncaptured descriptor is not misreported as absent. Direct `Reflection:GetProperty` lookup remains independently recorded.
+
+### Validation boundary
+
+- Regression tests cover successful first-property samples, one callback per class, explicit partial labeling, and preservation of the synthetic continuation error in the diagnostic-only probe.
+- The implementation remains read-only descriptor metadata inspection. It does not read property values, invoke gameplay functions, write properties, or change game state.
+- Automated tests and hosted CI have not yet been confirmed for this branch. A fresh live UE4SS 4.0.0 report is still required to verify the updated sampling path in-game.

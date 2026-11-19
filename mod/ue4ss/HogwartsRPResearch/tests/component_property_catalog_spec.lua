@@ -62,10 +62,13 @@ local component = {
 }
 
 local complete = Reflection.catalogComponentProperties(component)
-equal(complete.status, "COMPLETE", "complete catalog status")
+equal(complete.status, "PARTIAL", "sampled catalog status")
 equal(complete.class_hierarchy_status, "COMPLETE", "complete hierarchy status")
 equal(complete.class_count, 2, "class count")
-equal(complete.property_count, 2, "property count")
+equal(complete.property_count, 2, "one sampled property per class")
+equal(complete.property_catalog_mode, "FIRST_PROPERTY_SAMPLE_PER_CLASS", "catalog sampling mode")
+equal(complete.property_sample_limit_per_class, 1, "per-class sample limit")
+equal(complete.property_catalog_complete, false, "sampled catalog must not claim completeness")
 equal(complete.properties[1].declaring_class, "Class /Script/Test.TestComponent", "derived declaring class")
 equal(complete.properties[2].declaring_class, "Class /Script/Engine.ActorComponent", "base declaring class")
 equal(complete.class_diagnostics[1].iteration_probe.status, "OK", "successful minimal probe status")
@@ -77,6 +80,11 @@ equal(complete.class_diagnostics[1].iteration_stop_probe.callback_mode,
     "COUNT_ONLY_STOP_AFTER_FIRST_RETURN_TRUE", "early-stop callback mode")
 equal(complete.class_diagnostics[1].iteration_stop_probe.callback_invocations, 1,
     "successful early-stop callback count")
+equal(complete.class_diagnostics[1].enumeration_mode, "FIRST_PROPERTY_SAMPLE_EARLY_STOP",
+    "descriptor pass sampling mode")
+equal(complete.class_diagnostics[1].property_sample_limit, 1, "descriptor pass sample limit")
+equal(complete.class_diagnostics[1].status, "FIRST_PROPERTY_SAMPLE_CAPTURED",
+    "descriptor pass reports first-property sample")
 
 local longSyntheticError = "synthetic continuation failure " .. string.rep("diagnostic-detail-", 24)
 local failingClass = class("Class /Script/Test.FailingComponent", {
@@ -89,12 +97,13 @@ local failingComponent = {
 local partial = Reflection.catalogComponentProperties(failingComponent)
 equal(partial.status, "PARTIAL", "partial catalog status")
 equal(partial.property_count, 1, "partial captured property count")
-equal(partial.class_diagnostics[1].status, "CALL_ERROR_AFTER_CALLBACK", "partial diagnostic status")
+equal(partial.class_diagnostics[1].status, "FIRST_PROPERTY_SAMPLE_CAPTURED", "sampled descriptor status")
 local failingDiagnostic = partial.class_diagnostics[1]
 equal(failingDiagnostic.iteration_probe.status, "CALL_ERROR_AFTER_CALLBACK", "minimal probe failure status")
-equal(failingDiagnostic.iteration_probe.callback_invocations, 1, "minimal probe callback count")
-equal(failingDiagnostic.iteration_probe.callback_invocations,
-    failingDiagnostic.callback_invocations, "failing probe/detail callback count parity")
+equal(failingDiagnostic.iteration_probe.callback_invocations, 1,
+    "continuation probe callback count")
+equal(failingDiagnostic.callback_invocations, 1, "early-stop descriptor callback count")
+equal(failingDiagnostic.properties_captured, 1, "sampled descriptor count")
 equal(failingDiagnostic.iteration_stop_probe.status, "OK", "early-stop probe should avoid continuation failure")
 equal(failingDiagnostic.iteration_stop_probe.callback_invocations, 1, "early-stop probe callback count")
 assert(failingDiagnostic.iteration_probe.error:find("synthetic continuation failure", 1, true),
@@ -102,10 +111,7 @@ assert(failingDiagnostic.iteration_probe.error:find("synthetic continuation fail
 assert(failingDiagnostic.iteration_probe.error_length > 180,
     "minimal probe error length should exceed the old 180-character cap")
 equal(failingDiagnostic.iteration_probe.error_truncated, false, "minimal probe error truncation flag")
-assert(failingDiagnostic.error:find("synthetic continuation failure", 1, true),
-    "full enumeration error should retain the original error text")
-assert(failingDiagnostic.error_length > 180, "full enumeration error length should exceed the old 180-character cap")
-equal(failingDiagnostic.error_truncated, false, "full enumeration error truncation flag")
+equal(failingDiagnostic.error, nil, "early-stop descriptor pass should not retain continuation error")
 
 local actor = {
     GetFullName = function() return "BP_Biped_Player_C /Game/Test.Root.Player" end
