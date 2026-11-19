@@ -53,22 +53,24 @@
   }
 
   const query = new URLSearchParams(window.location.search);
-  if (query.get("link") === "discord_connected") {
-    message.textContent = "Discord was successfully connected to your HogwartsRP account.";
+  if (query.get("link") === "discord_connected" || query.get("link") === "steam_connected") {
+    const provider = query.get("link").split("_")[0];
+    message.textContent = provider[0].toUpperCase() + provider.slice(1) + " was successfully connected to your HogwartsRP account.";
     window.history.replaceState({}, "", window.location.pathname);
-  } else if (query.get("link_error") === "discord") {
-    message.textContent = "Discord could not be connected. Check the provider settings and try again.";
+  } else if (query.get("link_error") === "discord" || query.get("link_error") === "steam") {
+    const provider = query.get("link_error");
+    message.textContent = provider[0].toUpperCase() + provider.slice(1) + " could not be connected. Check the provider settings and try again.";
     window.history.replaceState({}, "", window.location.pathname);
   }
 
   document.querySelectorAll("[data-connect]").forEach((button) => {
     button.addEventListener("click", async () => {
       const provider = button.dataset.connect;
-      if (provider !== "discord") return;
+      if (provider !== "discord" && provider !== "steam") return;
       button.disabled = true;
       message.textContent = "";
       try {
-        const response = await fetch("/account/links/discord/start", {
+        const response = await fetch("/account/links/" + provider + "/start", {
           method: "POST",
           credentials: "same-origin",
           headers: { "X-HogwartsRP-CSRF": csrfToken }
@@ -76,12 +78,13 @@
         if (!response.ok) throw new Error("Connect request failed");
         const result = await response.json();
         const destination = new URL(result.authorizationUrl);
-        if (destination.protocol !== "https:" || destination.hostname !== "discord.com") {
+        const expectedHost = provider === "discord" ? "discord.com" : "steamcommunity.com";
+        if (destination.protocol !== "https:" || destination.hostname !== expectedHost) {
           throw new Error("Unexpected authorization destination");
         }
         window.location.assign(destination.href);
       } catch (_) {
-        message.textContent = "Discord connection could not be started. The portal may not be configured yet.";
+        message.textContent = provider[0].toUpperCase() + provider.slice(1) + " connection could not be started. The portal may not be configured yet.";
         button.disabled = false;
       }
     });
