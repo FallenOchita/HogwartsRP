@@ -8,6 +8,17 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Install Lua 5.4 for UE4SS research specs
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.4
+      - name: Run UE4SS research toolkit Lua specs
+        if: runner.os == 'Linux'
+        working-directory: mod/ue4ss/HogwartsRPResearch
+        run: |
+          lua5.4 tests/property_value_audit_spec.lua
+          lua5.4 tests/component_property_catalog_spec.lua
       - name: Install stable Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
