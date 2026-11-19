@@ -123,10 +123,9 @@ This is a separate UE4SS mod from the harmless `HogwartsRPDiagnostics` smoke-tes
 
 1. Close Hogwarts Legacy.
 2. Back up the existing UE4SS folder/configuration.
-3. Copy the repository folder `mod/ue4ss/HogwartsRPAdapter` into the UE4SS `Mods` directory used by your installed loader.
+3. Copy the repository folder `mod/ue4ss/HogwartsRPAdapter` into the **same UE4SS `Mods` directory that contains your existing `HogwartsRPDiagnostics` folder**. This avoids guessing whether your installation uses `Phoenix/Binaries/Win64/Mods` or a loader-specific `ue4ss/Mods` path.
 4. Confirm the resulting file exists at:
-   `Phoenix/Binaries/Win64/Mods/HogwartsRPAdapter/Scripts/main.lua`
-   (Use the actual UE4SS Mods directory if your installation uses a different documented location.)
+   `<your UE4SS Mods directory>/HogwartsRPAdapter/scripts/main.lua`.
 5. Open `Mods/mods.txt` and add:
    `HogwartsRPAdapter : 1`
 6. Preserve all existing `mods.txt` entries. Do not add a second UE4SS installation.
