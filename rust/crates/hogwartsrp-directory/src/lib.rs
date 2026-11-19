@@ -2,7 +2,7 @@ use axum::{
     extract::{Path, Query, State},
     http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
-    routing::{get, post, put},
+    routing::{get, put},
     Json, Router,
 };
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
@@ -10,7 +10,7 @@ use rand::RngCore;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::{net::{IpAddr, Ipv4Addr, Ipv6Addr}, path::PathBuf, sync::Arc, time::{SystemTime, UNIX_EPOCH}};
+use std::{net::IpAddr, path::PathBuf, sync::Arc, time::{SystemTime, UNIX_EPOCH}};
 use subtle::ConstantTimeEq;
 use url::Url;
 
