@@ -17,11 +17,12 @@ async function createTicket({client,guild,user,typeId,answers}){
   channel=await guild.channels.create({name,type:ChannelType.GuildText,parent:categoryFor(type),topic:"HogwartsRP ticket "+ticketId+" | "+type.label+" | opener "+user.id,permissionOverwrites:overwrites,reason:"Ticket opened by "+user.tag});
   ticket=await Ticket.create({ticketId,ticketType:typeId,userId:user.id,channelId:channel.id,guildId:guild.id,priority:type.priority,answers});
   await channel.send({content:(staffRole?"<@&"+staffRole+"> ":"")+"<@"+user.id+">",embeds:[require("../embeds/ticketEmbed").opened(ticket,type)],components:require("../embeds/ticketEmbed").controls(typeId)});
-  await stats.increment(guild.id,"opened");
-  if(type.group==="APPEALS")await stats.increment(guild.id,"appealed");
-  if(type.group==="APPLICATIONS")await stats.increment(guild.id,"applications");
-  if(type.group==="REPORTS")await stats.increment(guild.id,"reports");
-  if(typeId==="bug-report")await stats.increment(guild.id,"bugs");
+  const increments=[["opened",1]];
+  if(type.group==="APPEALS")increments.push(["appealed",1]);
+  if(type.group==="APPLICATIONS")increments.push(["applications",1]);
+  if(type.group==="REPORTS")increments.push(["reports",1]);
+  if(typeId==="bug-report")increments.push(["bugs",1]);
+  await Promise.allSettled(increments.map(([key,value])=>stats.increment(guild.id,key,value)));
   await audit.record(client,{guildId:guild.id,ticketId,channelId:channel.id,actorId:user.id,action:"TICKET_CREATED",details:{typeId,priority:type.priority}}).catch(()=>{});
   return{ticket,channel};
  }catch(error){
@@ -34,21 +35,21 @@ async function createTicket({client,guild,user,typeId,answers}){
 async function claim(client,ticket,actorId){
  if(ticket.claimedBy&&ticket.claimedBy!==actorId)throw new Error("Already claimed by <@"+ticket.claimedBy+">.");
  ticket.claimedBy=actorId;if(!ticket.firstResponseAt)ticket.firstResponseAt=new Date();await ticket.save();
- await audit.record(client,{guildId:ticket.guildId,ticketId:ticket.ticketId,channelId:ticket.channelId,actorId,action:"TICKET_CLAIMED"});
+ await audit.record(client,{guildId:ticket.guildId,ticketId:ticket.ticketId,channelId:ticket.channelId,actorId,action:"TICKET_CLAIMED"}).catch(()=>{});
 }
 async function unclaim(client,ticket,actorId,member){
  const permissions=require("../utils/permissions");
  if(ticket.claimedBy&&ticket.claimedBy!==actorId&&!permissions.isAdmin(member))throw new Error("Only the claimer or an administrator can unclaim this ticket.");
  const previous=ticket.claimedBy;ticket.claimedBy=null;await ticket.save();
- await audit.record(client,{guildId:ticket.guildId,ticketId:ticket.ticketId,channelId:ticket.channelId,actorId,action:"TICKET_UNCLAIMED",details:{previous}});
+ await audit.record(client,{guildId:ticket.guildId,ticketId:ticket.ticketId,channelId:ticket.channelId,actorId,action:"TICKET_UNCLAIMED",details:{previous}}).catch(()=>{});
 }
 async function close(client,ticket,actorId,reason){
  const closedAt=new Date();
  const updated=await Ticket.findOneAndUpdate({_id:ticket._id,status:"open"},{$set:{status:"closed",closedAt,closedBy:actorId,closeReason:reason,transcriptPath:ticket.transcriptPath,transcriptMarkdownPath:ticket.transcriptMarkdownPath}},{new:true});
  if(!updated)throw new Error("This ticket has already been closed.");
  await userState.release(ticket.guildId,ticket.userId);
- await stats.increment(ticket.guildId,"closed");
- await audit.record(client,{guildId:ticket.guildId,ticketId:ticket.ticketId,channelId:ticket.channelId,actorId,action:"TICKET_CLOSED",details:{reason}});
+ await stats.increment(ticket.guildId,"closed").catch(()=>{});
+ await audit.record(client,{guildId:ticket.guildId,ticketId:ticket.ticketId,channelId:ticket.channelId,actorId,action:"TICKET_CLOSED",details:{reason}}).catch(()=>{});
  return updated;
 }
 module.exports={createTicket,claim,unclaim,close,roleFor};
