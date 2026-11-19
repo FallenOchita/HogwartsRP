@@ -6,7 +6,7 @@
 - Added `GET /account/session`, which reads the server-owned session cookie and returns only the bound central account ID and session timestamps.
 - Added `DELETE /account/session`, which requires the session's matching `X-HogwartsRP-CSRF` header, revokes only that session, and clears the cookie.
 - Added `SetSessionCookie` for trusted server-side sign-in completion code. The cookie is Secure, HttpOnly, SameSite=Strict, scoped to `/account`, and expires at the server-issued session expiry.
-- Added no-store response headers and regression tests for missing sessions, account binding, CSRF enforcement, logout isolation, and secure cookie attributes.
+- Added no-store response headers and regression tests for missing sessions, account binding, CSRF enforcement, logout isolation, and secure cookie attributes. Fixed the test host context to provide ASP.NET Core routing/options services required by typed HTTP result execution.
 - Updated `docs/browser-account-sessions.md`, `CHANGELOG.md`, and this update log.
 
 ### Hosting and security boundary
