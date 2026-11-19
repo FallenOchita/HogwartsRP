@@ -131,3 +131,12 @@ The MovementMode audit now performs one additional, narrowly scoped lookup when 
 This does not extract a UEnum pointer from the ByteProperty. The report therefore uses ENGINE_ENUM_CANDIDATE_FOUND_ASSOCIATION_NOT_DIRECTLY_EXPOSED, not a direct-association claim. The lookup is corroborative: Epic's UE4.27 MovementMode reference documents the engine movement-mode enum and identifies value 3 as MOVE_FALLING. The live report must still confirm that the exact UEnum object is present and resolves the value as expected.
 
 The lookup does not enumerate arbitrary UEnums, read the MovementMode property value, inspect offsets, dereference opaque userdata, invoke gameplay UFunctions, or modify game state. If the exact object cannot be resolved or validated, enum association remains unverified.
+
+
+## Targeted player and movement property descriptors
+
+The PropertyReport now includes `targeted_property_metadata`, a bounded set of direct `Reflection:GetProperty(propertyName)` lookups for explicitly allowlisted descriptors on the already discovered player, controller, and movement objects. The player allowlist covers CharacterMovement, CharMoveComp, Mesh, ConversationComponent, ToolSetComponent, and AnimationArchitectComponent. The controller allowlist covers AcknowledgedPawn, Pawn, Player, and PlayerState. The movement allowlist covers CharacterOwner, PawnOwner, UpdatedComponent, and Velocity. MovementMode remains in its separate enum audit to avoid duplicating that lookup.
+
+Each result records the descriptor's name, full name, property class, lookup scope, and per-class lookup outcomes. `FOUND` means a descriptor was returned; `NOT_FOUND` is used only when direct lookup completed across the traversed class chain; `LOOKUP_INCOMPLETE` means a lookup or class-hierarchy step failed or could not be completed. A descriptor's full name, rather than the lookup-scope class, remains the evidence for its declaring class.
+
+This pass does not use `ForEachProperty`, read property values, dereference opaque userdata, invoke gameplay UFunctions, write properties, install hooks, or perform network operations. The fixed allowlist is intentionally narrow; unlisted properties are not asserted to be absent.
