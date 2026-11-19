@@ -2,12 +2,28 @@
 
 ## What is included
 
+The Rust host serves a responsive, same-origin account dashboard at `/` and `/account`.
+It shows signed-in state and the central account ID, displays session expiry, and
+provides a CSRF-protected sign-out action. The page uses a same-origin JavaScript
+asset, a restrictive Content Security Policy, no-store caching, and text-only DOM
+updates for account data.
+
+Discord, Steam, and Epic Games are shown as optional identity connections, but
+the dashboard deliberately labels linking as pending until the Rust portal is
+connected to the already implemented provider verification handlers. It does
+not display fabricated connected/disconnected states or pretend that disabled
+controls can link accounts.
+
 The Rust workspace now contains a small standalone Axum host at
 `rust/apps/hogwartsrp-account-portal`. It is separate from the C# per-game-server
 OIDC join-ticket flow.
 
 Routes:
 
+- `GET /` and `GET /account` serve the account dashboard; its same-origin script
+  calls the session endpoint and performs sign-out.
+- `GET /account/assets/account.js` serves the dashboard behavior with no-store
+  caching and a JavaScript content type.
 - `GET /account/login` creates a short-lived OIDC transaction and redirects to
   the configured provider using authorization-code flow and PKCE S256.
 - `GET /account/callback` requires the pre-authentication cookie, consumes
@@ -57,8 +73,8 @@ monitoring, and deployment hardening.
 - The JSON identity store is a single-process development adapter, not a
   production database. It stores only the verified issuer, subject and generated
   HogwartsRP account ID; it does not store provider tokens.
-- The account UI, provider account-link UI integration, distributed sessions,
-  migrations, rate limiting and production deployment are follow-up work.
+- Provider account-link UI integration, distributed sessions, migrations,
+  rate limiting and production deployment are follow-up work.
 - This host does not issue per-server join tickets and is not wired into any
   individual HogwartsRP game server.
 

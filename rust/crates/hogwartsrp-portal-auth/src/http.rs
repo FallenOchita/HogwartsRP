@@ -4,7 +4,7 @@ use crate::{
 use axum::{
     extract::{Query, State},
     http::{header, HeaderMap, HeaderValue, StatusCode},
-    response::{IntoResponse, Redirect, Response},
+    response::{Html, IntoResponse, Redirect, Response},
     routing::get,
     Json, Router,
 };
@@ -48,6 +48,9 @@ impl PortalHttpState {
 
 pub fn router(state: PortalHttpState) -> Router {
     Router::new()
+        .route("/", get(account_home))
+        .route("/account", get(account_home))
+        .route("/account/assets/account.js", get(account_script))
         .route("/account/login", get(login_start))
         .route("/account/callback", get(login_callback))
         .route("/account/session", get(session_info))
@@ -68,6 +71,38 @@ struct SessionResponse {
     account_id: String,
     csrf_token: String,
     expires_at: u64,
+}
+
+async fn account_home() -> Response {
+    let mut response = Html(include_str!("../../../apps/hogwartsrp-account-portal/src/account.html")).into_response();
+    no_store(&mut response);
+    response.headers_mut().insert(
+        header::X_CONTENT_TYPE_OPTIONS,
+        HeaderValue::from_static("nosniff"),
+    );
+    response.headers_mut().insert(
+        header::CONTENT_SECURITY_POLICY,
+        HeaderValue::from_static("default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"),
+    );
+    response.headers_mut().insert(
+        header::X_FRAME_OPTIONS,
+        HeaderValue::from_static("DENY"),
+    );
+    response
+}
+
+async fn account_script() -> Response {
+    let mut response = include_str!("../../../apps/hogwartsrp-account-portal/src/account.js").into_response();
+    response.headers_mut().insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("text/javascript; charset=utf-8"),
+    );
+    no_store(&mut response);
+    response.headers_mut().insert(
+        header::X_CONTENT_TYPE_OPTIONS,
+        HeaderValue::from_static("nosniff"),
+    );
+    response
 }
 
 async fn login_start(State(state): State<PortalHttpState>, headers: HeaderMap) -> Response {
