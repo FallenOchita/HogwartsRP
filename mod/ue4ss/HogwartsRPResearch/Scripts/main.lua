@@ -180,6 +180,8 @@ local function runResearch(targets, finalAttempt)
             ", controller: " .. tostring(catalog.reflection.controller.status) ..
             ", movement: " .. tostring(catalog.reflection.movement.status))
         log("Relationship validation status: " .. tostring(catalog.relationships.status))
+        log("Component discovery status: " .. tostring(catalog.components.status) ..
+            " (allowlisted property references only; complete enumeration unsupported)")
 
         local written, failed = Reports.writeAll(reportDir, catalog)
 
