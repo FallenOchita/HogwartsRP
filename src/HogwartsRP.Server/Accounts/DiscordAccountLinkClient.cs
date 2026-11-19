@@ -92,8 +92,7 @@ public sealed class DiscordAccountLinkClient
         };
         using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        using var document = await JsonDocument.ParseAsync(stream, JsonOptions, cancellationToken);
+        using var document = await ReadJsonAsync(response.Content, cancellationToken);
         var root = document.RootElement;
         if (root.ValueKind != JsonValueKind.Object
             || !root.TryGetProperty("access_token", out var accessTokenElement)
@@ -108,6 +107,27 @@ public sealed class DiscordAccountLinkClient
             throw new InvalidDataException("Discord returned an invalid bearer token response.");
 
         return accessToken;
+    }
+
+    private static async Task<JsonDocument> ReadJsonAsync(HttpContent content, CancellationToken cancellationToken)
+    {
+        const int maximumResponseBytes = 64 * 1024;
+        if (content.Headers.ContentLength is > maximumResponseBytes)
+            throw new InvalidDataException("Discord returned an oversized response.");
+
+        await using var input = await content.ReadAsStreamAsync(cancellationToken);
+        using var buffer = new MemoryStream();
+        var chunk = new byte[8192];
+        while (true)
+        {
+            var read = await input.ReadAsync(chunk, cancellationToken);
+            if (read == 0) break;
+            if (buffer.Length + read > maximumResponseBytes)
+                throw new InvalidDataException("Discord returned an oversized response.");
+            await buffer.WriteAsync(chunk.AsMemory(0, read), cancellationToken);
+        }
+
+        return JsonDocument.Parse(buffer.ToArray(), JsonOptions);
     }
 
     private async Task<DiscordIdentity> FetchCurrentUserAsync(string accessToken, CancellationToken cancellationToken)
