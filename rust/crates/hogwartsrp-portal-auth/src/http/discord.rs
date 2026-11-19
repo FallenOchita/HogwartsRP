@@ -6,7 +6,6 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use openidconnect::core::CoreProviderMetadata;
 use serde::{Deserialize, Serialize};
 use std::{env, time::Duration};
 use url::Url;
@@ -227,7 +226,7 @@ async fn verify_discord_identity(
         .map_err(|_| ())?;
     let user_bytes = bounded_body(user_response).await?;
     let user: DiscordCurrentUser = serde_json::from_slice(&user_bytes).map_err(|_| ())?;
-    if user.id.is_empty() || user.id.len() > 20 || !user.id.bytes().all(|byte| byte.is_ascii_digit()) {
+    if !valid_snowflake(&user.id) {
         return Err(());
     }
     Ok(user.id)
