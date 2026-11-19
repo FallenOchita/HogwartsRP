@@ -201,7 +201,7 @@ local function runResearch(targets, finalAttempt)
         log("Component discovery status: " .. tostring(catalog.components.status) ..
             "; query results: " .. tostring(catalog.components.component_objects_returned or "UNAVAILABLE") ..
             "; player-owned matches: " .. tostring(catalog.components.player_owned_matches or 0) ..
-            "; unresolved outer chains: " .. tostring(catalog.components.unresolved_outer_chains or 0) 
+            "; unresolved outer chains: " .. tostring(catalog.components.unresolved_outer_chains or 0)
             "; property catalog: " .. tostring(catalog.components.property_catalog_status or "UNAVAILABLE"))
 
         local written, failed = Reports.writeAll(reportDir, catalog)
