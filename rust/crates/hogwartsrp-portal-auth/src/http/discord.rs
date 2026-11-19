@@ -154,7 +154,7 @@ async fn callback(
     Query(query): Query<DiscordCallbackQuery>,
 ) -> Response {
     if query.error.is_some() {
-        return Redirect::to("/account?link_error=discord").into_response();
+        return callback_redirect(false);
     }
     let (Some(code), Some(callback_state)) = (query.code, query.state) else {
         return Redirect::to("/account?link_error=discord").into_response();
@@ -181,7 +181,7 @@ async fn callback(
         Err(_) => return Redirect::to("/account?link_error=discord").into_response(),
     };
     match state.account_links.link_verified_identity(&account_id, AccountLinkProvider::Discord, &external_subject) {
-        Ok(()) => Redirect::to("/account?link=discord_connected").into_response(),
+        Ok(()) => callback_redirect(true),
         Err(_) => Redirect::to("/account?link_error=discord").into_response(),
     }
 }
@@ -243,6 +243,17 @@ async fn bounded_body(response: reqwest::Response) -> Result<Vec<u8>, ()> {
         return Err(());
     }
     Ok(bytes.to_vec())
+}
+
+fn callback_redirect(connected: bool) -> Response {
+    let destination = if connected {
+        "/account?link=discord_connected"
+    } else {
+        "/account?link_error=discord"
+    };
+    let mut response = Redirect::to(destination).into_response();
+    no_store(&mut response);
+    response
 }
 
 fn cookie(headers: &HeaderMap, name: &str) -> Option<String> {
