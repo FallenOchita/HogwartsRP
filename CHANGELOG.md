@@ -12,6 +12,15 @@ All notable HogwartsRP changes are recorded here.
 - This is a design/security foundation only. No provider OAuth integration, central account portal, public directory API, or launcher UI is implemented by this change.
 
 
+### Added — Central account identity storage foundation
+
+- Added `JsonAccountIdentityStore` with server-generated central account IDs and JSON persistence for player accounts.
+- Added provider identity link records for Discord, Steam, and Epic Games without storing provider tokens, authorization codes, or secrets.
+- Enforced one linked identity per provider per HogwartsRP account and global uniqueness of each provider subject.
+- Added account-scoped link listing and unlink operations, idempotent repeat linking, input validation, atomic file replacement, and corrupt-store preservation.
+- Added regression tests for persistence, ownership isolation, duplicate-link rejection, unlinking, and invalid data.
+- Documented the trust boundary: provider identities must be verified by a future server-side adapter before calling the store. No browser authentication, OAuth/OpenID callback, or public API is exposed yet.
+
 ### Added
 
 - Added the first Windows desktop launcher shell using WinForms, with server connection/sign-in, roleplay character registration, status feedback, and Steam game launch actions.

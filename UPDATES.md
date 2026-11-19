@@ -1,3 +1,25 @@
+## 2026-11-19 — Central account identity storage foundation
+
+### Added
+
+- Added `HogwartsRP.Server.Accounts.JsonAccountIdentityStore` as the first central account persistence slice.
+- Added server-generated HogwartsRP account IDs, account display names, and creation timestamps.
+- Added external identity link records for Discord, Steam, and Epic Games using stable provider subject identifiers; no provider access tokens, refresh tokens, passwords, or authorization codes are stored.
+- Enforced one external identity per provider per HogwartsRP account and global uniqueness of provider subjects.
+- Added account-scoped link retrieval and unlinking, idempotent repeat linking, validation, serialized writes, temporary-file replacement, and corrupt-store protection.
+- Added tests for persistence across store instances, cross-account identity collision, one-link-per-provider, idempotency, scoped unlink, unknown account rejection, invalid subject rejection, and corrupt JSON preservation.
+- Added `docs/account-identity-storage.md` describing the model, trust boundary, tests, and single-process deployment limitation.
+
+### Security and implementation boundary
+
+- `LinkVerifiedIdentityAsync` is a trusted server-side storage operation. A future provider adapter must verify the provider response and one-time state before calling it.
+- No browser session service, login endpoint, provider OAuth/OpenID integration, account-link UI, or public directory API is implemented by this change.
+- The JSON store is single-process development storage. It is not suitable for multiple service instances or production horizontal scaling.
+
+### Next implementation gate
+
+Implement central browser authentication/session ownership and CSRF-protected account endpoints before wiring any provider callback or browser UI to this store.
+
 ## 2026-11-18 — Public directory and player account linking design foundation
 
 ### Defined
