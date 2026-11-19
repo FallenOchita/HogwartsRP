@@ -504,7 +504,9 @@ function M.objectReferenceAudit(targets, allowlists)
         safety = "ALLOWLISTED_PROPERTY_VALUE_READS_OBJECT_REFERENCE_IDENTITY_ONLY_NO_OPAQUE_USERDATA_DEREFERENCE_NO_UFUNCTION_INVOCATION"
     }
     targets, allowlists = targets or {}, allowlists or {}
-    for targetName, propertyNames in pairs(allowlists) do
+    for _, targetName in ipairs({ "controller", "movement" }) do
+        local propertyNames = allowlists[targetName]
+        if type(propertyNames) == "table" then
         local target = targets[targetName]
         local targetFullName = Safe.isValidObject(target) and Safe.safeFullName(target) or "UNAVAILABLE"
         for _, propertyName in ipairs(propertyNames) do
@@ -529,6 +531,7 @@ function M.objectReferenceAudit(targets, allowlists)
                 end
             end
             result.items[#result.items + 1] = item
+        end
         end
     end
     result.requested_count = #result.items
