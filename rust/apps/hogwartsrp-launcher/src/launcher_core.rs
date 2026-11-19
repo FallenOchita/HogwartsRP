@@ -154,7 +154,7 @@ impl JsonServerProfileStore {
             profile.address.trim_end_matches('/').eq_ignore_ascii_case(address.trim_end_matches('/'))
         });
         let id = existing.map(|index| profiles.remove(index).id)
-            .unwrap_or_else(|| format!("{:032x}", randless_id()));
+            .unwrap_or_else(|| uuid::Uuid::new_v4().simple().to_string());
         let saved = ServerProfile { id, name: name.to_owned(), address: address.trim().to_owned() };
         profiles.push(saved.clone());
         self.write_atomically(&profiles)?;
@@ -178,12 +178,6 @@ impl JsonServerProfileStore {
         serde_json::to_writer_pretty(&mut temporary, profiles).map_err(|error| error.to_string())?;
         temporary.persist(&self.path).map(|_| ()).map_err(|error| error.error.to_string())
     }
-}
-
-fn randless_id() -> u128 {
-    use std::sync::atomic::{AtomicU64, Ordering};
-    static NEXT: AtomicU64 = AtomicU64::new(1);
-    ((std::process::id() as u128) << 64) | NEXT.fetch_add(1, Ordering::Relaxed) as u128
 }
 
 fn validate_profiles(profiles: &[ServerProfile]) -> Result<(), String> {
