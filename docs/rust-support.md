@@ -35,7 +35,9 @@ The C# ResourceManager now starts each declared Rust worker after the resource's
 - InvokeRustCommandAsync(resourceName, commandName, arguments) for command dispatch.
 - DispatchRustEventAsync(eventName, arguments) for server-originated event dispatch to all running Rust workers.
 
-The server still owns authorization. A reported network event is only a declaration; it must be checked against the server's event policy before any client-originated message is dispatched. Rust command declarations are not automatically exposed as public or privileged server commands. The host integration must choose the permission policy and caller identity.
+The server owns authorization and command permissions. Rust command declarations are registered with the framework-wide CommandRegistry using a host-generated permission name, `resource.<resource>.command.<command>` by default. Operators can override this through `Resources:RustCommandPermissions:<resource>:<command>`; the manifest and worker cannot select permissions. The standard PermissionService check is performed before invoking a command. Duplicate command names are rejected. If a worker restarts, its existing command route resolves to the replacement process.
+
+Network-event declarations are registered with the same NetworkEventPolicy used by the WebSocket adapter. Only authenticated client events accepted by that policy are dispatched. Dispatch is scoped to the owning resource and only to worker processes that declared the event. Multiple workers per resource are supported; command dispatch resolves the worker that registered the command, and ambiguous duplicate command declarations fail closed.
 
 The process supervisor uses a 10-second startup timeout, a 15-second request timeout, a 32 KiB UTF-8 frame limit, and a two-second graceful-stop window before terminating the process tree. The SDK and .NET host use camelCase JSON field names with snake_case message type values.
 
