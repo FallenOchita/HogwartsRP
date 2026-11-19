@@ -1,5 +1,22 @@
 # Detailed Updates
 
+## 2026-11-18 — Graphical Windows launcher foundation
+
+### Added
+
+- Replaced the console preview entry point with a Windows Forms desktop window.
+- Added server name/address entry and a connect/sign-in action using the existing `ServerConnectionService`.
+- Reused configured OIDC browser sign-in; loopback development servers can request a one-time development ticket through a password-masked dialog.
+- Added a graphical roleplay character form backed by `CharacterCreationDraft` and the authenticated character-submission endpoint.
+- Added a Steam launch action backed by the existing installation detector and `LauncherService`, plus status feedback.
+
+### Scope and validation boundary
+
+- The desktop shell is Windows-only and targets .NET 10 Windows Forms.
+- This first UI milestone does not include a public server browser, saved server profiles, updater, custom artwork/branding assets, or in-game multiplayer.
+- Character registration still stores RP metadata on the server; it does not create a Hogwarts Legacy character.
+- Windows and Ubuntu CI must complete before this milestone is considered build-verified.
+
 ## 2026-11-18 — Launcher character creation console flow
 
 ### Added
