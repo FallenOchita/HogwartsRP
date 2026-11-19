@@ -252,7 +252,7 @@ local movementModeObject = {
 }
 local originalStaticFindObject = _G.StaticFindObject
 _G.StaticFindObject = function(fullName)
-    equal(fullName, "Enum /Script/Engine.EMovementMode", "exact enum object path")
+    equal(fullName, "/Script/Engine.EMovementMode", "StaticFindObject enum object path")
     return movementModeEnum
 end
 local movementModeAudit = Reflection.inspect(
