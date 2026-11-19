@@ -4,6 +4,15 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Added — Read-only Hogwarts Legacy asset research toolkit
+
+- Added a standalone Python inventory engine and PowerShell launcher under tools/asset-research.
+- Added recursive installation inventory for regular files, with relative paths, sizes, extensions, UTC timestamps, and optional streaming SHA-256.
+- Added loose .uasset/.umap candidate classification, bounded printable-string references, asset catalogs, and an explicitly unverified dependency graph.
+- Added JSON, Markdown, and HTML reports for file inventory and candidate Blueprint, character, animation, audio, world/map/level, localization, DataTable, Enum, and Struct catalogs.
+- Added catalog search, configuration example, automated tests, architecture documentation, and roadmap.
+- Kept the installation read-only; .pak/.utoc/.ucas containers are inventoried but not extracted or decrypted. Cooked metadata remains heuristic until validated by a compatible UE4.27 parser.
+
 ### Improved — Player-owned component object enumeration
 
 - Added a UE4SS 4.0.0 `FindObjects` query for `ActorComponent` and derived component classes, using the documented six-argument API.
