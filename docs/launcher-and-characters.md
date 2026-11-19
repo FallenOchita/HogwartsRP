@@ -12,11 +12,15 @@ Installation detection is limited to conventional Steam/Epic Windows install pat
 
 Official Hogwarts Legacy mod support provides a Creator Kit and in-game mod management for content such as quests, dungeons, cosmetics, and skins. Public official documentation does not expose a supported direct character-creation launch API. Community character editor mods demonstrate in-game editing via a mod loader and hotkeys, not a stable launcher API. Consequently the launcher makes no direct-entry attempt by default and reports normal-launch fallback. `ICharacterCreationBridge` and `ICharacterCreationIntegration` allow a future verified integration to be added without changing launcher logic.
 
+## Character submission model
+
 Server submission data includes name, optional appearance JSON, house, wand, background, and roleplay profile. Validation limits input sizes and restricts house values. The server stamps ownership from its authenticated player session and does not accept client-supplied permission or owner fields.
+
+The launcher library now contains `CharacterCreationDraft`, a UI-independent form model. It normalizes and checks the character name, validates the selected house, enforces background/biography length limits and optional wand-length bounds, and builds the existing `CharacterSubmission` contract. The model deliberately leaves appearance JSON unset until a verified appearance representation is available. This is a form-model layer only; the launcher is still a console preview and does not yet display a graphical character-creation screen. Client validation is for usability only—the server repeats authoritative validation.
 
 ## Character repository
 
-The server project now includes `JsonCharacterRepository`, a file-backed implementation of `ICharacterRepository`. Configure it with a writable data-file path, for example:
+The server project includes `JsonCharacterRepository`, a file-backed implementation of `ICharacterRepository`. Configure it with a writable data-file path, for example:
 
 ```csharp
 var characterRepository = new JsonCharacterRepository(
@@ -25,7 +29,7 @@ var characterRepository = new JsonCharacterRepository(
 
 The repository loads existing records on first use, serializes writes within the process, writes to a temporary file in the same directory, and replaces the data file after the write completes. It rejects duplicate character IDs and exposes owner-filtered retrieval through `GetByOwnerAsync`. If the JSON file is corrupt, it throws `InvalidDataException` and leaves the existing file untouched.
 
-This adapter is intended for one server process. It does not provide cross-process locking, multi-server coordination, encryption at rest, backups, or a production database. The server exposes an authenticated WebSocket submission endpoint. The launcher network client now has a matching submission method that awaits the correlated server response.
+This adapter is intended for one server process. It does not provide cross-process locking, multi-server coordination, encryption at rest, backups, or a production database. The server exposes an authenticated WebSocket submission endpoint. The launcher network client has a matching submission method that awaits the correlated server response.
 
 No real game installation or integration has been tested in this environment. There is no claim that direct character creation or in-game multiplayer works.
 
@@ -50,12 +54,14 @@ After authenticating the WebSocket connection, a client may submit a character u
 
 The server responds with `type: "character_submission_result"`, echoing the request ID and including a `submissionResult` object. The authenticated account ID is taken from the server-created session, never from the client payload. Configure the server's `Storage:CharactersPath` setting to choose the JSON repository file. The endpoint stores roleplay profile data on the server; it does not apply appearance, house, wand, or character data to the game.
 
-
 ## Launcher character submission client
 
 The authenticated launcher connection exposes `SubmitCharacterAsync(CharacterSubmission)`. It sends a `submit_character` message with a generated request ID and waits for the matching `character_submission_result`. The network receive loop routes results by request ID, so an unrelated or late response cannot complete a different submission. If the connection closes before a result arrives, pending submissions fail rather than hanging. Cancellation is supported while sending or waiting. The server remains authoritative for validation and ownership; the launcher does not send an account/owner identifier. This flow persists roleplay character data only and does not apply the data to Hogwarts Legacy.
 
-
 ## Character submission client regression tests
 
-The solution now includes `HogwartsRP.Networking.Client.Tests`. Its in-process WebSocket server tests the launcher protocol without requiring a real game or remote server. Coverage includes concurrent submissions whose responses arrive out of order and the connection closing before a submission result is returned. These are transport/protocol tests only; they do not prove Hogwarts Legacy integration or multiplayer functionality.
+The solution includes `HogwartsRP.Networking.Client.Tests`. Its in-process WebSocket server tests the launcher protocol without requiring a real game or remote server. Coverage includes concurrent submissions whose responses arrive out of order and the connection closing before a submission result is returned. These are transport/protocol tests only.
+
+## Launcher character draft tests
+
+The solution includes `HogwartsRP.Launcher.Tests`, covering draft-to-submission mapping, field normalization, invalid names and houses, wand-length bounds, and optional fields. These tests do not replace server validation or establish in-game character creation.
