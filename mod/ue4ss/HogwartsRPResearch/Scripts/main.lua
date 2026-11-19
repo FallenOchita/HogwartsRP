@@ -123,7 +123,11 @@ local function runResearch(targets, finalAttempt)
         catalog.objects.player = Safe.describeObject(player)
         catalog.objects.controller = Safe.describeObject(controller)
         catalog.objects.movement = Safe.describeObject(movement)
-        catalog.components = Discovery.components(player, Reflection and Reflection.catalogComponentProperties or nil)
+        catalog.components = Discovery.components(
+            player,
+            Reflection and Reflection.catalogComponentProperties or nil,
+            Reflection and Reflection.inspect or nil
+        )
 
         catalog.reflection.player = inspectMetadata(player)
         catalog.reflection.controller = inspectMetadata(controller)
