@@ -64,6 +64,10 @@ impl DiscordLinkConfig {
     }
 }
 
+fn valid_snowflake(value: &str) -> bool {
+    !value.is_empty() && value.len() <= 20 && value.bytes().all(|byte| byte.is_ascii_digit())
+}
+
 fn valid_redirect_uri(value: &str) -> bool {
     let Ok(url) = Url::parse(value) else { return false };
     let loopback = url.host_str().is_some_and(|host| {
@@ -335,7 +339,4 @@ mod tests {
         assert!(!valid_snowflake("123456789012345678901"));
     }
 
-    fn valid_snowflake(value: &str) -> bool {
-        !value.is_empty() && value.len() <= 20 && value.bytes().all(|byte| byte.is_ascii_digit())
-    }
 }
