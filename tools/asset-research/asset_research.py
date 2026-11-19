@@ -34,7 +34,7 @@ def scan(root, hash_files=True, max_file_mb=None, include_hidden=False):
  if not root.is_dir(): raise ValueError("Game root must be a directory")
  rows=[]
  for current,dirs,names in os.walk(root,followlinks=False):
-  dirs[:]=sorted(d for d in dirs if include_hidden or not d.startswith("."))
+  dirs[:]=sorted(dirs)
   for name in sorted(names):
    p=Path(current,name)
    try:
