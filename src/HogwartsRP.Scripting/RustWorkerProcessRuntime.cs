@@ -181,6 +181,12 @@ public sealed class RustWorkerProcessRuntime : IDisposable
         {
             if (!_ready.Task.IsCompleted)
                 _ready.TrySetException(new InvalidOperationException("Rust resource exited before its ready message."));
+
+            // stdout can reach EOF just before the process handle reports termination.
+            // Wait for the process itself before reading ExitCode or notifying observers.
+            try { await _process.WaitForExitAsync(); }
+            catch (InvalidOperationException) { }
+
             var exitCode = -1;
             try { if (_process.HasExited) exitCode = _process.ExitCode; } catch (InvalidOperationException) { }
             FailPending(new InvalidOperationException($"Rust resource exited (code {exitCode})."));
