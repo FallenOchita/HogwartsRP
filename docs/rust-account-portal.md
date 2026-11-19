@@ -94,3 +94,30 @@ monitoring, and deployment hardening.
 The OIDC client secret, when configured, remains server-side in the private
 configuration file. Never commit that file or log authorization codes, cookies,
 tokens, client secrets, or full callback query strings.
+
+### Discord account linking
+
+Discord linking is implemented as an optional server-configured provider flow.
+Set all three environment variables to enable it:
+
+- `HOGWARTSRP_DISCORD_CLIENT_ID`: Discord OAuth application client ID.
+- `HOGWARTSRP_DISCORD_CLIENT_SECRET`: server-only OAuth client secret; never place this in the launcher or browser.
+- `HOGWARTSRP_DISCORD_REDIRECT_URI`: exact registered callback URI, ending in `/account/links/discord/callback`.
+
+The dashboard sends a CSRF-protected same-origin POST to
+`/account/links/discord/start`. The portal creates a short-lived, single-use
+authorization transaction bound to the current browser session, then redirects
+to Discord using the `identify` scope and S256 PKCE. The callback exchanges the
+authorization code at Discord's fixed token endpoint, then calls Discord's fixed
+`/users/@me` endpoint to obtain the verified account ID. The link store is
+updated only after both requests succeed. Access tokens are held only in memory
+for the request and are not persisted or returned to the browser.
+
+For local development, an HTTP callback is accepted only on localhost,
+127.0.0.1, or ::1. Public deployments must use HTTPS and register the exact
+redirect URI in the Discord developer settings. Provider linking is identity
+proof only; it does not grant Discord server membership, game ownership, or
+HogwartsRP server permissions.
+
+Steam OpenID and Epic Games linking remain follow-up integrations and do not
+yet have functional Connect actions.
