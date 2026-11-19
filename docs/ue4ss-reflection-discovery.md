@@ -78,3 +78,18 @@ UE4SS 4.0.0's documented Property API does not expose a property-to-`UEnum` acce
 ## Movement-mode audit enumeration correction
 
 The movement-mode descriptor audit now runs inside the existing successful class-hierarchy property enumeration performed by `Reflection.inspect`. It does not make a second `ForEachProperty` call or attempt to terminate a callback early after finding the target. The matching property record is captured from the same descriptor metadata already used to populate the movement reflection report, with its declaring class recorded. If the shared enumeration itself fails or reaches its configured cap before the property is found, the audit reports that limitation rather than presenting an unverified enum result.
+
+
+## Property-enumeration failure diagnostics
+
+The research report now records a per-class diagnostic for each existing ForEachProperty pass. Each record includes the declaring class, method invocation status, callback invocation count, number of properties captured during that pass, the last property name observed, and any concise invocation or callback error. The named-property audit includes the same diagnostic records so a missing descriptor can be distinguished from a class whose enumeration did not complete.
+
+Status interpretation:
+
+- METHOD_UNAVAILABLE and LOOKUP_ERROR describe Lua binding lookup outcomes.
+- CALL_ERROR_BEFORE_CALLBACK means the exposed method call failed before the callback was observed.
+- CALL_ERROR_AFTER_CALLBACK means at least one callback ran before the method call failed; the last observed property and partial count are retained.
+- CALLBACK_ERROR means the protected Lua callback body itself failed; the error is recorded and enumeration is asked to stop.
+- OK means the method call returned without a recorded error. A limit stop is separately labeled PROPERTY_LIMIT_REACHED.
+
+These diagnostics do not retry enumeration, invoke a second ForEachProperty pass, inspect property values, dereference opaque userdata, invoke gameplay functions, or infer that a property is absent from a failed/incomplete pass. Callback counts and partial counts are diagnostic evidence only; they do not establish why the UE4SS binding failed internally.
