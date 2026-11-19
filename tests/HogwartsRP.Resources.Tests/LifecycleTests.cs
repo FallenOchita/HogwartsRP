@@ -62,6 +62,26 @@ public class LifecycleTests
         }
     }
 
+
+    [Fact]
+    public void RustWorkerRestartPolicyUsesCappedExponentialBackoff()
+    {
+        var policy = new RustWorkerRestartPolicy(4, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(250));
+        Assert.Equal(TimeSpan.FromMilliseconds(100), policy.GetDelay(1));
+        Assert.Equal(TimeSpan.FromMilliseconds(200), policy.GetDelay(2));
+        Assert.Equal(TimeSpan.FromMilliseconds(250), policy.GetDelay(3));
+        Assert.Equal(TimeSpan.FromMilliseconds(250), policy.GetDelay(4));
+        Assert.Throws<ArgumentOutOfRangeException>(() => policy.GetDelay(5));
+    }
+
+    [Fact]
+    public void RustWorkerRestartPolicyRejectsUnsafeRetryBudgets()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new RustWorkerRestartPolicy(11));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new RustWorkerRestartPolicy(1, TimeSpan.FromSeconds(31)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new RustWorkerRestartPolicy(1, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(1)));
+    }
+
     [Fact]
     public void ManifestParserRecognizesPrecompiledRustWorkers()
     {

@@ -75,3 +75,8 @@ Build the resource executable for the same operating system and architecture as 
 ## Native desktop launcher
 
 The active desktop launcher is Rust: rust/apps/hogwartsrp-launcher uses eframe/egui. The WinForms executable has been removed from the .NET solution. See Native Rust launcher in rust-launcher.md. The .NET launcher support library remains temporarily for existing contracts/tests, but the Rust executable does not invoke it.
+
+
+## Rust worker restart policy
+
+The `RustWorkerRestartPolicy` type defines an opt-in bounded retry budget and capped exponential backoff. Its default configuration permits zero retries, preserving fail-fast behavior. The policy is currently a validated configuration primitive; process replacement and ResourceManager integration are not included in this milestone.
