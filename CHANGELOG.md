@@ -6,6 +6,15 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Added — Targeted LocalPlayer and PlayerState property metadata
+
+- Reuses the two validated second-hop UObject references to inspect only explicit LocalPlayer and PlayerState property-descriptor allowlists.
+- LocalPlayer candidates: PlayerController, AspectRatioAxisConstraint, Origin, and Size.
+- PlayerState candidates: PawnPrivate, PlayerId, PlayerNamePrivate, bIsSpectator, bIsABot, bIsInactive, Score, and Ping.
+- Metadata lookup runs only after parent-object validation, reports descriptor lookup and hierarchy outcomes, and does not read these properties' values or invoke gameplay functions.
+- Adds regression coverage proving metadata lookup is called only for validated parent UObject references.
+
+
 ### Added — LocalPlayer and PlayerState reference audit
 
 - Added a fixed second-hop audit from controller.Player to LocalPlayer.PlayerController and controller.PlayerState to PlayerState.PawnPrivate.

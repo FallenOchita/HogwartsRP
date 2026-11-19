@@ -154,3 +154,13 @@ This audit does not call GetOwner, invoke gameplay UFunctions, inspect nested co
 The PropertyReport now includes a narrowly scoped `related_reference_audit` that follows only two references already observed on the controller: `Player` to `LocalPlayer.PlayerController`, and `PlayerState` to `PlayerState.PawnPrivate`. The child property is read only after the parent value is validated as a UObject userdata reference with a readable full name. The report records only the child object's full-name identity, or a bounded status such as unavailable, opaque, or read error.
 
 This is a fixed two-route, one-level follow-up, not recursive traversal. It does not enumerate arbitrary LocalPlayer or PlayerState properties, inspect child objects beyond those single properties, dereference opaque userdata, invoke gameplay UFunctions, write properties, install hooks, or perform network operations. A live report is required to confirm whether these candidate properties are present and populated in the Hogwarts Legacy runtime.
+
+
+## Targeted LocalPlayer and PlayerState metadata
+
+The related-reference audit can optionally pass a validated second-hop UObject to the existing bounded `Reflection:GetProperty` allowlist lookup. This is used for two fixed targets only:
+
+- `LocalPlayer`: `PlayerController`, `AspectRatioAxisConstraint`, `Origin`, and `Size`.
+- `PlayerState`: `PawnPrivate`, `PlayerId`, `PlayerNamePrivate`, `bIsSpectator`, `bIsABot`, `bIsInactive`, `Score`, and `Ping`.
+
+The metadata audit is performed only when the corresponding controller reference has first been validated as a UObject. It records descriptor identity and class-chain lookup status. It does not read the values of these properties, enumerate arbitrary fields, or invoke gameplay functions. Candidate names that are absent or cannot be looked up are reported with the existing explicit `NOT_FOUND` or `LOOKUP_INCOMPLETE` semantics; their presence is not assumed.
