@@ -12,7 +12,7 @@ const fields={
 "ban-appeal":[["discord_username","Discord Username","SHORT"],["ban_reason","Ban Reason","PARAGRAPH"],["appeal_explanation","Appeal Explanation","PARAGRAPH"],["additional_information","Additional Information","PARAGRAPH"]],
 "character-application":[["character_name","Character Name","SHORT"],["character_age","Character Age","SHORT"],["house","House","SHORT"],["background","Character Background","PARAGRAPH"],["roleplay_experience","Roleplay Experience","PARAGRAPH"]],
 "bug-report":[["bug_summary","Bug Summary","SHORT"],["reproduction_steps","Reproduction Steps","PARAGRAPH"],["expected_result","Expected Result","PARAGRAPH"],["actual_result","Actual Result","PARAGRAPH"]],
-"whitelist-application":[["applicant","Applicant / Discord Username","SHORT"],["age","Age (follow server policy)","SHORT"],["timezone","Timezone","SHORT"],["experience","Roleplay Experience","PARAGRAPH"],["character_concept","Character Concept","PARAGRAPH"]],
+"whitelist-application":[["applicant","Applicant / Discord Username","SHORT"],["age","Age bracket (if required)","SHORT"],["timezone","Timezone","SHORT"],["experience","Roleplay Experience","PARAGRAPH"],["character_concept","Character Concept","PARAGRAPH"]],
 "report-player":[["reported_user","Reported User","SHORT"],["incident","What happened?","PARAGRAPH"],["evidence","Evidence links (optional)","PARAGRAPH"]],
 "report-staff":[["reported_staff","Staff Member","SHORT"],["incident","What happened?","PARAGRAPH"],["evidence","Evidence links (optional)","PARAGRAPH"]],
 "feature-suggestion":[["suggestion","Feature Suggestion","PARAGRAPH"],["benefit","How would this help?","PARAGRAPH"]],
