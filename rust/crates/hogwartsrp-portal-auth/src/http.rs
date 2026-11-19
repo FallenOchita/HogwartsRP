@@ -8,10 +8,7 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use openidconnect::{
-    core::{CoreAuthenticationFlow, CoreClient, CoreProviderMetadata},
-    ClientId, ClientSecret, CsrfToken, Nonce, PkceCodeChallenge, RedirectUrl, Scope,
-};
+use openidconnect::core::CoreProviderMetadata;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -84,30 +81,17 @@ async fn login_start(State(state): State<PortalHttpState>, headers: HeaderMap) -
         Err(_) => return generic_error(StatusCode::SERVICE_UNAVAILABLE),
     };
 
-    let client = CoreClient::from_provider_metadata(
-        (*state.metadata).clone(),
-        ClientId::new(state.config.client_id().to_owned()),
-        state.config.client_secret.clone().map(ClientSecret::new),
-    )
-    .set_redirect_uri(match RedirectUrl::new(state.config.callback_uri().to_owned()) {
-        Ok(value) => value,
-        Err(_) => return generic_error(StatusCode::INTERNAL_SERVER_ERROR),
-    });
+    let mut url = state.metadata.authorization_endpoint().url().clone();
+    url.query_pairs_mut()
+        .append_pair("response_type", "code")
+        .append_pair("client_id", state.config.client_id())
+        .append_pair("redirect_uri", state.config.callback_uri())
+        .append_pair("scope", &state.config.scopes().join(" "))
+        .append_pair("state", transaction.state())
+        .append_pair("nonce", transaction.nonce())
+        .append_pair("code_challenge", transaction.code_challenge())
+        .append_pair("code_challenge_method", transaction.code_challenge_method());
 
-    let mut request = client
-        .authorize_url(
-            CoreAuthenticationFlow::AuthorizationCode,
-            || CsrfToken::new(transaction.state().to_owned()),
-            || Nonce::new(transaction.nonce().to_owned()),
-        )
-        .set_pkce_challenge(PkceCodeChallenge::new(
-            transaction.code_challenge().to_owned(),
-        ));
-    for scope in state.config.scopes() {
-        request = request.add_scope(Scope::new(scope.clone()));
-    }
-
-    let (url, _, _) = request.url();
     let mut response = Redirect::temporary(url.as_str()).into_response();
     set_cookie(
         &mut response,
