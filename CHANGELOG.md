@@ -4,6 +4,15 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Added — Read-only Hogwarts Legacy asset research toolkit
+
+- Added a standalone Python inventory engine and PowerShell launcher under tools/asset-research.
+- Added recursive installation inventory for all regular files, with file name, byte size, extension, relative path, UTC modified time, and optional streaming SHA-256.
+- Added loose .uasset/.umap candidate classification, bounded printable-string reference extraction, asset catalogs, and an explicitly unverified dependency graph.
+- Added JSON, Markdown, and HTML report generation for files, Blueprints, characters, animation, audio, worlds/maps/levels, localization resources, DataTables, Enums, and Structs.
+- Added catalog search and configuration examples, architecture documentation, and a future parser roadmap.
+- Kept the installation read-only. Pak/IoStore containers are inventoried but not extracted or decrypted; cooked asset metadata is labeled heuristic unless validated by a compatible parser.
+
 ### Fixed — Research toolkit Lua startup syntax
 
 - Removed a stray, incomplete duplicate `log()` declaration that caused `main.lua` to fail parsing at end-of-file before the research toolkit could initialize.
