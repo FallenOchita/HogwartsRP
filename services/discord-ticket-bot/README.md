@@ -28,7 +28,7 @@ DISCORD_TOKEN, CLIENT_ID and MONGO_URI are required. GUILD_ID is optional for fa
 /setup-tickets, /ticket-stats, /close-ticket, /claim-ticket, /assign-ticket, /user-history and /staff-review-queue.
 
 ## Operations and security
-Back up MongoDB and transcript storage together. Keep credentials in a secret manager. Restrict transcript channel visibility. Review bot permissions and staff roles. Never log modal answer bodies. HTML transcript content is escaped. Use a shared rate limiter before running multiple bot instances.
+Back up MongoDB and transcript storage together. Keep credentials in a secret manager. Restrict transcript channel visibility. Review bot permissions and staff roles. Never log modal answer bodies. HTML transcript content is escaped. Use Discord sharding and worker coordination before horizontal scaling.
 
 ## Known boundaries
 Application decisions are recorded in the audit log but do not yet call a separate whitelist/character service. Ticket quotas and cooldowns are persisted in MongoDB and reconciled on startup. Transcript retry queue, dashboard pagination, channel repair automation and monitoring/alerting remain future hardening tasks. The service is a production-oriented baseline, not a claim of completed live-guild validation. Run npm test and exercise the complete permission matrix in a staging Discord guild before public deployment.
