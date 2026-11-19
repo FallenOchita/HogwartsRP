@@ -1,5 +1,27 @@
 # Detailed Updates
 
+## 2026-11-18 — Experimental UE4SS player-state adapter
+
+### Added
+
+- Added `mod/ue4ss/HogwartsRPAdapter/scripts/main.lua` as a separate UE4SS adapter mod, keeping the existing smoke-test mod unchanged.
+- Reused the in-game findings supplied during development: `BP_Phoenix_Player_Controller_C`, `AcknowledgedPawn`, `BP_Biped_Player_C`, `GetActorLocation()`, and `GetControlRotation()`.
+- Added read-only velocity and movement-component discovery, plus guarded candidate reads for movement mode, jump, sprint, and animation state.
+- Exposed the adapter table as `_G.HogwartsLegacyAdapter` for later in-process integration and added a three-second diagnostic poll.
+- Added installation, log-verification, rollback, and compatibility notes to `mod/ue4ss/README.md`.
+
+### Validation boundary
+
+- The user's reported local-player, position, and control-rotation observations are the only game-specific reads treated as confirmed.
+- Movement-component discovery and jump/sprint/animation properties are exploratory and require verification in the user's installed game build.
+- The adapter is read-only. It does not connect to the server, transmit transforms, spawn remote entities, or implement multiplayer.
+- Hosted CI cannot validate UE4SS/game reflection behavior. Manual in-game log review is required.
+
+### Next step
+
+Install the adapter mod, confirm the `[HogwartsRPAdapter]` load marker, and collect logs while standing, walking, running, jumping, and rotating the camera. Use those results to promote only verified fields into the adapter contract.
+
+
 ## 2026-11-18 — Launcher character creation draft model
 
 ### Added

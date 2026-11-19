@@ -6,6 +6,10 @@ All notable HogwartsRP changes are recorded here.
 
 ### Added
 
+- Added an experimental read-only Hogwarts Legacy UE4SS player-state adapter with local controller/pawn discovery, confirmed position/control-rotation reads, velocity and movement-component probes, and exploratory jump/sprint/animation diagnostics. Added separate installation and verification instructions. Live adapter installation and multiplayer synchronization remain unverified.
+
+### Added
+
 - Added a launcher-side character creation draft model that trims and validates names, Hogwarts houses, roleplay text, and optional wand details before building a typed submission.
 - Added dedicated launcher tests for valid draft mapping, invalid names/houses, wand-length bounds, and omitted optional fields.
 - Added dedicated WebSocket client protocol tests covering concurrent character submissions with out-of-order responses and connection loss before a response.

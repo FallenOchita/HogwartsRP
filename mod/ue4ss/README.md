@@ -101,3 +101,51 @@ pwsh -NoProfile -File .\\tools\\diagnostics\\Test-HogwartsRPDiagnosticReport.ps1
 ```
 
 The tests cover PASS, PARTIAL, NOT VERIFIED, missing-log handling, optional report output, and exclusion of arbitrary log payloads. A `PASS` result confirms only that the diagnostic Lua mod loaded and completed its smoke test. It does not prove game object access or multiplayer.
+
+---
+
+# HogwartsRP Player-State Adapter (experimental)
+
+This is a separate UE4SS mod from the harmless `HogwartsRPDiagnostics` smoke-test mod.
+
+## Included
+
+- Local controller discovery using `BP_Phoenix_Player_Controller_C`.
+- Local pawn discovery through `AcknowledgedPawn`.
+- Position read through `GetActorLocation()`.
+- Facing candidate through `GetControlRotation()`.
+- Read-only velocity and movement-component discovery.
+- Exploratory movement-mode, jump, sprint, and animation property reads.
+- A snapshot API exposed as `_G.HogwartsLegacyAdapter` while the mod is loaded.
+- Three-second diagnostic polling on the UE4SS game thread.
+
+## Install
+
+1. Close Hogwarts Legacy.
+2. Back up the existing UE4SS folder/configuration.
+3. Copy the repository folder `mod/ue4ss/HogwartsRPAdapter` into the **same UE4SS `Mods` directory that contains your existing `HogwartsRPDiagnostics` folder**. This avoids guessing whether your installation uses `Phoenix/Binaries/Win64/Mods` or a loader-specific `ue4ss/Mods` path.
+4. Confirm the resulting file exists at:
+   `<your UE4SS Mods directory>/HogwartsRPAdapter/scripts/main.lua`.
+5. Open `Mods/mods.txt` and add:
+   `HogwartsRPAdapter : 1`
+6. Preserve all existing `mods.txt` entries. Do not add a second UE4SS installation.
+7. Launch Hogwarts Legacy through Steam and inspect `UE4SS.log` beside the UE4SS DLL.
+
+The folder name and `mods.txt` entry must match exactly. UE4SS installations commonly use a capitalized `Scripts` directory; follow the layout used by your installed UE4SS build.
+
+## Expected log markers
+
+Search for `[HogwartsRPAdapter]`. On load, the mod reports its version and read-only scope. Once a local controller and pawn are found, it prints a state snapshot approximately every three seconds.
+
+## Important compatibility and safety notes
+
+- The controller, pawn, position, and control-rotation findings were reported from a live local test, but still depend on the installed game build.
+- Movement component access and the jump, sprint, and animation members are exploratory. An unavailable value is not evidence that the game lacks that capability.
+- Movement classification intentionally reports `Moving`, not guessed walking/running/sprinting states.
+- This adapter does not connect to the HogwartsRP server, transmit player data, spawn remote players, or implement multiplayer.
+- Do not run this alongside HogWarp; the existing compatibility warning in this document still applies.
+- If the game fails to start, remove only the `HogwartsRPAdapter` folder and its `mods.txt` line, then restore your backup.
+
+## Current status
+
+**Adapter authored; live installation and full movement-field verification pending.** A successful load only verifies that UE4SS executed the script. It does not establish multiplayer or network synchronization.
