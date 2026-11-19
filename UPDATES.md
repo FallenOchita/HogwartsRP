@@ -1,3 +1,11 @@
+## 2026-11-19 — Correct PlayerState metadata audit routing
+
+### Fixed
+
+- Corrected the PlayerState route configuration: `PawnPrivate` remains the sole child reference read, while `PawnPrivate`, `PlayerId`, `PlayerNamePrivate`, `bIsSpectator`, `bIsABot`, `bIsInactive`, `Score`, and `Ping` are sent to the descriptor-only metadata lookup.
+- This prevents the metadata candidate list from being mistakenly treated as a property-value allowlist.
+- No candidate property values are read by this route. Fresh live PropertyReport validation is pending.
+
 ## 2026-11-19 — Targeted LocalPlayer and PlayerState metadata audit
 
 ### Added

@@ -183,7 +183,8 @@ local function runResearch(targets, finalAttempt)
                 {
                     root_property = "PlayerState",
                     target = "player_state",
-                    properties = {
+                    properties = { "PawnPrivate" },
+                    metadata_properties = {
                         "PawnPrivate", "PlayerId", "PlayerNamePrivate", "bIsSpectator",
                         "bIsABot", "bIsInactive", "Score", "Ping"
                     }

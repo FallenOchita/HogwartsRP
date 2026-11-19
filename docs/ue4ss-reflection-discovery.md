@@ -164,3 +164,8 @@ The related-reference audit can optionally pass a validated second-hop UObject t
 - `PlayerState`: `PawnPrivate`, `PlayerId`, `PlayerNamePrivate`, `bIsSpectator`, `bIsABot`, `bIsInactive`, `Score`, and `Ping`.
 
 The metadata audit is performed only when the corresponding controller reference has first been validated as a UObject. It records descriptor identity and class-chain lookup status. It does not read the values of these properties, enumerate arbitrary fields, or invoke gameplay functions. Candidate names that are absent or cannot be looked up are reported with the existing explicit `NOT_FOUND` or `LOOKUP_INCOMPLETE` semantics; their presence is not assumed.
+
+
+### PlayerState metadata route correction
+
+The PlayerState second-hop route reads only `PawnPrivate` to preserve the validated pawn-reference chain. The separate metadata allowlist is passed to `Reflection.lookupNamedProperties` and contains `PawnPrivate`, `PlayerId`, `PlayerNamePrivate`, `bIsSpectator`, `bIsABot`, `bIsInactive`, `Score`, and `Ping`. These names are descriptor candidates only; their property values are not read by this metadata audit.
