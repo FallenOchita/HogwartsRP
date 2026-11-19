@@ -1,2 +1,0 @@
-const {SlashCommandBuilder}=require("discord.js");const {createPanels}=require("../services/panelService");const {isAdmin}=require("../utils/permissions");
-module.exports={data:new SlashCommandBuilder().setName("setup-tickets").setDescription("Create HogwartsRP ticket panels"),async execute(i){if(!isAdmin(i.member))return i.reply({content:"Administrator access required.",ephemeral:true});await i.deferReply({ephemeral:true});const channels=await createPanels(i.guild);return i.editReply("Ticket panels ready: "+channels.map(c=>c.toString()).join(", "));}};
