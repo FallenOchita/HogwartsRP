@@ -1,3 +1,11 @@
+## 2026-11-19 — Research toolkit Lua startup syntax correction
+
+### Fixed
+
+- Removed the stray incomplete duplicate `log()` function from `mod/ue4ss/HogwartsRPResearch/Scripts/main.lua` that caused the Lua parser to report an `end` expected near end-of-file.
+- Confirmed the remaining `main.lua` content matches the corrected feature-branch version after removing only that malformed block.
+- This is a source-level syntax correction only. The corrected file still requires a fresh in-game UE4SS 4.0.0 startup test; no live-game success is claimed.
+
 ## 2026-11-18 — UE4SS reflection reliability and component-reference diagnostics
 
 ### Improved
