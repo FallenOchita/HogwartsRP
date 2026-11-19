@@ -1,3 +1,18 @@
+## 2026-11-18 — Research toolkit report path correction
+
+### Fixed
+
+- Corrected report output resolution: the writer no longer assumes `Mods/HogwartsRPResearch/reports` is relative to the game's working directory.
+- The output directory is now resolved from the installed `reports.lua` module path, with the documented UE4SS `IterateGameDirectories()` API as a fallback.
+- Added `mod/ue4ss/HogwartsRPResearch/Scripts/reports/.gitkeep` so the reports directory is included when the mod is packaged or checked out.
+- Adapter output and all eight text reports now share the same resolved absolute directory.
+- Added a clear diagnostic when the reports folder is missing, plus a written/failed report count.
+
+### Validation boundary
+
+- The user's log confirms the mod loads and reaches the research pass; it showed only report/adapter output-path failures.
+- The corrected path resolver is committed for the next in-game test. Actual file creation still needs confirmation from a fresh UE4SS.log and the generated files on the user's installation.
+
 ## 2026-11-19 — Browser account session foundation
 
 ### Added
