@@ -8,6 +8,7 @@ All notable HogwartsRP changes are recorded here.
 
 - Added the first Windows desktop launcher shell using WinForms, with server connection/sign-in, roleplay character registration, status feedback, and Steam game launch actions.
 - Added Windows-targeted desktop build configuration while retaining the existing launcher, authentication, networking, and character-validation services.
+- Added startup-splash and Windows application/window-icon support for the selected HogwartsRP artwork. The image files are supplied in the artwork bundle and must be copied into `src/HogwartsRP.Launcher.App/Assets` to display the final art; text fallbacks remain available when assets are absent.
 - Added an interactive console character-creation flow to the launcher, connected to the authenticated character-submission endpoint.
 - Added launcher-flow tests for successful submission, client-side validation rejection, server rejection, and skipping character creation.
 - Added an experimental read-only Hogwarts Legacy UE4SS player-state adapter with local controller/pawn discovery, confirmed position/control-rotation reads, velocity and movement-component probes, and exploratory jump/sprint/animation diagnostics. Added separate installation and verification instructions. Live adapter installation and multiplayer synchronization remain unverified.
@@ -43,7 +44,7 @@ All notable HogwartsRP changes are recorded here.
 
 ### Limitations
 
-- The desktop launcher now provides a graphical Windows shell; server discovery/browser, saved server profiles, polished artwork, and in-game character creation remain future work.
+- The desktop launcher now provides a graphical Windows shell; server discovery/browser, saved server profiles, final artwork files must be copied from the supplied bundle, and in-game character creation remains future work.
 - Character submissions persist roleplay metadata on the server; they do not apply house, wand, appearance, or character data to the game.
 - The JSON character repository is a single-server persistence adapter; it is not a multi-instance database or backup system.
 - Character submission is available through the authenticated launcher/server WebSocket protocol and JSON repository, but it does not create or modify a character inside Hogwarts Legacy.
