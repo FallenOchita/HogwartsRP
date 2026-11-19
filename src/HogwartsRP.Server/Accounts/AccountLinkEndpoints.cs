@@ -9,10 +9,10 @@ namespace HogwartsRP.Server.Accounts;
 public sealed record AccountLinkEndpointOptions(
     Uri PortalUri,
     Uri DiscordCallbackUri,
-    string DiscordClientId,
+    string? DiscordClientId,
     Uri SteamCallbackUri,
     Uri EpicCallbackUri,
-    string EpicClientId)
+    string? EpicClientId)
 {
     public void Validate()
     {
@@ -20,12 +20,12 @@ public sealed record AccountLinkEndpointOptions(
         ValidateHttps(DiscordCallbackUri, nameof(DiscordCallbackUri));
         ValidateHttps(SteamCallbackUri, nameof(SteamCallbackUri));
         ValidateHttps(EpicCallbackUri, nameof(EpicCallbackUri));
-        if (string.IsNullOrWhiteSpace(DiscordClientId) || DiscordClientId.Length > 256
-            || DiscordClientId.Any(char.IsControl))
-            throw new ArgumentException("A valid Discord OAuth client ID is required.", nameof(DiscordClientId));
-        if (string.IsNullOrWhiteSpace(EpicClientId) || EpicClientId.Length > 256
-            || EpicClientId.Any(char.IsControl))
-            throw new ArgumentException("A valid Epic OAuth client ID is required.", nameof(EpicClientId));
+        if (DiscordClientId is { } discordId
+            && (string.IsNullOrWhiteSpace(discordId) || discordId.Length > 256 || discordId.Any(char.IsControl)))
+            throw new ArgumentException("The Discord OAuth client ID is invalid.", nameof(DiscordClientId));
+        if (EpicClientId is { } epicId
+            && (string.IsNullOrWhiteSpace(epicId) || epicId.Length > 256 || epicId.Any(char.IsControl)))
+            throw new ArgumentException("The Epic OAuth client ID is invalid.", nameof(EpicClientId));
         if (SteamCallbackUri.Query.Contains("state=", StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("The Steam callback URI must not contain a state query parameter.", nameof(SteamCallbackUri));
     }
@@ -57,18 +57,15 @@ public static class AccountLinkEndpoints
         BrowserAccountSessionStore sessions,
         AccountLinkAuthorizationStore transactions,
         JsonAccountIdentityStore identities,
-        DiscordAccountLinkClient discord,
-        SteamOpenIdAccountLinkClient steam,
-        EpicGamesAccountLinkClient epic)
+        DiscordAccountLinkClient? discord,
+        SteamOpenIdAccountLinkClient? steam,
+        EpicGamesAccountLinkClient? epic)
     {
         ArgumentNullException.ThrowIfNull(application);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(sessions);
         ArgumentNullException.ThrowIfNull(transactions);
         ArgumentNullException.ThrowIfNull(identities);
-        ArgumentNullException.ThrowIfNull(discord);
-        ArgumentNullException.ThrowIfNull(steam);
-        ArgumentNullException.ThrowIfNull(epic);
         options.Validate();
 
         application.MapGet("/account/links", (HttpContext context) =>
@@ -126,6 +123,8 @@ public static class AccountLinkEndpoints
             return Results.StatusCode(StatusCodes.Status403Forbidden);
         if (!TryParseProvider(providerName, out var provider))
             return Results.NotFound();
+        if (!IsConfigured(provider, options, discord, steam, epic))
+            return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
 
         try
         {
@@ -148,9 +147,10 @@ public static class AccountLinkEndpoints
         AccountLinkEndpointOptions options,
         BrowserAccountSessionStore sessions,
         AccountLinkAuthorizationStore transactions,
-        DiscordAccountLinkClient discord)
+        DiscordAccountLinkClient? discord)
     {
         SetNoStore(context);
+        if (discord is null || options.DiscordClientId is null) return PortalResult(options, "failed", "discord");
         var state = SingleQueryValue(context, "state");
         var callback = options.DiscordCallbackUri;
         if (!TryConsume(state, ExternalIdentityProvider.Discord, callback, context, sessions, transactions, out var transaction))
@@ -181,9 +181,10 @@ public static class AccountLinkEndpoints
         AccountLinkEndpointOptions options,
         BrowserAccountSessionStore sessions,
         AccountLinkAuthorizationStore transactions,
-        EpicGamesAccountLinkClient epic)
+        EpicGamesAccountLinkClient? epic)
     {
         SetNoStore(context);
+        if (epic is null || options.EpicClientId is null) return PortalResult(options, "failed", "epic");
         var state = SingleQueryValue(context, "state");
         var callback = options.EpicCallbackUri;
         if (!TryConsume(state, ExternalIdentityProvider.EpicGames, callback, context, sessions, transactions, out var transaction))
@@ -211,9 +212,10 @@ public static class AccountLinkEndpoints
         AccountLinkEndpointOptions options,
         BrowserAccountSessionStore sessions,
         AccountLinkAuthorizationStore transactions,
-        SteamOpenIdAccountLinkClient steam)
+        SteamOpenIdAccountLinkClient? steam)
     {
         SetNoStore(context);
+        if (steam is null) return PortalResult(options, "failed", "steam");
         var state = SingleQueryValue(context, "state");
         var callback = options.SteamCallbackUri;
         if (!TryConsume(state, ExternalIdentityProvider.Steam, callback, context, sessions, transactions, out var transaction))
@@ -326,6 +328,20 @@ public static class AccountLinkEndpoints
 
         return QueryHelpers.AddQueryString(endpoint, query);
     }
+
+
+    private static bool IsConfigured(
+        ExternalIdentityProvider provider,
+        AccountLinkEndpointOptions options,
+        DiscordAccountLinkClient? discord,
+        SteamOpenIdAccountLinkClient? steam,
+        EpicGamesAccountLinkClient? epic) => provider switch
+    {
+        ExternalIdentityProvider.Discord => discord is not null && !string.IsNullOrWhiteSpace(options.DiscordClientId),
+        ExternalIdentityProvider.Steam => steam is not null,
+        ExternalIdentityProvider.EpicGames => epic is not null && !string.IsNullOrWhiteSpace(options.EpicClientId),
+        _ => false
+    };
 
     private static bool TryGetSession(
         HttpContext context,
