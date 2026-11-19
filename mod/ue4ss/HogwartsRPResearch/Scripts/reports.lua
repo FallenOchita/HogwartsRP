@@ -22,7 +22,8 @@ local function scriptDirectory()
         if source:sub(1, 1) == "@" then source = source:sub(2) end
         source = source:gsub("\\", "/")
         local directory = source:match("^(.*)/[^/]+$")
-        if directory and directory ~= "" then return directory end
+        local absolute = source:match("^%a:/") or source:match("^//") or source:match("^/")
+        if directory and directory ~= "" and absolute then return directory end
     end
 
     -- Documented UE4SS fallback: Win64 absolute directory.
