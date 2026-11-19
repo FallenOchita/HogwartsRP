@@ -1,3 +1,17 @@
+## 2026-11-19 — Targeted player and movement property metadata
+
+### Added
+
+- Added direct descriptor lookups for selected player references (`CharacterMovement`, `CharMoveComp`, `Mesh`, and known component references), controller pawn/player references, and movement ownership/update/velocity descriptors.
+- Results are grouped by player, controller, and movement object, with per-property class-chain diagnostics and distinct `FOUND`, `NOT_FOUND`, and `LOOKUP_INCOMPLETE` outcomes.
+
+### Safety and validation boundary
+
+- The new pass uses only `GetClass`, `GetSuperStruct`, `Reflection`, `GetProperty`, and descriptor identity metadata on a fixed allowlist.
+- It does not read any new property values, expand opaque userdata, invoke gameplay UFunctions, write properties, add hooks, or perform network operations.
+- Live UE4SS validation is still required; descriptors not returned by the direct lookup remain inconclusive when any lookup or hierarchy step fails.
+
+
 ## 2026-11-19 — Correct MovementMode enum object lookup path
 
 ### Fixed

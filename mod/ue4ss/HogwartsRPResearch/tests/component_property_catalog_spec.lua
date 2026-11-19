@@ -280,4 +280,67 @@ equal(missingEnumAudit.enum_association_status,
 equal(missingEnumAudit.enum_association_capability_audit.enum_reference_status,
     "ENUM_OBJECT_NOT_FOUND", "missing exact enum object status")
 
+
+-- Targeted named-property metadata checks use the direct Reflection:GetProperty
+-- path only; they do not enumerate all properties or read any property values.
+local objectPropertyClass = {
+    GetFullName = function() return "Class /Script/CoreUObject.ObjectProperty" end,
+    GetFName = function() return nameObject("ObjectProperty") end
+}
+local function objectProperty(name, fullName)
+    return {
+        GetFullName = function() return fullName end,
+        GetFName = function() return nameObject(name) end,
+        GetClass = function() return objectPropertyClass end
+    }
+end
+local inheritedDescriptor = objectProperty(
+    "CharacterMovement", "ObjectProperty /Script/Engine.Character:CharacterMovement"
+)
+local directDescriptor = objectProperty(
+    "UpdatedComponent", "ObjectProperty /Script/Engine.MovementComponent:UpdatedComponent"
+)
+local function multiLookupClass(fullName, descriptors, parent)
+    local result = {
+        GetFullName = function() return fullName end,
+        GetSuperStruct = function() return parent end,
+        Reflection = function()
+            return {
+                GetProperty = function(_, requestedName)
+                    return descriptors[requestedName]
+                end
+            }
+        end
+    }
+    return result
+end
+local lookupBase = multiLookupClass("Class /Script/Engine.Character", {
+    CharacterMovement = inheritedDescriptor
+})
+local lookupDerived = multiLookupClass("Class /Script/Phoenix.Biped_Player", {
+    UpdatedComponent = directDescriptor
+}, lookupBase)
+local lookupObject = {
+    GetFullName = function() return "BP_Biped_Player_C /Game/Test.Root.Player" end,
+    GetClass = function() return lookupDerived end
+}
+local targeted = Reflection.lookupNamedProperties(lookupObject, {
+    "UpdatedComponent", "CharacterMovement", "MissingProperty"
+})
+equal(targeted.status, "INSPECTED", "targeted property audit status")
+equal(targeted.class_hierarchy_status, "COMPLETE", "targeted property hierarchy status")
+equal(targeted.requested_count, 3, "targeted property count")
+equal(targeted.items[1].status, "FOUND", "derived property direct lookup")
+equal(targeted.items[1].descriptor.full_name,
+    "ObjectProperty /Script/Engine.MovementComponent:UpdatedComponent",
+    "derived descriptor identity")
+equal(targeted.items[2].status, "FOUND", "inherited property direct lookup")
+equal(targeted.items[2].descriptor.full_name,
+    "ObjectProperty /Script/Engine.Character:CharacterMovement",
+    "inherited descriptor identity")
+equal(targeted.items[3].status, "NOT_FOUND", "completed missing property lookup")
+equal(targeted.found_count, 2, "targeted descriptor found count")
+equal(targeted.not_found_count, 1, "targeted descriptor not-found count")
+equal(targeted.incomplete_count, 0, "targeted descriptor incomplete count")
+
 print("component_property_catalog_spec: PASS")

@@ -6,6 +6,12 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Added — Targeted player and movement property metadata
+
+- Added bounded direct `Reflection:GetProperty` lookups for an explicit allowlist of player, controller, and movement-component reference descriptors.
+- Records descriptor identity, lookup scope, class-chain diagnostics, and separate `FOUND`, `NOT_FOUND`, and `LOOKUP_INCOMPLETE` outcomes without relying on partial `ForEachProperty` samples.
+- Does not read additional property values, dereference opaque userdata, or invoke gameplay UFunctions.
+
 ### Fixed — MovementMode enum object path
 
 - Passes `/Script/Engine.EMovementMode` (the UObject lookup path) to `StaticFindObject` while retaining `Enum /Script/Engine.EMovementMode` as the exact reflected full-name identity check.
