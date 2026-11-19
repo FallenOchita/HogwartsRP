@@ -6,7 +6,7 @@ use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::PathBuf,
     process::Command,
     time::Duration,
 };
@@ -148,7 +148,7 @@ impl JsonServerProfileStore {
         if name.is_empty() || name.chars().count() > 64 {
             return Err("Server names must contain between 1 and 64 characters.".into());
         }
-        validate_http_address(address)?;
+        validate_http_address(address.trim())?;
         let mut profiles = self.load()?;
         let existing = profiles.iter().position(|profile| {
             profile.address.trim_end_matches('/').eq_ignore_ascii_case(address.trim_end_matches('/'))
@@ -321,11 +321,6 @@ pub fn launch_steam(installation: &GameInstallation) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     let result = Command::new("open").arg("steam://run/990080").spawn();
     result.map(|_| ()).map_err(|error| error.to_string())
-}
-
-#[allow(dead_code)]
-fn _path_is_within(root: &Path, candidate: &Path) -> bool {
-    candidate.starts_with(root)
 }
 
 #[cfg(test)]
