@@ -157,7 +157,7 @@ local function resolveKnownMovementModeEnum()
     local result = {
         method = "StaticFindObject",
         requested_object_path = MOVEMENT_MODE_ENUM_OBJECT_PATH,
-        expected_full_name = MOVEMENT_MODE_ENUM_FULL_NAME,
+        requested_full_name = MOVEMENT_MODE_ENUM_FULL_NAME,
         status = "NOT_STARTED",
         enum_entries = {}
     }
