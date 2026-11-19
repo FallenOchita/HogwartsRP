@@ -1,6 +1,6 @@
-const {SlashCommandBuilder,EmbedBuilder,PermissionFlagsBits}=require("discord.js");const stats=require("../services/statisticsService");const {isAdmin}=require("../utils/permissions");
+const {SlashCommandBuilder,EmbedBuilder}=require("discord.js");const stats=require("../services/statisticsService");const {isAdmin}=require("../utils/permissions");
 const duration=ms=>ms?Math.round(ms/60000)+" min":"Not available";
-module.exports={data:new SlashCommandBuilder().setName("ticket-stats").setDescription("View ticket statistics").setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),async execute(i){
+module.exports={data:new SlashCommandBuilder().setName("ticket-stats").setDescription("View ticket statistics"),async execute(i){
  if(!isAdmin(i.member))return i.reply({content:"Administrator access required.",ephemeral:true});const s=await stats.get(i.guildId);
  const embed=new EmbedBuilder().setTitle("HogwartsRP Ticket Statistics").setColor(0x5b4b8a).addFields(
  {name:"Open Tickets",value:String(s.open),inline:true},{name:"Closed Tickets",value:String(s.closed),inline:true},{name:"Total Opened",value:String(s.opened||0),inline:true},
