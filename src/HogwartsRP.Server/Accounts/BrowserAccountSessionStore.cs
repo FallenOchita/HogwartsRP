@@ -33,6 +33,7 @@ public sealed class BrowserAccountSessionStore
         DateTimeOffset ExpiresAtUtc);
 
     private readonly ConcurrentDictionary<string, StoredSession> _sessions = new(StringComparer.Ordinal);
+    private readonly object _issueGate = new();
     private readonly TimeProvider _timeProvider;
     private readonly TimeSpan _lifetime;
     private readonly int _maximumSessions;
@@ -55,19 +56,22 @@ public sealed class BrowserAccountSessionStore
     public IssuedBrowserAccountSession Issue(Guid accountId)
     {
         if (accountId == Guid.Empty) throw new ArgumentException("Account ID must not be empty.", nameof(accountId));
-        RemoveExpired();
-        if (_sessions.Count >= _maximumSessions)
-            throw new InvalidOperationException("The browser session capacity has been reached.");
+        lock (_issueGate)
+        {
+            RemoveExpired();
+            if (_sessions.Count >= _maximumSessions)
+                throw new InvalidOperationException("The browser session capacity has been reached.");
 
-        var now = _timeProvider.GetUtcNow();
-        var sessionToken = CreateToken();
-        var csrfToken = CreateToken();
-        var key = HashToken(sessionToken);
-        var info = new BrowserAccountSessionInfo(accountId, now, now + _lifetime);
-        var stored = new StoredSession(accountId, SHA256.HashData(Encoding.UTF8.GetBytes(csrfToken)), info.CreatedAtUtc, info.ExpiresAtUtc);
-        if (!_sessions.TryAdd(key, stored))
-            throw new CryptographicException("Unable to allocate a unique browser session.");
-        return new IssuedBrowserAccountSession(sessionToken, csrfToken, info);
+            var now = _timeProvider.GetUtcNow();
+            var sessionToken = CreateToken();
+            var csrfToken = CreateToken();
+            var key = HashToken(sessionToken);
+            var info = new BrowserAccountSessionInfo(accountId, now, now + _lifetime);
+            var stored = new StoredSession(accountId, SHA256.HashData(Encoding.UTF8.GetBytes(csrfToken)), info.CreatedAtUtc, info.ExpiresAtUtc);
+            if (!_sessions.TryAdd(key, stored))
+                throw new CryptographicException("Unable to allocate a unique browser session.");
+            return new IssuedBrowserAccountSession(sessionToken, csrfToken, info);
+        }
     }
 
     /// <summary>Resolves a browser bearer token to its server-owned account session.</summary>
