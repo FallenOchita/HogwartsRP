@@ -1,3 +1,19 @@
+## 2026-11-19 — Controller and movement object-reference audit
+
+### Added
+
+- Added read-only value checks for controller AcknowledgedPawn, Pawn, Player, and PlayerState references.
+- Added read-only value checks for movement CharacterOwner, PawnOwner, and UpdatedComponent references.
+- Reports UObject full-name identity when the value can be safely identified, and preserves opaque userdata without dereferencing it.
+- Primitive values and Lua tables are classified but their contents are not expanded; property read errors and unavailable values remain distinct.
+
+### Safety and validation boundary
+
+- The audit reads only the seven explicitly allowlisted property values through the existing guarded property-value helper.
+- It does not call GetOwner, invoke gameplay UFunctions, expand opaque userdata, enumerate nested properties, write game state, install hooks, or perform network operations.
+- Live UE4SS PropertyReport validation is required to establish the actual references returned in-game.
+
+
 ## 2026-11-19 — Targeted player and movement property metadata
 
 ### Added
