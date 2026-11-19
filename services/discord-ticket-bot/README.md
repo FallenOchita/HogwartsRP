@@ -25,10 +25,10 @@ Discord.js v14 ticket, moderation appeal, character application, whitelist and d
 DISCORD_TOKEN, CLIENT_ID and MONGO_URI are required. GUILD_ID is optional for fast guild-only command deployment. Configure six category IDs, department role IDs, AUDIT_CHANNEL, TICKET_LOG_CHANNEL, MAX_OPEN_TICKETS, TICKET_COOLDOWN_MS and TRANSCRIPT_DIR.
 
 ## Commands
-/setup-tickets, /ticket-stats, /close-ticket, /claim-ticket, /user-history and /staff-review-queue.
+/setup-tickets, /ticket-stats, /close-ticket, /claim-ticket, /assign-ticket, /user-history and /staff-review-queue.
 
 ## Operations and security
 Back up MongoDB and transcript storage together. Keep credentials in a secret manager. Restrict transcript channel visibility. Review bot permissions and staff roles. Never log modal answer bodies. HTML transcript content is escaped. Use a shared rate limiter before running multiple bot instances.
 
 ## Known boundaries
-Application decisions are recorded in the audit log but do not yet call a separate whitelist/character service. Cooldowns are in-memory and per process. Assignment/reassignment UI, transcript retry queue, dashboard pagination, automated channel reconciliation and multi-instance rate limiting are future hardening tasks. The service is a production-oriented baseline, not a claim of completed live-guild validation.
+Application decisions are recorded in the audit log but do not yet call a separate whitelist/character service. Cooldowns are in-memory and per process. Assignment/reassignment UI, transcript retry queue, dashboard pagination, automated channel reconciliation and multi-instance rate limiting are future hardening tasks. The service is a production-oriented baseline, not a claim of completed live-guild validation. Run npm test and exercise the complete permission matrix in a staging Discord guild before public deployment.
