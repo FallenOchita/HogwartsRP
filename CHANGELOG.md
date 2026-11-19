@@ -4,6 +4,15 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Improved — Read-only UE4SS reflection and component diagnostics
+
+- Normalized UE4SS method failures into concise statuses (`METHOD_UNAVAILABLE`, `CALL_ERROR`, and related states) so unsupported UFunction descriptor wrappers no longer flood reports with repeated tracebacks.
+- Preserved per-function identity and flags when UFunction-owned property enumeration is unavailable; recorded the metadata-enumeration status without invoking any gameplay function.
+- Made class-name diagnostics distinguish invalid source objects, unavailable/failed `GetClass`, invalid class wrappers, and unavailable class full names.
+- Kept complete component enumeration explicitly `UNAVAILABLE` because this UE4SS build does not expose `GetComponents` as a Lua table.
+- Added a bounded allowlist of previously observed player component-reference properties and expanded read-only relationship checks for `Player`, `CharacterOwner`, `PawnOwner`, and `UpdatedComponent`.
+- Updated the reflection research guide and runtime diagnostics. No property writes, gameplay UFunction calls, hooks, or network activity were added.
+
 ### Fixed — HogwartsRP research report output paths
 
 - Resolve the report directory from the research mod's installed script location instead of the game's current working directory.
