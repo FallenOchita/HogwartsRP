@@ -177,7 +177,9 @@ local function runResearch(targets, finalAttempt)
             ", movement: " .. tostring(catalog.reflection.movement.status))
         log("Relationship validation status: " .. tostring(catalog.relationships.status))
         log("Component discovery status: " .. tostring(catalog.components.status) ..
-            " (allowlisted property references only; complete enumeration unsupported)")
+            "; query results: " .. tostring(catalog.components.component_objects_returned or "UNAVAILABLE") ..
+            "; player-owned matches: " .. tostring(catalog.components.player_owned_matches or 0) ..
+            "; unresolved outer chains: " .. tostring(catalog.components.unresolved_outer_chains or 0))
 
         local written, failed = Reports.writeAll(reportDir, catalog)
 

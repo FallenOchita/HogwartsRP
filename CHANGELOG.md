@@ -4,6 +4,14 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Improved — Player-owned component object enumeration
+
+- Added a UE4SS 4.0.0 `FindObjects` query for `ActorComponent` and derived component classes, using the documented six-argument API.
+- Filtered returned objects by walking their read-only `GetOuter()` chain and matching it to the discovered player pawn identity.
+- Added explicit counts for returned component objects, player-owned matches, unresolved outer chains, and report truncation.
+- Preserved the existing allowlisted property-reference probes as a separate cross-check instead of treating them as a complete component list.
+- Kept enumeration read-only: no component creation, gameplay UFunction invocation, property writes, hooks, or network activity. Live UE4SS validation is required before claiming the query works in Hogwarts Legacy.
+
 ### Fixed — Research toolkit Lua startup syntax
 
 - Removed a stray, incomplete duplicate `log()` declaration that caused `main.lua` to fail parsing at end-of-file before the research toolkit could initialize.

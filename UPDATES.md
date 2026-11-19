@@ -1,3 +1,23 @@
+## 2026-11-19 — Read-only player-owned component object enumeration
+
+### Added
+
+- Added a UE4SS 4.0.0 `FindObjects(0, "ActorComponent", nil, 0, 0, false)` discovery path to enumerate ActorComponent-derived UObject instances.
+- Added bounded Outer-chain validation (maximum depth 8) to associate returned component objects with the discovered player pawn.
+- Added a 256-entry report cap and explicit counts for query results, player-owned matches, unresolved outer chains, and truncation.
+- Kept the six previously observed player component-reference properties as a separate cross-check in ComponentReport.
+- Added explicit failure statuses when FindObjects is missing, throws, or returns a non-table result.
+
+### Validation boundary
+
+- The API signature is documented for UE4SS 4.0.0, but the Hogwarts Legacy runtime behavior of the class query and ownership filter has not yet been tested.
+- A successful query result does not prove every game component is represented; the in-game ComponentReport must be reviewed for plausible matches and unresolved ownership.
+- The scan is read-only. It does not call gameplay UFunctions, write properties, create/destroy components, install hooks, or perform network operations.
+
+### Next validation
+
+Install this branch, enter the game world, allow the research pass to complete, and share the new `ComponentReport.txt`. Compare the enumerated component names with the existing `CharMoveComp`, `Mesh`, and `AnimationArchitectComponent` property candidates.
+
 ## 2026-11-19 — Research toolkit Lua startup syntax correction
 
 ### Fixed
