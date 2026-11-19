@@ -2,7 +2,7 @@
 
 ### Added and improved
 
-- Added member-exposure inspection for reflected class and UFunction descriptor methods. The audit records whether a Lua member is exposed without invoking it.
+- Added member-exposure inspection for reflected class enumeration methods. The audit records whether a Lua member is exposed without invoking it.
 - Added the provider-capability section to the generated reflection report for player, controller, and movement targets.
 - Preserved distinct metadata outcomes for unavailable members, member lookup failures, and call failures. An exposed method is explicitly not treated as a proven working method.
 - Updated the reflection documentation with the new report fields and the interpretation of `CALL_ERROR`.
