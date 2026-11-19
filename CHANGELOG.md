@@ -1,3 +1,7 @@
+### Fixed — Rust launcher Windows build
+
+- Fixed the Windows-only Rust launcher compile error in atomic server-profile persistence by mapping the successful temporary-file persist result to unit. The underlying atomic replacement behavior is retained.
+
 ### Changed — Native Rust desktop launcher
 
 - Added `rust/apps/hogwartsrp-launcher`, an eframe/egui desktop application built and launched entirely from Rust.
