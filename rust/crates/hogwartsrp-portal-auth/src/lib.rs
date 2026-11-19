@@ -275,11 +275,13 @@ const DEFAULT_TRANSACTION_CAPACITY: usize = 4096;
 pub struct AuthorizationRequest {
     state: String,
     code_challenge: String,
+    nonce: String,
 }
 
 impl AuthorizationRequest {
     pub fn state(&self) -> &str { &self.state }
     pub fn code_challenge(&self) -> &str { &self.code_challenge }
+    pub fn nonce(&self) -> &str { &self.nonce }
     pub fn code_challenge_method(&self) -> &'static str { "S256" }
 }
 
@@ -386,7 +388,7 @@ impl AuthorizationTransactionStore {
             expires_at: now_unix_seconds.saturating_add(AUTHORIZATION_TRANSACTION_TTL_SECONDS),
         });
 
-        Ok(AuthorizationRequest { state, code_challenge: challenge })
+        Ok(AuthorizationRequest { state, code_challenge: challenge, nonce })
     }
 
     /// Atomically consume a callback transaction. Wrong-session attempts do not
@@ -505,3 +507,10 @@ mod transaction_tests {
 
 mod authentication;
 pub use authentication::{PortalOidcAuthenticationError, VerifiedPortalIdentity};
+
+mod accounts;
+mod sessions;
+mod http;
+pub use accounts::{JsonPortalAccountStore, PortalAccountStoreError};
+pub use sessions::{BrowserSessionError, BrowserSessionStore, IssuedBrowserSession};
+pub use http::{router as portal_router, PortalHttpState};
