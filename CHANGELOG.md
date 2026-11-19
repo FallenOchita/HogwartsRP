@@ -4,6 +4,16 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Improved — Read-only component inventory validation
+
+- Added a class-grouped inventory for confirmed player-Outer matches, including instance counts and full paths for repeated classes.
+- Added a separate review list for unusual class-name metadata instead of assuming that an Outer match alone proves conventional ActorComponent inheritance.
+- Added exact-full-path cross-checks between valid allowlisted property references and enumerated matches.
+- Preserved invalid or unavailable property references as unresolved; the toolkit does not infer that `CharMoveComp` and `CharacterMovement` are aliases.
+- Kept the existing 256-entry report cap, ownership counts, and read-only discovery behavior.
+- Added documentation for the observed `BP_PlayerPerceptionPoint_C` class-metadata anomaly and the need for a future verified class-hierarchy pass.
+
+
 ### Added — Read-only Hogwarts Legacy asset research toolkit
 
 - Added a standalone Python inventory engine and PowerShell launcher under tools/asset-research.
