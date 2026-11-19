@@ -564,8 +564,11 @@ function M.inspect(object, options)
         end
         namedPropertyAudit.direct_lookup_status = directLookupFound and "FOUND"
             or (directLookupIncomplete and "LOOKUP_INCOMPLETE" or "NOT_FOUND")
+        namedPropertyAudit.sample_scope = "FIRST_PROPERTY_PER_CLASS_ONLY"
+        namedPropertyAudit.enumeration_complete = false
         if namedPropertyAudit.status == "PROPERTY_NOT_FOUND" then
-            namedPropertyAudit.status = directLookupIncomplete and "LOOKUP_INCOMPLETE" or "PROPERTY_NOT_FOUND"
+            namedPropertyAudit.status = directLookupIncomplete and "LOOKUP_INCOMPLETE"
+                or "NOT_FOUND_IN_DIRECT_LOOKUP_SAMPLE_INCOMPLETE"
         end
     end
 
@@ -575,6 +578,9 @@ function M.inspect(object, options)
         class = Safe.safeFullName(class),
         class_chain = classChain,
         properties = properties,
+        property_catalog_mode = "FIRST_PROPERTY_SAMPLE_PER_CLASS",
+        property_catalog_complete = false,
+        property_catalog_note = "Property descriptors are sampled by stopping after the first callback for each class. Uncaptured properties are unknown; a missing descriptor in this sample is not proof of absence.",
         functions = functions,
         limits = limits,
         properties_truncated = #properties >= limits.max_properties,
