@@ -12,7 +12,7 @@ async function createTicket({client,guild,user,typeId,answers}){
  {id:user.id,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ReadMessageHistory,PermissionFlagsBits.AttachFiles,PermissionFlagsBits.EmbedLinks]},
  {id:client.user.id,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ReadMessageHistory,PermissionFlagsBits.ManageChannels,PermissionFlagsBits.AttachFiles]}
  ];
- const staffRole=roleFor(type);if(staffRole)overwrites.push({id:staffRole,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ReadMessageHistory,PermissionFlagsBits.AttachFiles]});
+ const configuredStaffRole=roleFor(type);if(configuredStaffRole&&!guild.roles.cache.has(configuredStaffRole))throw new Error("Configured staff role for "+type.department+" was not found in this server.");const staffRole=configuredStaffRole;if(staffRole)overwrites.push({id:staffRole,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ReadMessageHistory,PermissionFlagsBits.AttachFiles]});
  try{
   channel=await guild.channels.create({name,type:ChannelType.GuildText,parent:categoryFor(type),topic:"HogwartsRP ticket "+ticketId+" | "+type.label+" | opener "+user.id,permissionOverwrites:overwrites,reason:"Ticket opened by "+user.tag});
   ticket=await Ticket.create({ticketId,ticketType:typeId,userId:user.id,channelId:channel.id,guildId:guild.id,priority:type.priority,answers});
