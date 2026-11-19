@@ -26,6 +26,10 @@ local Discovery = protectedRequire("discovery")
 local States = protectedRequire("states")
 local Adapter = protectedRequire("adapter")
 local Reflection = protectedRequire("reflection")
+local Actors = protectedRequire("actors")
+local Properties = protectedRequire("properties")
+local Functions = protectedRequire("functions")
+local Telemetry = protectedRequire("telemetry")
 
 log("Loaded. Read-only research mode enabled.")
 
@@ -121,6 +125,7 @@ local function runResearch(targets, finalAttempt)
         catalog.objects.controller = Safe.describeObject(controller)
         catalog.objects.movement = Safe.describeObject(movement)
         catalog.components = Discovery.components(player)
+        catalog.actor_catalog = Actors and Actors.scan() or { status = "ACTOR_MODULE_UNAVAILABLE" }
 
         catalog.reflection.player = inspectMetadata(player)
         catalog.reflection.controller = inspectMetadata(controller)
@@ -131,9 +136,10 @@ local function runResearch(targets, finalAttempt)
                 "CharacterMovement", "CharMoveComp", "Health", "CurrentHealth",
                 "Mana", "CurrentMana", "Velocity", "MovementMode"
             }),
-            player_metadata = catalog.reflection.player.properties,
-            controller_metadata = catalog.reflection.controller.properties,
-            movement_metadata = catalog.reflection.movement.properties
+            player = Properties and Properties.inspect(player) or catalog.reflection.player,
+            controller = Properties and Properties.inspect(controller) or catalog.reflection.controller,
+            movement = Properties and Properties.inspect(movement) or catalog.reflection.movement,
+            telemetry_sources = Telemetry and Telemetry.audit(player, controller, movement) or { status = "TELEMETRY_MODULE_UNAVAILABLE" }
         }
 
         catalog.functions = {
@@ -141,9 +147,9 @@ local function runResearch(targets, finalAttempt)
                 "GetActorLocation", "GetActorRotation", "GetControlRotation",
                 "GetVelocity", "GetMovementComponent"
             }),
-            player_metadata = catalog.reflection.player.functions,
-            controller_metadata = catalog.reflection.controller.functions,
-            movement_metadata = catalog.reflection.movement.functions
+            player = Functions and Functions.inspect(player) or catalog.reflection.player,
+            controller = Functions and Functions.inspect(controller) or catalog.reflection.controller,
+            movement = Functions and Functions.inspect(movement) or catalog.reflection.movement
         }
 
         if States then catalog.states = States.sample(player, movement) end
