@@ -22,7 +22,7 @@ Discord.js v14 ticket, moderation appeal, character application, whitelist and d
 7. Run /setup-tickets as a server administrator.
 
 ## Configuration
-DISCORD_TOKEN, CLIENT_ID and MONGO_URI are required. GUILD_ID is optional for fast guild-only command deployment. Configure six category IDs, department role IDs, AUDIT_CHANNEL, TICKET_LOG_CHANNEL, MAX_OPEN_TICKETS, TICKET_COOLDOWN_MS and TRANSCRIPT_DIR.
+DISCORD_TOKEN, CLIENT_ID and MONGO_URI are required. GUILD_ID is optional for fast guild-only command deployment. Configure SUPPORT_ROLE_ID, MODERATION_ROLE_ID, APPLICATION_ROLE_ID and DEVELOPMENT_ROLE_ID. Staff-report tickets additionally require ADMIN_ROLE_IDS and a restricted AUDIT_CHANNEL; their transcripts are sent there rather than the general ticket log. Configure six category IDs if categories already exist; otherwise /setup-tickets creates them. Set MAX_OPEN_TICKETS, TICKET_COOLDOWN_MS and TRANSCRIPT_DIR as needed.
 
 ## Commands
 /setup-tickets, /ticket-stats, /close-ticket, /claim-ticket, /assign-ticket, /user-history and /staff-review-queue.
