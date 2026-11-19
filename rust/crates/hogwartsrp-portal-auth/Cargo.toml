@@ -1,0 +1,13 @@
+[package]
+name = "hogwartsrp-portal-auth"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Rust central-account portal OpenID Connect configuration and discovery"
+
+[dependencies]
+openidconnect = "4"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+url = "2"
