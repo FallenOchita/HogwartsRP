@@ -4,6 +4,16 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Added — Read-only component property descriptor catalog
+
+- Added a separate `ComponentPropertyCatalog.txt` for classes represented by confirmed player-Outer-matched components.
+- Captures descriptor name, full name, property class, and declaring class without reading property values.
+- Caches one bounded metadata pass per reflected class and preserves partial captures with per-class enumeration diagnostics.
+- Adds explicit complete, partial, failed, and not-attempted outcomes; no failed enumeration is treated as proof that uncaptured properties are absent.
+- Raises report serialization depth to ten levels so grouped class hierarchies are fully visible, with a 50,000-line output ceiling and explicit truncation marker.
+- Adds standalone Lua regression coverage for successful catalogs, callback-continuation failures, and duplicate-class caching.
+
+
 ### Added — Component class hierarchy inventory
 
 - Added read-only `GetClass()` and `GetSuperStruct()` metadata collection for confirmed player-Outer-matched component instances.
