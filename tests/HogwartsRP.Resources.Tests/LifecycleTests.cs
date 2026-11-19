@@ -39,7 +39,7 @@ public class LifecycleTests
         try
         {
             await File.WriteAllTextAsync(Path.Combine(resourceDirectory, "fxmanifest.lua"),
-                "fx_version 'cerulean'\\ngame 'hogwartslegacy'\\nrust_script 'bin/" + Path.GetFileName(executable) + "'");
+                "fx_version 'cerulean'\ngame 'hogwartslegacy'\nrust_script 'bin/" + Path.GetFileName(executable) + "'");
             var manager = new ResourceManager(root, _ => new NativeLua54Runtime());
             var exited = new TaskCompletionSource<int?>(TaskCreationOptions.RunContinuationsAsynchronously);
             manager.RustWorkerExited += (_, code) => exited.TrySetResult(code);
