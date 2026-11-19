@@ -4,6 +4,14 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Improved — Movement-mode enum metadata audit
+
+- Added a read-only reflected-property descriptor audit for the movement component's `MovementMode` field, including its property class and declaring class hierarchy.
+- Kept enum association explicitly unverified when the documented UE4SS 4.0.0 property API does not expose the associated `UEnum`; no enum names or values are guessed.
+- Preserved the raw numeric movement-mode value and `UNCLASSIFIED` locomotion state pending verified enum association.
+- No property values are newly read by the metadata audit, and no gameplay UFunctions, writes, hooks, or network operations are introduced.
+
+
 ### Fixed — Rust launcher Windows build
 
 - Fixed the Windows-only Rust launcher compile error in atomic server-profile persistence by mapping the successful temporary-file persist result to unit. The underlying atomic replacement behavior is retained.
