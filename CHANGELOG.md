@@ -4,6 +4,12 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Added — ByteProperty enum-association capability audit
+
+- Added a metadata-only capability record for the MovementMode descriptor, including its property-class identity and exposure of documented generic Property methods.
+- Explicitly records that UE4SS 4.0.0 documents UEnum lookup methods but no ByteProperty-to-UEnum accessor; enum association remains unverified and enum entries are not enumerated.
+- Does not probe speculative accessor names, inspect memory offsets, invoke descriptor methods, read property values, or call gameplay functions.
+
 ### Added — Direct named-property metadata lookup
 
 - Added a targeted UObject:Reflection() / UObjectReflection:GetProperty() lookup for the requested MovementMode descriptor across the existing class hierarchy.
