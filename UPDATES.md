@@ -489,3 +489,21 @@ This file records implementation details and milestone status. For user-facing f
 - Verified expired challenges are rejected before provider metadata or keys are requested, and that a challenge cannot be replayed.
 - The existing GitHub Actions workflow already restores, builds, and tests the full solution on Windows and Ubuntu, so the new project is included automatically through `HogwartsRP.slnx`.
 - Local result: all 21 tests passed across the four test projects. The six existing NU1900 warnings are vulnerability-feed connectivity warnings from nuget.org.
+
+
+## 2026-11-18 — Component inventory validation and class grouping
+
+### Added
+
+- Added a class-grouped inventory for the reported player-Outer matches, with unique class counts, per-class instance counts, and sorted object paths.
+- Added duplicate-class groups so repeated instances such as audio and tool-set components remain individually visible.
+- Added a class-metadata review list for entries whose reported class full name does not use the expected `Class /Script/...` form. These entries remain in the ownership inventory but are not automatically accepted as conventional ActorComponents.
+- Added exact-full-path cross-checks for valid allowlisted property references against enumerated player-Outer matches.
+
+### Clarifications
+
+- An Outer match confirms the reported object relationship to the player pawn; it does not by itself prove the returned object's class hierarchy.
+- The `BP_PlayerPerceptionPoint_C` entry is retained and flagged for class-hierarchy review rather than silently removed or declared a component.
+- The invalid `CharMoveComp` property probe remains unresolved. The valid `CharacterMovement` reference can be compared against the enumerated `CharMoveComp` object's full path, but no property alias is inferred.
+- The 3,811 unresolved Outer chains remain unresolved; no ownership is guessed for them.
+- No gameplay functions, setters, hooks, property writes, or network operations were added.
