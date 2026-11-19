@@ -51,7 +51,7 @@ public sealed class AccountLinkEndpointsTests : IDisposable
     {
         var context = CreateContext();
         context.Request.Headers[BrowserAccountSessionEndpoints.CsrfHeaderName] = "wrong-token";
-        var result = AccountLinkEndpoints.Start("discord", context, _options, _sessions, _transactions);
+        var result = AccountLinkEndpoints.Start("discord", context, _options, _sessions, _transactions, CreateDiscordClient(), null, null);
 
         await result.ExecuteAsync(context);
 
