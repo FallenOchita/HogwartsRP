@@ -140,10 +140,14 @@ local function runResearch(targets, finalAttempt)
             catalog.relationships = { status = "RELATIONSHIP_MODULE_UNAVAILABLE" }
         end
 
+        local propertyCandidates = {
+            "CharacterMovement", "CharMoveComp", "Health", "CurrentHealth",
+            "Mana", "CurrentMana", "Velocity", "MovementMode"
+        }
         catalog.properties = {
-            candidate_value_probes = Discovery.properties(player, {
-                "CharacterMovement", "CharMoveComp", "Health", "CurrentHealth",
-                "Mana", "CurrentMana", "Velocity", "MovementMode"
+            candidate_value_probes = Discovery.properties(player, propertyCandidates),
+            value_audit = Discovery.propertyValueAudit(player, movement, {
+                "CharacterMovement", "CharMoveComp", "Velocity", "MovementMode"
             }),
             player_metadata = catalog.reflection.player.properties,
             controller_metadata = catalog.reflection.controller.properties,
@@ -160,7 +164,7 @@ local function runResearch(targets, finalAttempt)
             movement_metadata = catalog.reflection.movement.functions
         }
 
-        if States then catalog.states = States.sample(player, movement) end
+        if States then catalog.states = States.sample(player, movement, catalog.properties.value_audit) end
 
         local reportDir, pathError = Reports.getOutputDirectory()
         if not reportDir then
