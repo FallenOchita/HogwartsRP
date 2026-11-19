@@ -418,12 +418,12 @@ public static class AccountLinkEndpoints
 
     private static bool IsProviderFailure(Exception exception) =>
         exception is HttpRequestException or InvalidDataException or ArgumentException
-            or InvalidOperationException or KeyNotFoundException or System.Text.Json.JsonException;
+            or InvalidOperationException or KeyNotFoundException or System.Text.Json.JsonException or TaskCanceledException;
 
     private static void SetNoStore(HttpContext context)
     {
         context.Response.Headers.CacheControl = "no-store";
         context.Response.Headers.Pragma = "no-cache";
-        context.Response.Headers.ReferrerPolicy = "no-referrer";
+        context.Response.Headers["Referrer-Policy"] = "no-referrer";
     }
 }
