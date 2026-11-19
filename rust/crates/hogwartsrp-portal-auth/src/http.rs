@@ -1,8 +1,8 @@
 use crate::{
-    AuthorizationTransactionStore, BrowserSessionStore, JsonPortalAccountStore, PortalOidcConfig,
+    AccountLinkProvider, AccountLinkStatus, AuthorizationTransactionStore, BrowserSessionStore, JsonAccountLinkStore, JsonPortalAccountStore, PortalOidcConfig,
 };
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
     http::{header, HeaderMap, HeaderValue, StatusCode},
     response::{Html, IntoResponse, Redirect, Response},
     routing::get,
@@ -28,6 +28,7 @@ pub struct PortalHttpState {
     transactions: Arc<AuthorizationTransactionStore>,
     accounts: Arc<JsonPortalAccountStore>,
     sessions: Arc<BrowserSessionStore>,
+    account_links: Arc<JsonAccountLinkStore>,
 }
 
 impl PortalHttpState {
@@ -35,6 +36,7 @@ impl PortalHttpState {
         config: PortalOidcConfig,
         metadata: CoreProviderMetadata,
         accounts: Arc<JsonPortalAccountStore>,
+        account_links: Arc<JsonAccountLinkStore>,
     ) -> Self {
         Self {
             config: Arc::new(config),
@@ -42,6 +44,7 @@ impl PortalHttpState {
             transactions: Arc::new(AuthorizationTransactionStore::default()),
             accounts,
             sessions: Arc::new(BrowserSessionStore::default()),
+            account_links,
         }
     }
 }
@@ -54,6 +57,8 @@ pub fn router(state: PortalHttpState) -> Router {
         .route("/account/login", get(login_start))
         .route("/account/callback", get(login_callback))
         .route("/account/session", get(session_info))
+        .route("/account/links", get(account_links_status))
+        .route("/account/links/{provider}", axum::routing::delete(unlink_account))
         .route("/account/logout", axum::routing::post(logout))
         .with_state(state)
 }
@@ -230,6 +235,91 @@ async fn session_info(State(state): State<PortalHttpState>, headers: HeaderMap) 
     .into_response();
     no_store(&mut response);
     response
+}
+
+async fn account_links_status(State(state): State<PortalHttpState>, headers: HeaderMap) -> Response {
+    let Some(token) = cookie(&headers, SESSION_COOKIE).filter(|value| is_token(value)) else {
+        return generic_error(StatusCode::UNAUTHORIZED);
+    };
+    let Some(csrf) = cookie(&headers, CSRF_COOKIE).filter(|value| is_token(value)) else {
+        return generic_error(StatusCode::UNAUTHORIZED);
+    };
+    let (account_id, _) = match state.sessions.account_for(&token, now()) {
+        Ok(value) => value,
+        Err(_) => return generic_error(StatusCode::UNAUTHORIZED),
+    };
+    if state.sessions.validate_csrf(&token, &csrf, now()).is_err() {
+        return generic_error(StatusCode::UNAUTHORIZED);
+    }
+    match state.account_links.statuses(&account_id) {
+        Ok(links) => {
+            let mut response = Json(links).into_response();
+            no_store(&mut response);
+            response
+        }
+        Err(_) => generic_error(StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}
+
+async fn unlink_account(
+    State(state): State<PortalHttpState>,
+    Path(provider_name): Path<String>,
+    headers: HeaderMap,
+) -> Response {
+    let provider = match provider_name.as_str() {
+        "discord" => AccountLinkProvider::Discord,
+        "steam" => AccountLinkProvider::Steam,
+        "epic" => AccountLinkProvider::Epic,
+        _ => return generic_error(StatusCode::NOT_FOUND),
+    };
+    let (Some(token), Some(csrf)) = (
+        cookie(&headers, SESSION_COOKIE).filter(|value| is_token(value)),
+        headers.get("x-hogwartsrp-csrf")
+            .and_then(|value| value.to_str().ok())
+            .filter(|value| is_token(value)),
+    ) else {
+        return generic_error(StatusCode::UNAUTHORIZED);
+    };
+    if !is_same_origin(&headers, state.config.callback_uri()) {
+        return generic_error(StatusCode::FORBIDDEN);
+    }
+    let (account_id, _) = match state.sessions.account_for(&token, now()) {
+        Ok(value) => value,
+        Err(_) => return generic_error(StatusCode::UNAUTHORIZED),
+    };
+    if state.sessions.validate_csrf(&token, csrf, now()).is_err() {
+        return generic_error(StatusCode::FORBIDDEN);
+    }
+    match state.account_links.unlink(&account_id, provider) {
+        Ok(removed) => {
+            let mut response = Json(UnlinkResponse { provider, removed }).into_response();
+            no_store(&mut response);
+            response
+        }
+        Err(_) => generic_error(StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct UnlinkResponse {
+    provider: AccountLinkProvider,
+    removed: bool,
+}
+
+fn is_same_origin(headers: &HeaderMap, callback_uri: &str) -> bool {
+    let Some(origin) = headers.get(header::ORIGIN).and_then(|value| value.to_str().ok()) else {
+        return false;
+    };
+    let (Ok(request_origin), Ok(callback)) = (url::Url::parse(origin), url::Url::parse(callback_uri)) else {
+        return false;
+    };
+    request_origin.username().is_empty()
+        && request_origin.password().is_none()
+        && request_origin.query().is_none()
+        && request_origin.fragment().is_none()
+        && request_origin.path() == "/"
+        && request_origin.origin() == callback.origin()
 }
 
 async fn logout(State(state): State<PortalHttpState>, headers: HeaderMap) -> Response {
