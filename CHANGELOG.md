@@ -4,6 +4,15 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Fixed — HogwartsRP research report output paths
+
+- Resolve report output from the installed research module's absolute script location instead of the game's current working directory.
+- Use UE4SS's documented `IterateGameDirectories()` API as a fallback when the Lua chunk source is not absolute.
+- Include the `Scripts/reports/` directory in the packaged mod.
+- Write all eight text reports and the generated adapter to the same resolved output directory.
+- Log the resolved directory and report success/failure counts.
+
+
 ### Added — Browser account session foundation
 
 - Added a process-local browser account session registry with cryptographically random bearer and CSRF tokens.
