@@ -4,7 +4,7 @@
 
 ### Added
 
-- Added `mod/ue4ss/HogwartsRPAdapter/Scripts/main.lua` as a separate UE4SS adapter mod, keeping the existing smoke-test mod unchanged.
+- Added `mod/ue4ss/HogwartsRPAdapter/scripts/main.lua` as a separate UE4SS adapter mod, keeping the existing smoke-test mod unchanged.
 - Reused the in-game findings supplied during development: `BP_Phoenix_Player_Controller_C`, `AcknowledgedPawn`, `BP_Biped_Player_C`, `GetActorLocation()`, and `GetControlRotation()`.
 - Added read-only velocity and movement-component discovery, plus guarded candidate reads for movement mode, jump, sprint, and animation state.
 - Exposed the adapter table as `_G.HogwartsLegacyAdapter` for later in-process integration and added a three-second diagnostic poll.
