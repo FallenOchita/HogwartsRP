@@ -1,0 +1,10 @@
+{
+  "game_root": "D:/SteamLibrary/steamapps/common/Hogwarts Legacy",
+  "report_output": "./reports",
+  "log_output": "./logs",
+  "hash_files": true,
+  "include_hidden": false,
+  "max_file_mb": null,
+  "max_asset_mb": 64,
+  "read_only_source": true
+}
