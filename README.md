@@ -15,3 +15,8 @@ See [CHANGELOG.md](CHANGELOG.md) for release-oriented entries and [UPDATES.md](U
 ## Community Discord Ticket Bot
 
 The standalone HogwartsRP Discord ticket bot lives in [`services/discord-ticket-bot/`](services/discord-ticket-bot/). It provides support, character applications, appeals, reports, technical support and development ticket workflows. See its [installation guide](services/discord-ticket-bot/docs/INSTALLATION.md), [administrator guide](services/discord-ticket-bot/docs/ADMIN_GUIDE.md), and [architecture](services/discord-ticket-bot/docs/ARCHITECTURE.md). The bot is maintained as a separate Node.js service and does not run inside the HogwartsRP game server.
+
+
+## Asset Research Toolkit
+
+A standalone read-only Hogwarts Legacy installation inventory and loose Unreal asset catalog tool is available in [`tools/asset-research/`](tools/asset-research/). See its [usage guide](tools/asset-research/README.md), [architecture](docs/asset-research-toolkit/ARCHITECTURE.md), and [roadmap](docs/asset-research-toolkit/ROADMAP.md). It inventories package containers without extracting them and labels heuristic asset metadata clearly.
