@@ -8,7 +8,7 @@ public sealed class DiscordAccountLinkClientTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "HogwartsRP-DiscordLink-" + Guid.NewGuid().ToString("N"));
     private readonly JsonAccountIdentityStore _store;
-    private readonly Guid _accountId = Guid.NewGuid();
+    private readonly Guid _accountId;
     private readonly Uri _callback = new("https://accounts.example.test/account/link/discord/callback");
     private readonly string _verifier = new string('v', 64);
 
@@ -16,7 +16,7 @@ public sealed class DiscordAccountLinkClientTests : IDisposable
     {
         Directory.CreateDirectory(_directory);
         _store = new JsonAccountIdentityStore(Path.Combine(_directory, "accounts.json"));
-        _store.CreateAccountAsync("Test Player").AsTask().GetAwaiter().GetResult();
+        _accountId = _store.CreateAccountAsync("Test Player").AsTask().GetAwaiter().GetResult().Id;
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public sealed class DiscordAccountLinkClientTests : IDisposable
         using var http = new HttpClient(handler);
         var client = new DiscordAccountLinkClient(http, _store, new DiscordAccountLinkOptions("client-id", "client-secret"));
 
-        await client.ExchangeAndLinkAsync(CreateTransaction(other.Id), "code");
+        await client.ExchangeAndLinkAsync(CreateTransaction(accountId: other.Id), "code");
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             client.ExchangeAndLinkAsync(CreateTransaction(), "code").AsTask());
         Assert.Single(await _store.GetLinksAsync(other.Id));
