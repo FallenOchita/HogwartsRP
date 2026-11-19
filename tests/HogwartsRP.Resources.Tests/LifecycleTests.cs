@@ -14,7 +14,7 @@ public class LifecycleTests
         {
             await File.WriteAllTextAsync(Path.Combine(dir, "fxmanifest.lua"), "fx_version 'cerulean'\ngame 'hogwartslegacy'\nserver_script 'main.lua'");
             await File.WriteAllTextAsync(Path.Combine(dir, "main.lua"), "loaded = true");
-            manager = new ResourceManager(root, _ => new NativeLua54Runtime()); await manager.StartAllAsync();
+            var manager = new ResourceManager(root, _ => new NativeLua54Runtime()); await manager.StartAllAsync();
             Assert.Equal(ResourceState.Started, Assert.Single(manager.Status).State); await manager.StopAllAsync(); Assert.Equal(ResourceState.Stopped, Assert.Single(manager.Status).State);
         }
         finally { Directory.Delete(root, true); }
@@ -41,7 +41,7 @@ public class LifecycleTests
         {
             await File.WriteAllTextAsync(Path.Combine(resourceDirectory, "fxmanifest.lua"),
                 "fx_version 'cerulean'\ngame 'hogwartslegacy'\nrust_script 'bin/" + Path.GetFileName(executable) + "'");
-            var manager = new ResourceManager(root, _ => new NativeLua54Runtime());
+            manager = new ResourceManager(root, _ => new NativeLua54Runtime());
             var exited = new TaskCompletionSource<int?>(TaskCreationOptions.RunContinuationsAsynchronously);
             manager.RustWorkerExited += (_, code) => exited.TrySetResult(code);
 
