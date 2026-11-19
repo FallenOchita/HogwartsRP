@@ -33,7 +33,6 @@ The Rust binary is the only active launcher application, but this is not yet fea
 - Server connection lifecycle, authenticated network event delivery, and reconnect handling.
 - Character creation draft UI and authenticated character submission.
 - Steam library discovery beyond the conventional paths, Epic installation/launch support, and direct update delivery.
-- Authenticated OIDC + PKCE join authentication, WebSocket session lifecycle, and character submission remain future Rust milestones. The public server directory browser is implemented in the launcher; the directory service must still be deployed and configured for shared public listings.
 
 The Rust launcher does not call the legacy C# launcher library. That library remains in the .NET solution temporarily because its existing tests and contracts are still useful during migration; it is not the launcher executable and is not used by the Rust app. It can be retired after the remaining flows are ported and their behavior is covered by Rust tests.
 
