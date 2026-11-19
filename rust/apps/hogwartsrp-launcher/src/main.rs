@@ -252,7 +252,7 @@ impl eframe::App for HogwartsRpLauncher {
                 ui.label(&self.directory_status);
 
                 let mut chosen_server: Option<(String, String)> = None;
-                if let Some(page) = &self.directory_page {
+                if let Some(page) = self.directory_page.clone() {
                     egui::ScrollArea::vertical().max_height(220.0).show(ui, |ui| {
                         for server in &page.servers {
                             ui.group(|ui| {
