@@ -1,4 +1,5 @@
-use super::super::{AccountLinkProvider, PortalHttpState};
+use super::PortalHttpState;
+use crate::AccountLinkProvider;
 use axum::{
     extract::{Query, State},
     http::{header, HeaderMap, HeaderValue, StatusCode},
@@ -59,7 +60,7 @@ impl DiscordLinkConfig {
             .append_pair("state", state)
             .append_pair("code_challenge", challenge)
             .append_pair("code_challenge_method", "S256");
-        Ok(url.into())
+        Ok(url.to_string())
     }
 }
 
@@ -157,7 +158,7 @@ async fn callback(
         return callback_redirect(false);
     }
     let (Some(code), Some(callback_state)) = (query.code, query.state) else {
-        return Redirect::to("/account?link_error=discord").into_response();
+        return callback_redirect(false);
     };
     let Some(session_token) = cookie(&headers, "HogwartsRP.AccountSession") else {
         return Redirect::to("/account?link_error=discord").into_response();
@@ -182,7 +183,7 @@ async fn callback(
     };
     match state.account_links.link_verified_identity(&account_id, AccountLinkProvider::Discord, &external_subject) {
         Ok(()) => callback_redirect(true),
-        Err(_) => Redirect::to("/account?link_error=discord").into_response(),
+        Err(_) => callback_redirect(false),
     }
 }
 
@@ -260,7 +261,9 @@ fn cookie(headers: &HeaderMap, name: &str) -> Option<String> {
     let raw = headers.get(header::COOKIE)?.to_str().ok()?;
     let mut found = None;
     for part in raw.split(';') {
-        let (key, value) = part.trim().split_once('=')?;
+        let Some((key, value)) = part.trim().split_once('=') else {
+            continue;
+        };
         if key == name {
             if found.is_some() || value.is_empty() { return None; }
             found = Some(value.to_owned());
