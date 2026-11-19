@@ -35,7 +35,7 @@ The existing allowlisted candidate probes in `discovery.lua` remain separate. Th
 
 ## Reflection provider capability audit
 
-The FunctionReport now distinguishes member exposure from successful metadata enumeration. The provider-capability section performs protected Lua member lookups for `ForEachProperty`, `ForEachFunction`, `GetSuperStruct`, and selected UFunction descriptor methods. It records whether each member is exposed without invoking it. Therefore, `EXPOSED_NOT_INVOKED` is not proof that the method works.
+The FunctionReport now distinguishes member exposure from successful metadata enumeration. The provider-capability section obtains each target's class through the same read-only `GetClass` identity lookup used by reflection inspection, then performs protected Lua member lookups for `ForEachProperty`, `ForEachFunction`, and `GetSuperStruct`. It does not invoke those enumeration methods or probe UFunction descriptors. Therefore, `EXPOSED_NOT_INVOKED` is not proof that a method works.
 
 Per-function owned-property enumeration preserves distinct outcomes such as `METHOD_UNAVAILABLE`, `LOOKUP_ERROR`, and `CALL_ERROR`. A `CALL_ERROR` means the wrapper was exposed but the metadata operation failed; it does not mean the Unreal UFunction is absent. The report keeps any other function metadata already obtained and includes a concise error detail.
 
