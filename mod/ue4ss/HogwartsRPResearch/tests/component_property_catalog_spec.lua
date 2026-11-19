@@ -97,10 +97,9 @@ local failingComponent = {
 local partial = Reflection.catalogComponentProperties(failingComponent)
 equal(partial.status, "PARTIAL", "partial catalog status")
 equal(partial.property_count, 1, "partial captured property count")
-equal(partial.class_diagnostics[1].status, "CALL_ERROR_AFTER_CALLBACK", "partial diagnostic status")
+equal(partial.class_diagnostics[1].status, "FIRST_PROPERTY_SAMPLE_CAPTURED", "sampled descriptor status")
 local failingDiagnostic = partial.class_diagnostics[1]
 equal(failingDiagnostic.iteration_probe.status, "CALL_ERROR_AFTER_CALLBACK", "minimal probe failure status")
-equal(failingDiagnostic.iteration_probe.callback_invocations, 1, "minimal probe callback count")
 equal(failingDiagnostic.iteration_probe.callback_invocations, 1,
     "continuation probe callback count")
 equal(failingDiagnostic.callback_invocations, 1, "early-stop descriptor callback count")
