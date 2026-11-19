@@ -9,3 +9,6 @@
 7. Closing a ticket generates HTML and Markdown transcripts, uploads both to the configured transcript channel and disables further messages from the opener.
 
 Do not grant Administrator to the bot. Keep staff roles least-privileged and test permission overwrites with a non-staff account.
+
+
+For confidential staff reports, set ADMIN_ROLE_IDS to the senior administrator role IDs and set AUDIT_CHANNEL to a channel visible only to that group. These reports do not grant access to the general moderation role or the regular transcript log.
