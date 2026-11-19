@@ -547,6 +547,98 @@ function M.objectReferenceAudit(targets, allowlists)
     result.note = "Only the fixed controller and movement reference allowlists are read. UObject references are identified by full name only; opaque userdata, tables, and non-object values are not expanded. No gameplay functions are invoked."
     return result
 end
+-- Follow only two verified controller references one level deeper:
+-- LocalPlayer.PlayerController and PlayerState.PawnPrivate. Both hops are fixed
+-- allowlists; only valid UObject full-name identities are emitted.
+function M.relatedObjectReferenceAudit(controller, routes)
+    local result = {
+        status = "READ_ONLY_SECOND_HOP_REFERENCE_AUDIT",
+        routes = {},
+        root_reference_count = 0,
+        object_reference_count = 0,
+        opaque_userdata_count = 0,
+        unavailable_count = 0,
+        error_count = 0,
+        safety = "FIXED_TWO_HOP_ALLOWLISTED_PROPERTY_VALUE_READS_OBJECT_IDENTITY_ONLY_NO_OPAQUE_USERDATA_DEREFERENCE_NO_UFUNCTION_INVOCATION"
+    }
+
+    local function readReference(owner, propertyName)
+        local value, readError = Safe.safeProperty(owner, propertyName)
+        local item = { property = propertyName, lua_type = type(value), access = "GetPropertyValue_OR_DIRECT_INDEX" }
+        if value == nil then
+            item.status = readError and "PROPERTY_READ_ERROR" or "PROPERTY_UNAVAILABLE"
+            item.summary = "UNAVAILABLE"
+            item.detail = readError
+        elseif type(value) == "userdata" then
+            local fullName = Safe.safeFullName(value)
+            if Safe.isValidObject(value) and fullName ~= "INVALID" and not fullName:match("^UNAVAILABLE") then
+                item.status = "OBJECT_REFERENCE_FOUND"
+                item.summary = fullName
+                item.object = value
+            else
+                item.status = "OPAQUE_USERDATA"
+                item.summary = "OPAQUE_USERDATA_NOT_DEREFERENCED"
+            end
+        elseif type(value) == "table" then
+            item.status = "TABLE_VALUE_NOT_EXPANDED"
+            item.summary = "NON_OBJECT_VALUE_NOT_EXPANDED"
+        else
+            item.status = "NON_OBJECT_VALUE_NOT_EXPANDED"
+            item.summary = "NON_OBJECT_VALUE_NOT_EXPANDED"
+        end
+        return item
+    end
+
+    if not Safe.isValidObject(controller) then
+        result.status = "CONTROLLER_NOT_FOUND"
+        result.note = "The second-hop audit requires the already discovered controller object."
+        return result
+    end
+
+    for _, route in ipairs(routes or {}) do
+        local root = readReference(controller, route.root_property)
+        local routeResult = {
+            root_property = route.root_property,
+            target = route.target,
+            root_status = root.status,
+            root_lua_type = root.lua_type,
+            root_reference = root.summary,
+            items = {}
+        }
+        if root.status == "OBJECT_REFERENCE_FOUND" then
+            result.root_reference_count = result.root_reference_count + 1
+            for _, propertyName in ipairs(route.properties or {}) do
+                local item = readReference(root.object, propertyName)
+                item.target = route.target
+                item.target_full_name = root.summary
+                routeResult.items[#routeResult.items + 1] = item
+                if item.status == "OBJECT_REFERENCE_FOUND" then
+                    result.object_reference_count = result.object_reference_count + 1
+                elseif item.status == "OPAQUE_USERDATA" then
+                    result.opaque_userdata_count = result.opaque_userdata_count + 1
+                elseif item.status == "PROPERTY_UNAVAILABLE" then
+                    result.unavailable_count = result.unavailable_count + 1
+                elseif item.status == "PROPERTY_READ_ERROR" then
+                    result.error_count = result.error_count + 1
+                end
+                item.object = nil
+            end
+        elseif root.status == "OPAQUE_USERDATA" then
+            result.opaque_userdata_count = result.opaque_userdata_count + 1
+        elseif root.status == "PROPERTY_UNAVAILABLE" then
+            result.unavailable_count = result.unavailable_count + 1
+        elseif root.status == "PROPERTY_READ_ERROR" then
+            result.error_count = result.error_count + 1
+        end
+        root.object = nil
+        result.routes[#result.routes + 1] = routeResult
+    end
+
+    result.route_count = #result.routes
+    result.note = "Only controller.Player to LocalPlayer.PlayerController and controller.PlayerState to PlayerState.PawnPrivate are followed. A child property is read only after its parent value is validated as a UObject userdata reference. No other properties, nested fields, opaque userdata, or gameplay functions are inspected."
+    return result
+end
+
 function M.propertyValueAudit(player, movement, names)
     local result = { status = "READ_ONLY_PROPERTY_VALUE_AUDIT", items = {} }
     local targets = { { name = "player", object = player }, { name = "movement", object = movement } }
