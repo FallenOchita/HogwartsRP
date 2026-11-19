@@ -407,7 +407,8 @@ function M.components(actor, propertyCataloger)
             max_super_depth = hierarchyDepth,
             note = "Class hierarchy is resolved through GetClass and GetSuperStruct only. It does not establish component ownership beyond the separately reported Outer match, and does not enumerate property values."
         },
-        property_catalog_status = propertyCatalogStatus,\n        component_property_catalog = componentPropertyCatalog,
+        property_catalog_status = propertyCatalogStatus,
+        component_property_catalog = componentPropertyCatalog,
         note = "Enumeration success means the UE4SS query returned a table. PLAYER_OUTER_MATCH confirms the Outer relationship only. Class metadata is grouped separately; unusual class names remain flagged for review even when a hierarchy is available."
     }
 end
