@@ -1,0 +1,17 @@
+[package]
+name = "hogwartsrp-directory"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Persistent public server directory API for HogwartsRP"
+
+[dependencies]
+axum = "0.8"
+base64 = "0.22"
+rand = "0.8"
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+sha2 = "0.10"
+subtle = "2"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
+url = "2"
