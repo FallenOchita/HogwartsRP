@@ -14,8 +14,7 @@ The Rust portal now has a development JSON link store, authenticated connection
 status endpoint, and CSRF/same-origin-protected disconnect endpoint. Only provider
 verification code may call the trusted `link_verified_identity` store method;
 there is deliberately no HTTP endpoint that accepts an external subject or account
-ID from the browser. Provider authorization/callback verification is the next
-integration stage, so new connections cannot yet be created through the dashboard.
+ID from the browser. Discord linking is implemented, and Steam OpenID linking is implemented as an optional provider flow. Epic Games authorization/callback verification remains the next integration stage.
 
 The Rust workspace now contains a small standalone Axum host at
 `rust/apps/hogwartsrp-account-portal`. It is separate from the C# per-game-server
@@ -38,6 +37,10 @@ Routes:
   readable by same-origin portal code.
 - `GET /account/links` returns Discord, Steam, and Epic connected flags for the
   account derived from the authenticated session. It never returns provider IDs.
+- `POST /account/links/discord/start` and `POST /account/links/steam/start` begin
+  their respective session-bound provider linking flows when configured.
+- `GET /account/links/discord/callback` and `GET /account/links/steam/callback`
+  consume their single-use browser transaction and verify the provider response.
 - `DELETE /account/links/{provider}` disconnects only that provider from the
   current session's account. It requires the session cookie, matching CSRF header,
   and an Origin matching the configured portal callback origin.
@@ -83,8 +86,7 @@ monitoring, and deployment hardening.
 - The JSON identity store is a single-process development adapter, not a
   production database. It stores only the verified issuer, subject and generated
   HogwartsRP account ID; it does not store provider tokens.
-- Provider authorization/callback verification is not yet wired into the Rust
-  portal; accounts cannot be newly connected from the UI yet.
+- Epic Games provider authorization/callback verification is not yet wired into the Rust portal.
 - Browser sessions, authorization transactions, and the JSON account/link stores
   are process-local or single-process development adapters. Distributed sessions,
   database migrations, rate limiting and production deployment are follow-up work.
@@ -119,5 +121,21 @@ redirect URI in the Discord developer settings. Provider linking is identity
 proof only; it does not grant Discord server membership, game ownership, or
 HogwartsRP server permissions.
 
-Steam OpenID and Epic Games linking remain follow-up integrations and do not
-yet have functional Connect actions.
+Steam account linking
+
+Set `HOGWARTSRP_STEAM_REDIRECT_URI` to the exact registered callback URI ending in
+`/account/links/steam/callback`. The portal does not require a Steam client secret.
+The dashboard sends a CSRF-protected same-origin POST to
+`/account/links/steam/start`, then redirects to Steam OpenID 2.0. The callback
+validates the session-bound state, exact `openid.return_to`, Steam endpoint,
+claimed identity format, signed fields, and response nonce time window. It then
+posts the assertion to Steam with `openid.mode=check_authentication` and links
+the SteamID64 only when Steam returns `is_valid:true`.
+
+For local development, HTTP is accepted only on loopback. Public deployments
+must use HTTPS and register the exact callback URI. Steam linking is identity
+proof only; it does not establish ownership of Hogwarts Legacy or grant server
+access.
+
+Epic Games linking remains a follow-up integration and does not yet have a
+functional Connect action.
