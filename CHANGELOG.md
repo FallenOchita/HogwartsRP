@@ -1,3 +1,16 @@
+### Changed — Native Rust desktop launcher
+
+- Added `rust/apps/hogwartsrp-launcher`, an eframe/egui desktop application built and launched entirely from Rust.
+- Ported saved server profiles, server status checks, configured browser account-portal opening, and Steam launch requests to the Rust application.
+- Removed the WinForms launcher executable project and its C# UI source files from the repository and .NET solution.
+- Added a Windows CI release build for the Rust launcher; Rust workspace library tests continue on Ubuntu and Windows.
+- Updated the README and launcher documentation to identify the Rust binary as the only active desktop launcher.
+
+### Migration boundary
+
+- The Rust launcher does not call the legacy C# launcher library. That library remains temporarily in the .NET solution for its existing tests/contracts, but is not used to start or operate the Rust UI.
+- OIDC + PKCE join authentication, authenticated WebSocket sessions, character creation/submission, broader Steam library discovery, Epic launch, and auto-update still need Rust implementations. These features are not claimed as ported.
+
 ### Added — Rust resource SDK and native-core foundation
 
 - Added a Rust workspace with a process-oriented resource SDK, an example Rust resource, and a native-core crate for bounded validation primitives.
