@@ -30,7 +30,7 @@ public sealed record AccountLinkAuthorizationTransaction(
 /// Short-lived, process-local OAuth/OpenID account-link transaction registry.
 /// Transactions are bound to an authenticated browser session, central account, provider,
 /// and exact registered callback URI. State values are stored only as SHA-256 hashes.
-/// Discord and Epic authorization-code flows receive PKCE S256; Steam OpenID does not use PKCE.
+/// Discord authorization-code linking uses PKCE S256. Steam OpenID and Epic's documented web authorization-code flow do not use PKCE.
 /// </summary>
 public sealed class AccountLinkAuthorizationStore
 {
@@ -91,7 +91,7 @@ public sealed class AccountLinkAuthorizationStore
             var now = _timeProvider.GetUtcNow();
             var expiresAt = Min(now + _lifetime, session.ExpiresAtUtc);
             var state = CreateToken();
-            var usePkce = provider is ExternalIdentityProvider.Discord or ExternalIdentityProvider.EpicGames;
+            var usePkce = provider == ExternalIdentityProvider.Discord;
             var verifier = usePkce ? CreateToken() : null;
             var challenge = verifier is null ? null : Base64Url(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
             var key = HashToken(state);
