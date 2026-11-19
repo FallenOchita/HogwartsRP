@@ -4,6 +4,14 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Added — Direct named-property metadata lookup
+
+- Added a targeted UObject:Reflection() / UObjectReflection:GetProperty() lookup for the requested MovementMode descriptor across the existing class hierarchy.
+- Recorded per-class lookup outcomes separately from ForEachProperty enumeration diagnostics, including lookup scope and descriptor identity.
+- Kept enum association unverified; direct property metadata lookup does not expose enum entries or establish a property-to-UEnum association.
+- Preserved strict read-only behavior: no property values, gameplay functions, writes, hooks, or network operations.
+
+
 ### Added — UE4SS property-enumeration diagnostics
 
 - Added per-class diagnostics to the existing ForEachProperty pass: invocation status, callback invocation count, partial property count, last observed property name, and concise errors.
