@@ -60,8 +60,7 @@ local function findTargets()
     if Safe.isValidObject(player) then
         movement = firstValid(
             Safe.safeProperty(player, "CharMoveComp"),
-            Safe.safeProperty(player, "CharacterMovement"),
-            Safe.safeMethod(player, "GetMovementComponent")
+            Safe.safeProperty(player, "CharacterMovement")
         )
     end
     if not Safe.isValidObject(movement) then
