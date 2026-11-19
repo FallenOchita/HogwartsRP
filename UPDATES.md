@@ -1,3 +1,24 @@
+## 2026-11-19 — Central browser session HTTP handlers
+
+### Added
+
+- Added reusable `BrowserAccountSessionEndpoints` handlers for authenticated session inspection and logout.
+- Added `GET /account/session`, which reads the server-owned session cookie and returns only the bound central account ID and session timestamps.
+- Added `DELETE /account/session`, which requires the session's matching `X-HogwartsRP-CSRF` header, revokes only that session, and clears the cookie.
+- Added `SetSessionCookie` for trusted server-side sign-in completion code. The cookie is Secure, HttpOnly, SameSite=Strict, scoped to `/account`, and expires at the server-issued session expiry.
+- Added no-store response headers and regression tests for missing sessions, account binding, CSRF enforcement, logout isolation, and secure cookie attributes. Fixed the test host context to provide ASP.NET Core routing/options services required by typed HTTP result execution.
+- Updated `docs/browser-account-sessions.md`, `CHANGELOG.md`, and this update log.
+
+### Hosting and security boundary
+
+- The endpoint mapper is reusable by a future central account host and is deliberately not wired into the existing per-game-server WebSocket host. That host's current OIDC flow issues per-server join tickets, not central browser accounts.
+- No public login/session-issuance endpoint, provider callback, account-link endpoint, or browser UI is exposed. Trusted authentication code must verify the player first, call `BrowserAccountSessionStore.Issue`, set the cookie, and deliver the CSRF token through a no-store authenticated response.
+- These handlers do not establish a deployed central portal or production distributed session storage.
+
+### Next implementation gate
+
+Build the separate central account host and connect a verified central sign-in flow to session issuance. Keep Discord, Steam, and Epic account linking disabled until the central browser session is established and provider callback state is verified.
+
 ## 2026-11-19 — Browser account session foundation
 
 ### Added

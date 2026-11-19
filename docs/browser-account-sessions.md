@@ -2,7 +2,7 @@
 
 ## Scope
 
-This change adds a process-local session registry for authenticated HogwartsRP browser accounts. It is a security primitive for the future central account portal; it does not add a login route, cookie middleware, provider callback, account-link endpoint, or browser UI.
+This change adds reusable HTTP handlers for inspecting and revoking an existing authenticated browser session, plus a secure cookie helper for a trusted sign-in callback. The route mapper is intended for a separately hosted central account service; it is deliberately not wired into the existing per-game-server WebSocket host, whose OIDC flow issues server-specific join tickets.
 
 ## Session lifecycle
 
@@ -14,7 +14,7 @@ This change adds a process-local session registry for authenticated HogwartsRP b
 - Revocation is limited to the supplied session token. Expired entries are rejected and can be pruned.
 - Session lifetime is fixed, between five minutes and 24 hours (12 hours by default); there is no sliding renewal.
 
-## Required HTTP integration rules
+## HTTP endpoints and cookie behavior\n\n- `GET /account/session` reads the `HogwartsRP.AccountSession` cookie and returns only the server-bound account ID and session timestamps. Missing, invalid, or expired cookies receive `401`.\n- `DELETE /account/session` requires the same cookie plus the `X-HogwartsRP-CSRF` header. A missing or mismatched CSRF token receives `403`; success revokes only that session, clears the cookie, and returns `204`.\n- Both routes set `Cache-Control: no-store` and `Pragma: no-cache`.\n- `SetSessionCookie` is a helper for trusted server-side sign-in completion code. It sets `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/account`, and the server expiry. It does not expose a public session-issuance endpoint.\n- `BrowserAccountSessionEndpoints.Map` is not called by the per-game server startup. A future central host must map it explicitly after its trusted authentication/session services are configured.\n\n## Required HTTP integration rules
 
 When the central browser host is added, it must:
 
@@ -31,4 +31,4 @@ The registry is in-memory and local to one process. Restarting the service inval
 
 ## Validation
 
-BrowserAccountSessionStoreTests covers account binding, malformed/unknown tokens, CSRF pairing, session-specific revocation, expiry, bounded capacity, and configuration validation. These tests do not validate browser cookies, HTTPS deployment, provider authentication, or a live central portal.
+BrowserAccountSessionStoreTests covers account binding, malformed/unknown tokens, CSRF pairing, session-specific revocation, expiry, bounded capacity, and configuration validation. BrowserAccountSessionEndpointsTests covers unauthorized inspection, account-bound session responses, CSRF enforcement, logout revocation, cookie clearing, and secure cookie flags. These tests do not validate provider authentication, deployment TLS termination, or a live central portal.
