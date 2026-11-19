@@ -13,6 +13,9 @@ internal sealed class LauncherWindow : Form
     private readonly ComboBox _savedServers = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 360 };
     private readonly Button _saveServer = new() { Text = "Save server", AutoSize = true };
     private readonly Button _removeServer = new() { Text = "Remove saved server", AutoSize = true };
+    private readonly Button _checkServerStatus = new() { Text = "Check server status", AutoSize = true };
+    private readonly Label _serverStatus = new() { Text = "Status not checked yet.", AutoSize = true, ForeColor = Color.LightGray };
+    private readonly ServerStatusClient _serverStatusClient = new();
     private readonly JsonServerProfileStore _serverProfileStore = new();
     private readonly Label _status = new() { Text = "Choose a server and connect.", AutoSize = true };
     private readonly Button _connect = new() { Text = "Connect / Sign in", AutoSize = true };
@@ -59,6 +62,7 @@ internal sealed class LauncherWindow : Form
         };
         _saveServer.Click += (_, _) => SaveServerProfile();
         _removeServer.Click += (_, _) => RemoveServerProfile();
+        _checkServerStatus.Click += async (_, _) => await CheckServerStatusAsync();
         _connect.Click += async (_, _) => await ConnectAsync();
         _register.Click += async (_, _) => await RegisterCharacterAsync();
         _play.Click += async (_, _) => await PlayAsync();
@@ -71,6 +75,7 @@ internal sealed class LauncherWindow : Form
             }
             _oidc?.Dispose();
             _launcherIcon?.Dispose();
+            _serverStatusClient.Dispose();
         };
     }
 
@@ -88,9 +93,11 @@ internal sealed class LauncherWindow : Form
         var profileActions = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = true };
         profileActions.Controls.Add(_saveServer);
         profileActions.Controls.Add(_removeServer);
+        profileActions.Controls.Add(_checkServerStatus);
         server.Controls.Add(profileActions);
         AddRow(server, "Server name", _serverName);
         AddRow(server, "Server address", _serverAddress);
+        AddRow(server, "Live status", _serverStatus);
         server.Controls.Add(_connect);
         root.Controls.Add(server);
 
@@ -159,6 +166,34 @@ internal sealed class LauncherWindow : Form
         {
             SetStatus($"Could not load saved servers: {ex.Message}");
             _removeServer.Enabled = false;
+        }
+    }
+
+    private async Task CheckServerStatusAsync()
+    {
+        if (!Uri.TryCreate(_serverAddress.Text.Trim(), UriKind.Absolute, out var endpoint) ||
+            endpoint.Scheme is not ("http" or "https"))
+        {
+            SetStatus("Enter a valid HTTP or HTTPS server address before checking status.");
+            return;
+        }
+
+        _checkServerStatus.Enabled = false;
+        _serverStatus.Text = "Checking…";
+        try
+        {
+            var snapshot = await _serverStatusClient.GetStatusAsync(endpoint);
+            _serverStatus.Text = $"Online · {snapshot.OnlinePlayers}/{snapshot.MaxPlayers} players";
+            SetStatus($"{snapshot.ServerName} is online. Status checked {snapshot.CheckedAtUtc.ToLocalTime():t}.");
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidDataException)
+        {
+            _serverStatus.Text = "Unavailable";
+            SetStatus($"Could not retrieve server status: {ex.Message}");
+        }
+        finally
+        {
+            if (!_closing && !IsDisposed) _checkServerStatus.Enabled = true;
         }
     }
 
