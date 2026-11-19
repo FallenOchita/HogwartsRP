@@ -16,7 +16,13 @@ Official Hogwarts Legacy mod support provides a Creator Kit and in-game mod mana
 
 Server submission data includes name, optional appearance JSON, house, wand, background, and roleplay profile. Validation limits input sizes and restricts house values. The server stamps ownership from its authenticated player session and does not accept client-supplied permission or owner fields.
 
-The launcher library now contains `CharacterCreationDraft`, a UI-independent form model. It normalizes and checks the character name, validates the selected house, enforces background/biography length limits and optional wand-length bounds, and builds the existing `CharacterSubmission` contract. The model deliberately leaves appearance JSON unset until a verified appearance representation is available. This is a form-model layer only; the launcher is still a console preview and does not yet display a graphical character-creation screen. Client validation is for usability only—the server repeats authoritative validation.
+The launcher library contains `CharacterCreationDraft`, a UI-independent form model. It normalizes and checks the character name, validates the selected house, enforces background/biography length limits and optional wand-length bounds, and builds the existing `CharacterSubmission` contract. The model deliberately leaves appearance JSON unset until a verified appearance representation is available. Client validation is for usability only—the server repeats authoritative validation.
+
+## Interactive console character creation
+
+After connecting to the selected server and authenticating, the console launcher asks whether to register a roleplay character. If accepted, it prompts for a name and one of the four Hogwarts houses, plus optional background, biography, and wand details. The draft is validated locally before submission. A valid draft is sent over the already-authenticated WebSocket connection using the existing request-correlation protocol. The launcher displays the server's acceptance or rejection response. Declining the prompt skips registration and continues to the existing game-launch flow.
+
+The console form is a functional launcher interaction, not a graphical UI. A successful response means the server accepted and stored roleplay metadata. It does not create a Hogwarts Legacy character or synchronize appearance, house, wand, position, or other game state.
 
 ## Character repository
 
@@ -62,6 +68,6 @@ The authenticated launcher connection exposes `SubmitCharacterAsync(CharacterSub
 
 The solution includes `HogwartsRP.Networking.Client.Tests`. Its in-process WebSocket server tests the launcher protocol without requiring a real game or remote server. Coverage includes concurrent submissions whose responses arrive out of order and the connection closing before a submission result is returned. These are transport/protocol tests only.
 
-## Launcher character draft tests
+## Launcher character draft and console flow tests
 
-The solution includes `HogwartsRP.Launcher.Tests`, covering draft-to-submission mapping, field normalization, invalid names and houses, wand-length bounds, and optional fields. These tests do not replace server validation or establish in-game character creation.
+The solution includes `HogwartsRP.Launcher.Tests`, covering draft-to-submission mapping, field normalization, invalid names and houses, wand-length bounds, optional fields, and the console flow's successful submission, validation rejection, server rejection, and opt-out behavior. These tests do not replace server validation or establish in-game character creation.
