@@ -1,3 +1,9 @@
+# Changelog
+
+All notable HogwartsRP changes are recorded here.
+
+## [Unreleased]
+
 ### Fixed — Rust launcher Windows build
 
 - Fixed the Windows-only Rust launcher compile error in atomic server-profile persistence by mapping the successful temporary-file persist result to unit. The underlying atomic replacement behavior is retained.
@@ -28,11 +34,22 @@
 - This is a foundation milestone, not end-to-end Rust resource hosting. The current C# ResourceManager still launches Lua workers only; Rust worker discovery, build/deployment, process supervision, command/event routing, and shutdown integration remain future work.
 - The Rust native-core crate is not yet loaded by .NET through FFI and is not yet on the framework hot path. No performance improvement is claimed.
 
-# Changelog
+### Improved — UE4SS reflection-provider capability audit
 
-All notable HogwartsRP changes are recorded here.
+- Added read-only member-exposure checks for reflected class enumeration methods, without invoking those methods.
+- Added provider capability details to the generated reflection report so method exposure is separated from successful metadata enumeration.
+- Preserved distinct per-function outcomes for unavailable methods, lookup failures, and call failures; a call failure is not reported as proof that the underlying Unreal function is absent.
+- Kept the research boundary unchanged: no gameplay UFunction invocation, ProcessEvent calls, property writes, hooks, or network operations.
+- Live UE4SS validation is still required to determine why selected UFunction descriptor wrappers fail during owned-property enumeration.
 
-## [Unreleased]
+### Improved — Read-only movement property value audit
+
+- Added a structured property-value audit for selected player and movement-component candidates, recording access method, Lua value type, and conservative read status.
+- Primitive values are reported as raw evidence; object references are identified by full name where available.
+- Opaque userdata and Lua tables are not dereferenced or expanded, preventing `TrivialObject` values from being mistaken for decoded numbers or structs.
+- Updated gameplay-state reporting to consume audit records instead of invoking `GetVelocity` or vector methods; movement mode and speed remain unavailable unless a primitive value is safely established.
+- Added a standalone Lua regression harness for primitive, missing, table, opaque-userdata, and getter-error cases.
+- Preserved the read-only boundary: no gameplay UFunctions, setters, hooks, property writes, or network operations are used by the new audit.
 
 ### Improved — Read-only component inventory validation
 

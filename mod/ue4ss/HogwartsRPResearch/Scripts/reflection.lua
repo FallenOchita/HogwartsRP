@@ -48,6 +48,13 @@ local function functionRecord(fn, maxFields)
         return false
     end)
     local metadataStatus = enumerationStatus or (enumerationError and "CALL_ERROR" or "OK")
+    if enumerationStatus == "METHOD_UNAVAILABLE" then
+        metadataStatus = "METHOD_UNAVAILABLE"
+    elseif enumerationStatus == "LOOKUP_ERROR" then
+        metadataStatus = "LOOKUP_ERROR"
+    elseif enumerationStatus == "CALL_ERROR" then
+        metadataStatus = "CALL_ERROR"
+    end
 
     return {
         name = fieldName(fn),
@@ -91,6 +98,35 @@ local function enumerateFunctions(struct, output, limit, maxFields)
     end)
     if not ok then errorMessage = tostring(err) end
     return errorMessage
+end
+
+-- Capability report only reads Lua member exposure; it does not invoke any
+-- reflected method. A method marked EXPOSED_NOT_INVOKED may still fail at call time.
+function M.capabilityReport(objects)
+    local report = {
+        status = "INSPECTED",
+        safety = "CLASS_LOOKUP_AND_MEMBER_EXPOSURE_ONLY_NO_ENUMERATION",
+        targets = {}
+    }
+    local methods = { "ForEachProperty", "ForEachFunction", "GetSuperStruct" }
+    for targetName, object in pairs(objects or {}) do
+        local target = { status = Safe.isValidObject(object) and "FOUND" or "NOT_FOUND", methods = {} }
+        if Safe.isValidObject(object) then
+            -- GetClass is the same read-only identity lookup used by inspect().
+            -- No ForEach* or UFunction descriptor method is invoked here.
+            local class = Safe.safeMethod(object, "GetClass")
+            target.class = Safe.safeFullName(class)
+            if Safe.isValidObject(class) then
+                for _, methodName in ipairs(methods) do
+                    target.methods[methodName] = Safe.methodCapability(class, methodName)
+                end
+            else
+                target.status = "CLASS_UNAVAILABLE"
+            end
+        end
+        report.targets[targetName] = target
+    end
+    return report
 end
 
 function M.inspect(object, options)

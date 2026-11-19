@@ -36,6 +36,21 @@
 - The native-core crate is currently a Rust library only; the .NET host does not yet load it through FFI. No native acceleration or runtime performance gain is claimed.
 - Rust resources are intended to run as separate processes. A process boundary alone is not a complete OS sandbox; the host must retain authority over player identity, permissions, event allowlists, networking, and persistence.
 
+## 2026-11-19 — Read-only UE4SS reflection-provider capability audit
+
+### Added and improved
+
+- Added member-exposure inspection for reflected class enumeration methods. The audit records whether a Lua member is exposed without invoking it.
+- Added the provider-capability section to the generated reflection report for player, controller, and movement targets.
+- Preserved distinct metadata outcomes for unavailable members, member lookup failures, and call failures. An exposed method is explicitly not treated as a proven working method.
+- Updated the reflection documentation with the new report fields and the interpretation of `CALL_ERROR`.
+
+### Safety and validation boundary
+
+- The capability audit uses protected member lookup only. It does not invoke gameplay UFunctions, call ProcessEvent, read arbitrary property values, write properties, install hooks, or perform network operations.
+- This patch does not claim the UE4SS reflection provider is fixed. A fresh in-game FunctionReport is required to see which methods are exposed and whether descriptor enumeration succeeds.
+- No CI or live-game result is claimed by this source update.
+
 ## 2026-11-19 — Hogwarts Legacy asset research toolkit baseline
 
 ### Added
@@ -545,3 +560,20 @@ This file records implementation details and milestone status. For user-facing f
 - The invalid `CharMoveComp` property probe remains unresolved. The valid `CharacterMovement` reference can be compared against the enumerated `CharMoveComp` object's full path, but no property alias is inferred.
 - The 3,811 unresolved Outer chains remain unresolved; no ownership is guessed for them.
 - No gameplay functions, setters, hooks, property writes, or network operations were added.
+
+
+## 2026-11-18 — Read-only movement property value audit
+
+### Added and changed
+
+- Added a conservative property-value audit for selected player and movement-component candidates, including the target object, access path, Lua type, and explicit read status.
+- Primitive values are recorded as raw values. UObject-like userdata is reported as an object reference only when a full name can be obtained; otherwise it remains opaque userdata.
+- Opaque userdata and tables are not dereferenced or expanded. In particular, `TrivialObject` values are not treated as decoded velocity vectors or movement-mode integers.
+- Updated `GameplayStateReport` to consume audit results and removed the previous `GetVelocity` and vector `Size()` calls from the state sampler.
+- Kept all unknown gameplay states unknown and locomotion classification unassigned until verified decoding and baseline evidence exist.
+
+### Validation boundary
+
+- Static source review confirms the new state sampler does not invoke gameplay functions.
+- Live UE4SS 4.0.0 behavior remains unverified until the user installs this branch and supplies the generated `PropertyReport` and `GameplayStateReport`.
+- The audit does not decode Unreal structs, inspect opaque userdata internals, write properties, or perform network operations.

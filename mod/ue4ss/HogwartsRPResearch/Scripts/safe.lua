@@ -60,6 +60,63 @@ function M.safeProperty(object, propertyName)
     return nil, tostring(value)
 end
 
+function M.inspectPropertyValue(object, propertyName)
+    local record = { property = propertyName, status = "UNAVAILABLE", lua_type = "nil",
+        access = "NONE", summary = "UNAVAILABLE" }
+    if not M.isValidObject(object) or type(propertyName) ~= "string" then
+        record.status = "INVALID_INPUT"
+        return record
+    end
+
+    local ok, getter = pcall(function() return object.GetPropertyValue end)
+    local value
+    if ok and type(getter) == "function" then
+        local got, result = pcall(function() return getter(object, propertyName) end)
+        if not got then
+            record.status = "PROPERTY_READ_ERROR"
+            record.access = "GetPropertyValue"
+            record.detail = conciseError(result)
+            return record
+        end
+        value = result
+        record.access = "GetPropertyValue"
+    else
+        local got, result = pcall(function() return object[propertyName] end)
+        if not got then
+            record.status = "PROPERTY_READ_ERROR"
+            record.access = "DirectIndex"
+            record.detail = conciseError(result)
+            return record
+        end
+        value = result
+        record.access = "DirectIndex"
+    end
+
+    record.lua_type = type(value)
+    if value == nil then
+        record.status = "PROPERTY_UNAVAILABLE"
+    elseif record.lua_type == "string" or record.lua_type == "number" or record.lua_type == "boolean" then
+        record.status = "PRIMITIVE_VALUE_READ"
+        record.summary = tostring(value)
+    elseif record.lua_type == "userdata" then
+        local fullName = M.safeFullName(value)
+        if fullName ~= "INVALID" and not fullName:match("^UNAVAILABLE") then
+            record.status = "OBJECT_REFERENCE_FOUND"
+            record.summary = fullName
+        else
+            record.status = "OPAQUE_USERDATA"
+            record.summary = "OPAQUE_USERDATA_NOT_DEREFERENCED"
+        end
+    elseif record.lua_type == "table" then
+        record.status = "TABLE_VALUE_NOT_EXPANDED"
+        record.summary = "TABLE_NOT_EXPANDED"
+    else
+        record.status = "VALUE_TYPE_UNSUPPORTED"
+        record.summary = "UNSUPPORTED_VALUE_TYPE"
+    end
+    return record
+end
+
 function M.safeFullName(object)
     if not M.isValidObject(object) then return "INVALID" end
     local value, err = M.safeMethod(object, "GetFullName")
@@ -88,6 +145,26 @@ function M.capability(name)
         available = ok and type(value) == "function",
         detail = ok and type(value) == "function" and "present" or "not exposed"
     }
+end
+
+-- Inspect method exposure without invoking the method. This separates a
+-- missing Lua binding from a binding that exists but fails when called.
+function M.methodCapability(object, methodName)
+    local record = { method = methodName, exposed = false, status = "OBJECT_UNAVAILABLE" }
+    if not M.isValidObject(object) or type(methodName) ~= "string" then
+        record.status = "INVALID_INPUT"
+        return record
+    end
+    local ok, value = pcall(function() return object[methodName] end)
+    if not ok then
+        record.status = "LOOKUP_ERROR"
+        record.detail = conciseError(value)
+        return record
+    end
+    record.exposed = type(value) == "function"
+    record.status = record.exposed and "EXPOSED_NOT_INVOKED" or "METHOD_UNAVAILABLE"
+    record.lua_type = type(value)
+    return record
 end
 
 function M.findAll(className)

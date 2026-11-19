@@ -260,6 +260,29 @@ function M.components(actor)
     }
 end
 
+function M.propertyValueAudit(player, movement, names)
+    local result = { status = "READ_ONLY_PROPERTY_VALUE_AUDIT", items = {} }
+    local targets = { { name = "player", object = player }, { name = "movement", object = movement } }
+    for _, target in ipairs(targets) do
+        if Safe.isValidObject(target.object) then
+            for _, name in ipairs(names or {}) do
+                local item = Safe.inspectPropertyValue(target.object, name)
+                item.target = target.name
+                item.target_full_name = Safe.safeFullName(target.object)
+                result.items[#result.items + 1] = item
+            end
+        else
+            result.items[#result.items + 1] = {
+                target = target.name, target_full_name = "UNAVAILABLE", property = "*",
+                status = "TARGET_NOT_FOUND", lua_type = "nil", access = "NONE",
+                summary = "UNAVAILABLE"
+            }
+        end
+    end
+    result.note = "Property values are summarized only. Opaque userdata and tables are not dereferenced or expanded; no gameplay UFunction is invoked."
+    return result
+end
+
 function M.properties(object, names)
     local result = {}
     if not Safe.isValidObject(object) then return { status = "OBJECT_NOT_FOUND", items = result } end

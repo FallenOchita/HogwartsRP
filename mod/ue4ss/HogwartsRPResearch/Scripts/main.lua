@@ -128,6 +128,16 @@ local function runResearch(targets, finalAttempt)
         catalog.reflection.player = inspectMetadata(player)
         catalog.reflection.controller = inspectMetadata(controller)
         catalog.reflection.movement = inspectMetadata(movement)
+        if Reflection and Reflection.capabilityReport then
+            catalog.reflection.provider_capabilities = Reflection.capabilityReport({
+                player = player, controller = controller, movement = movement
+            })
+        else
+            catalog.reflection.provider_capabilities = {
+                status = "CAPABILITY_AUDIT_UNAVAILABLE",
+                safety = "MEMBER_LOOKUP_ONLY_NO_METHOD_INVOCATION"
+            }
+        end
 
         if Relationships then
             local relationshipOk, relationshipResult = pcall(function()
@@ -140,10 +150,14 @@ local function runResearch(targets, finalAttempt)
             catalog.relationships = { status = "RELATIONSHIP_MODULE_UNAVAILABLE" }
         end
 
+        local propertyCandidates = {
+            "CharacterMovement", "CharMoveComp", "Health", "CurrentHealth",
+            "Mana", "CurrentMana", "Velocity", "MovementMode"
+        }
         catalog.properties = {
-            candidate_value_probes = Discovery.properties(player, {
-                "CharacterMovement", "CharMoveComp", "Health", "CurrentHealth",
-                "Mana", "CurrentMana", "Velocity", "MovementMode"
+            candidate_value_probes = Discovery.properties(player, propertyCandidates),
+            value_audit = Discovery.propertyValueAudit(player, movement, {
+                "CharacterMovement", "CharMoveComp", "Velocity", "MovementMode"
             }),
             player_metadata = catalog.reflection.player.properties,
             controller_metadata = catalog.reflection.controller.properties,
@@ -160,7 +174,7 @@ local function runResearch(targets, finalAttempt)
             movement_metadata = catalog.reflection.movement.functions
         }
 
-        if States then catalog.states = States.sample(player, movement) end
+        if States then catalog.states = States.sample(player, movement, catalog.properties.value_audit) end
 
         local reportDir, pathError = Reports.getOutputDirectory()
         if not reportDir then
