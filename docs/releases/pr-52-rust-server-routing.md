@@ -10,7 +10,7 @@
 
 ## Validation
 - Added a resource lifecycle integration test that launches two workers in one resource and verifies ambiguous duplicate command names fail closed.
-- CI results are pending; no passing build or test result is claimed yet.
+- Windows and Ubuntu GitHub Actions passed. The initial fixture attempt failed because duplicate manifest paths are deduplicated; the fixture was corrected to use two distinct executable paths and then passed on both platforms.
 
 ## Launcher migration
 - The Rust desktop executable already replaces the WinForms shell. The remaining C# launcher support library still contains OIDC, WebSocket, character-draft, profile, status, and game-launch contracts. Its complete Rust port and removal from the .NET solution will be handled as a separate, explicit migration slice rather than silently deleting functionality from this server-routing change.
