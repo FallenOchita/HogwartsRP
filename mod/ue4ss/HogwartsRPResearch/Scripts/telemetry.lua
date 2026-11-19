@@ -19,8 +19,8 @@ M.UNVERIFIED = {
 
 local function methodAvailable(object, methodName)
     if not Safe.isValidObject(object) then return false end
-    local value = Safe.safeProperty(object, methodName)
-    return type(value) == "function"
+    local ok, value = pcall(function() return object[methodName] end)
+    return ok and type(value) == "function"
 end
 
 function M.audit(player, controller, movement)
