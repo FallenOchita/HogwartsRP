@@ -395,6 +395,134 @@ local function lookupNamedProperty(struct, propertyName, lookupClass)
     return nil, diagnostic
 end
 
+
+-- Resolve a bounded allowlist of named property descriptors without invoking
+-- ForEachProperty. Each requested name is checked across the reflected class
+-- chain using the documented UObjectReflection:GetProperty API.
+function M.lookupNamedProperties(object, propertyNames, options)
+    options = options or {}
+    local maxDepth = options.max_super_depth or DEFAULTS.max_super_depth
+    local result = {
+        status = "NOT_STARTED",
+        object = Safe.safeFullName(object),
+        class_chain = {},
+        class_hierarchy_status = "NOT_STARTED",
+        items = {},
+        requested_count = 0,
+        safety = "DIRECT_PROPERTY_DESCRIPTOR_LOOKUP_ONLY_NO_PROPERTY_VALUE_READS_NO_UFUNCTION_INVOCATION"
+    }
+
+    if not Safe.isValidObject(object) then
+        result.status = "OBJECT_NOT_FOUND"
+        result.class_hierarchy_status = "NOT_ATTEMPTED"
+        return result
+    end
+    if type(propertyNames) ~= "table" then
+        result.status = "INVALID_PROPERTY_ALLOWLIST"
+        result.class_hierarchy_status = "NOT_ATTEMPTED"
+        return result
+    end
+
+    local class, classError, classStatus = Safe.safeMethod(object, "GetClass")
+    if not Safe.isValidObject(class) then
+        result.status = "CLASS_UNAVAILABLE"
+        result.class_hierarchy_status = classStatus or "CLASS_LOOKUP_FAILED"
+        result.error = classError and conciseDiagnostic(classError) or nil
+        return result
+    end
+
+    local classObjects, seen = {}, {}
+    local current = class
+    local hierarchyComplete = false
+    for _ = 1, maxDepth do
+        if not Safe.isValidObject(current) then
+            result.class_hierarchy_status = "PARTIAL"
+            result.hierarchy_termination = "INVALID_SUPERCLASS_REFERENCE"
+            break
+        end
+        local classFullName = Safe.safeFullName(current)
+        if not classFullName or classFullName == "INVALID" or classFullName:match("^UNAVAILABLE") then
+            result.class_hierarchy_status = "PARTIAL"
+            result.hierarchy_termination = "CLASS_IDENTITY_UNAVAILABLE"
+            break
+        end
+        if seen[classFullName] then
+            result.class_hierarchy_status = "PARTIAL"
+            result.hierarchy_termination = "CLASS_CYCLE_DETECTED"
+            break
+        end
+        seen[classFullName] = true
+        classObjects[#classObjects + 1] = current
+        result.class_chain[#result.class_chain + 1] = classFullName
+
+        local parent, parentError, parentStatus = Safe.safeMethod(current, "GetSuperStruct")
+        if parentError ~= nil or (parentStatus ~= nil and parentStatus ~= "OK") then
+            result.class_hierarchy_status = "PARTIAL"
+            result.hierarchy_termination = parentStatus or "SUPERCLASS_LOOKUP_FAILED"
+            result.hierarchy_error = parentError and conciseDiagnostic(parentError) or nil
+            break
+        end
+        if not Safe.isValidObject(parent) then
+            result.class_hierarchy_status = "COMPLETE"
+            result.hierarchy_termination = "NO_SUPERSTRUCT_RETURNED"
+            hierarchyComplete = true
+            break
+        end
+        current = parent
+    end
+    if not hierarchyComplete and result.class_hierarchy_status == "NOT_STARTED" then
+        result.class_hierarchy_status = "DEPTH_LIMIT_REACHED"
+        result.hierarchy_termination = "MAX_SUPER_DEPTH"
+    end
+
+    local seenNames = {}
+    for _, propertyName in ipairs(propertyNames) do
+        if type(propertyName) == "string" and propertyName ~= "" and not seenNames[propertyName] then
+            seenNames[propertyName] = true
+            local item = {
+                property = propertyName,
+                status = "NOT_STARTED",
+                direct_lookup_diagnostics = {}
+            }
+            local incomplete = false
+            for index, classObject in ipairs(classObjects) do
+                local classFullName = result.class_chain[index]
+                local descriptor, diagnostic = lookupNamedProperty(classObject, propertyName, classFullName)
+                item.direct_lookup_diagnostics[#item.direct_lookup_diagnostics + 1] = diagnostic
+                if descriptor then
+                    item.status = "FOUND"
+                    item.descriptor = descriptor
+                    item.lookup_scope_class = classFullName
+                    item.enum_association_status = diagnostic.enum_association_status
+                    item.enum_association_capability_audit = diagnostic.enum_association_capability_audit
+                    break
+                elseif diagnostic.status ~= "NOT_FOUND_ON_LOOKUP_CLASS" then
+                    incomplete = true
+                end
+            end
+            if item.status ~= "FOUND" then
+                item.status = (incomplete or not hierarchyComplete) and "LOOKUP_INCOMPLETE" or "NOT_FOUND"
+            end
+            result.items[#result.items + 1] = item
+        end
+    end
+
+    result.requested_count = #result.items
+    local found, missing, incomplete = 0, 0, 0
+    for _, item in ipairs(result.items) do
+        if item.status == "FOUND" then found = found + 1
+        elseif item.status == "NOT_FOUND" then missing = missing + 1
+        else incomplete = incomplete + 1 end
+    end
+    result.found_count = found
+    result.not_found_count = missing
+    result.incomplete_count = incomplete
+    result.status = incomplete > 0 and "PARTIAL"
+        or (found > 0 and "INSPECTED" or "NO_DESCRIPTORS_FOUND")
+    result.note = "Only explicitly allowlisted property descriptors are queried. NOT_FOUND means the direct lookup completed across the traversed class chain; LOOKUP_INCOMPLETE means a lookup or hierarchy step could not be completed. No property values are read."
+    return result
+end
+
 local function enumerateFunctions(struct, output, limit, maxFields)
     local errorMessage = nil
     local ok, err = pcall(function()
