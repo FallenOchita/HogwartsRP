@@ -45,12 +45,11 @@ Class-name reporting now distinguishes an unavailable `GetClass` method, a faile
 
 ## Component discovery boundary
 
-The target UE4SS build reports that `GetComponents` is not exposed as a Lua table. The toolkit therefore keeps `ComponentReport.status = UNAVAILABLE` for complete component enumeration. It separately probes only these previously observed player properties: `CharMoveComp`, `CharacterMovement`, `Mesh`, `ConversationComponent`, `ToolSetComponent`, and `AnimationArchitectComponent`.
+The toolkit uses the documented UE4SS 4.0.0 `FindObjects(0, "ActorComponent", nil, 0, 0, false)` query to collect ActorComponent-derived objects, then confirms player association only when the object's Outer chain resolves to the discovered player pawn. The report keeps returned-object count, confirmed matches, unresolved Outer chains, non-matches, depth-limit outcomes, and truncation state separate.
 
-A candidate is recorded as `REFERENCE_FOUND` only when its value can be identified by a valid full object name. Other results remain unresolved or unavailable. This allowlisted reference catalog is not a complete component list and does not claim that every candidate is a component. No arbitrary property scan or `GetComponents` workaround is attempted.
+For each reported player-Outer-matched component, the toolkit records its class identity and a bounded superclass chain using `GetClass()` and `GetSuperStruct()`. Hierarchy results are cached by reported class name. `COMPLETE`, `PARTIAL`, and `DEPTH_LIMIT_REACHED` describe the class metadata traversal only; they do not strengthen the Outer ownership result. Unusual class metadata, including Blueprint-generated class forms, remains flagged for review rather than silently normalized.
 
-The relationship report also checks the named `Player`, `CharacterOwner`, `PawnOwner`, and `UpdatedComponent` references alongside the existing controller pawn and movement outer checks. These are read-only property-reference checks; owner resolution remains unprobed.
-
+The existing allowlisted player-property reference checks remain separate and are cross-checked against the confirmed component paths. The broad component property catalog is intentionally deferred: live UE4SS 4.0.0 reports show that `ForEachProperty` may fail after a callback has returned, so this pass does not treat a partial enumeration as a complete property inventory or retry it. No opaque userdata is dereferenced and no arbitrary component property values are read.
 ## Output
 
 The existing reports are extended:
