@@ -1,5 +1,24 @@
 # Detailed Updates
 
+## 2026-11-19 — HogwartsRP launcher artwork integration
+
+### Added
+
+- Added a timed startup splash window that displays the “Hogwarts RP: A New Chapter” artwork before opening the existing launcher UI.
+- Added Windows executable and window-icon support using the selected “Hogwarts RP Moonlit Crest” design.
+- Configured the project to copy the optional artwork assets beside the built application when present; missing assets use a text fallback rather than preventing startup.
+- Added an asset README with the exact expected filenames and destination.
+
+### Artwork asset delivery
+
+- The optimized artwork bundle contains `Assets/HogwartsRP.ico` and `Assets/HogwartsRP-Splash.jpg`.
+- Copy those two files from the supplied `HogwartsRP_Launcher_Artwork.zip` into `src/HogwartsRP.Launcher.App/Assets/` before building to enable the selected artwork. The binary image files are supplied separately and are not yet committed to this branch.
+
+### Validation boundary
+
+- The launcher code and conditional asset wiring are committed on this branch; hosted CI and a Windows visual launch test are still required.
+- The splash screen is a short startup presentation, not an interactive replacement for the server/character controls.
+
 ## 2026-11-18 — Graphical Windows launcher foundation
 
 ### Added

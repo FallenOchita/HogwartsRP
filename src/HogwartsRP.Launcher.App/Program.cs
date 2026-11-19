@@ -8,6 +8,8 @@ internal static class Program
     private static void Main()
     {
         ApplicationConfiguration.Initialize();
+        using (var splash = new LauncherSplashScreen())
+            splash.ShowDialog();
         Application.Run(new LauncherWindow());
     }
 }
