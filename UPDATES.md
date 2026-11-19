@@ -1,5 +1,21 @@
 # Detailed Updates
 
+## 2026-11-18 — Launcher character creation draft model
+
+### Added
+
+- Added `CharacterCreationDraft` to the launcher library as a UI-independent model for the future character-creation screen.
+- Added client-side validation and normalization for character names, the four Hogwarts houses, background/biography length limits, and optional wand length.
+- Added conversion from the draft into the existing `CharacterSubmission` contract. Appearance data remains unset until a verified appearance representation exists.
+- Added a dedicated `HogwartsRP.Launcher.Tests` project covering valid mapping, invalid names/houses, wand bounds, and optional fields.
+- Added the test project to `HogwartsRP.slnx` and updated the launcher documentation and changelog.
+
+### Validation boundary
+
+- This is the tested form-model layer only. The current launcher remains a console preview; no graphical form or game-side character creation was added.
+- The server remains authoritative and must repeat validation on every submission.
+- Hosted Windows and Ubuntu CI results are pending for this branch.
+
 ## 2026-11-18 — Character submission protocol regression tests
 
 ### Added
@@ -12,7 +28,7 @@
 
 ### Validation status
 
-- Awaiting Windows and Ubuntu GitHub Actions for this branch. The tests use a local synthetic WebSocket server and do not establish game compatibility or in-game multiplayer.
+- PR #12 has been merged. The tests use a local synthetic WebSocket server and do not establish game compatibility or in-game multiplayer.
 
 ## 2026-11-18 — Launcher character submission client
 
@@ -32,7 +48,7 @@
 ### Validation status
 
 - PR #10 and PR #11 were merged after their Windows and Ubuntu CI runs completed successfully.
-- The regression-test branch is pending hosted CI.
+- PR #12 added transport regression coverage and was subsequently merged.
 
 ## 2026-11-18 — PR #9 build correction
 
@@ -61,7 +77,6 @@
 ### Configuration and limitations
 
 - Construct the repository with a configured data path, for example `new JsonCharacterRepository("data/characters.json")`.
-- The component is not yet wired to a live character-submission endpoint; the current server does not expose that endpoint.
 - The file adapter is intended for a single server process. It does not coordinate writes across multiple server instances and does not replace backups or a production database.
 - The repository contract's `RegisterAsync` operation remains the persistence entry point; the concrete adapter also exposes owner-filtered retrieval.
 
@@ -72,7 +87,7 @@
 
 ### Next step
 
-Run the Windows and Ubuntu CI matrix, review any failures, and merge only after the checks pass.
+Run the Windows and Ubuntu CI matrix, review any failures, and merge only after checks pass.
 
 ## 2026-11-18 — Hardened UE4SS diagnostic report and regression tests
 
@@ -92,7 +107,7 @@ Run the Windows and Ubuntu CI matrix, review any failures, and merge only after 
 
 ### Next step
 
-Wait for the branch's GitHub Actions results, review any failures, then merge only after checks pass and the changes are reviewed.
+Run the diagnostic mod on the Steam installation, then use the PowerShell helper to produce a report for review. Confirm the report contains no unintended personal information before sharing it.
 
 ## 2026-11-18 — Sanitized UE4SS diagnostic report helper
 
