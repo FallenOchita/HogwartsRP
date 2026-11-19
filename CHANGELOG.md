@@ -4,6 +4,21 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Added — Rust resource runtime integration
+
+- Added precompiled Rust worker declarations through repeated `rust_script` manifest entries, with resource-relative path validation.
+- Added a .NET process supervisor that waits for worker readiness, bounds JSON-lines frames and request duration, routes command/event requests, captures stderr diagnostics, and performs graceful shutdown with process-tree termination fallback.
+- Integrated Rust worker startup and shutdown into ResourceManager alongside Lua resource scripts, and exposed Rust command/event registration plus explicit command and event dispatch methods.
+- Aligned the Rust SDK JSON field casing with the .NET web JSON protocol and added a regression test for `eventName` serialization.
+- Added manifest parsing coverage and updated Rust support and architecture documentation.
+
+### Integration limitations
+
+- Rust resources must be compiled and deployed for the server platform; automatic Cargo builds and artifact discovery are not included.
+- Rust command declarations and network-event declarations are surfaced by ResourceManager but are not yet automatically connected to the framework-wide command registry or WebSocket authorization/allowlist pipeline.
+- Rust workers currently run with the server account's OS permissions; this slice does not yet apply the Lua worker's OS memory/CPU limits. Treat Rust resources as trusted code.
+
+
 ### Improved — Movement-mode enum metadata audit
 
 - Added a read-only reflected-property descriptor audit for the movement component's `MovementMode` field, including its property class and declaring class hierarchy.
