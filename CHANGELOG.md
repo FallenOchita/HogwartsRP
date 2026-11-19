@@ -6,16 +6,17 @@ All notable HogwartsRP changes are recorded here.
 
 ### Added
 
+- Added an interactive console character-creation flow to the launcher, connected to the authenticated character-submission endpoint.
+- Added launcher-flow tests for successful submission, client-side validation rejection, server rejection, and skipping character creation.
 - Added a launcher-side character creation draft model that trims and validates names, Hogwarts houses, roleplay text, and optional wand details before building a typed submission.
 - Added dedicated launcher tests for valid draft mapping, invalid names/houses, wand-length bounds, and omitted optional fields.
 - Added dedicated WebSocket client protocol tests covering concurrent character submissions with out-of-order responses and connection loss before a response.
 - Added authenticated WebSocket character submissions backed by the JSON character repository, with server-derived account ownership and correlated results.
 - Wired the character repository into server startup with a configurable `Storage:CharactersPath`.
 - A harmless UE4SS Lua diagnostic mod for the Steam PC version, with installation and log-verification instructions.
-- A local PowerShell helper that produces a sanitized UE4SS diagnostic report without uploading or exposing unrelated log content.
+- A local PowerShell helper that produces a sanitized diagnostic report without uploading or exposing unrelated log content.
 - Regression tests for sanitized UE4SS reports, including status detection, missing logs, optional report output, and exclusion of arbitrary log payloads.
 - A JSON-backed character repository with atomic file replacement, duplicate-ID protection, and owner-filtered retrieval.
-- Regression tests for character persistence across repository instances, owner isolation, duplicate IDs, and corrupt-store preservation.
 - Core-owned player sessions with server-generated IDs, single-use join tickets, and per-resource client-event validation.
 - A WebSocket server transport with bounded JSON messages and authenticated server-to-client delivery.
 - A replaceable client network adapter and launcher credential-provider interface.
@@ -27,15 +28,16 @@ All notable HogwartsRP changes are recorded here.
 
 ### Changed
 
+- The console launcher now offers character registration after server authentication and before launching Hogwarts Legacy.
+- Character registration reports server acceptance or rejection; declining the prompt leaves the existing launch flow unchanged.
 - Added the missing `HogwartsRP.GameIntegration.Abstractions` project reference to `HogwartsRP.Server`, resolving the character repository contract types during compilation.
-- The diagnostic report helper now emits only normalized known markers and constrained version tokens instead of echoing arbitrary log lines.
-- CI now runs the PowerShell diagnostic-report regression tests on Windows and Ubuntu.
+- The diagnostic report helper emits only normalized known markers and constrained version tokens instead of echoing arbitrary log lines.
 
 ### Limitations
 
-- The launcher character creation draft is a reusable model, not a graphical character-creation screen; the launcher remains a console preview.
+- Character creation is currently a console form, not a graphical launcher screen or Hogwarts Legacy in-game character creator.
+- Character submissions persist roleplay metadata on the server; they do not apply house, wand, appearance, or character data to the game.
 - The JSON character repository is a single-server persistence adapter; it is not a multi-instance database or backup system.
-- Character submission is available through the authenticated launcher/server WebSocket protocol and JSON repository, but it does not create or modify a character inside Hogwarts Legacy.
 - When OIDC is not configured, the console launcher uses a development-ticket prompt for loopback servers only.
 - OIDC sign-in requires issuer and public-client configuration on both launcher and server; RS256 is the only currently accepted ID-token signing algorithm.
 - The launcher owns the current network session. Hogwarts Legacy itself has no compatible multiplayer adapter yet.
