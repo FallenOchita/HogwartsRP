@@ -6,6 +6,7 @@ license = "MIT"
 description = "Rust-hosted central HogwartsRP browser account portal"
 
 [dependencies]
+axum = "0.8"
 hogwartsrp-portal-auth = { path = "../../crates/hogwartsrp-portal-auth" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
 serde_json = "1"
