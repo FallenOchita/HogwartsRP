@@ -49,19 +49,17 @@ local function findTargets()
     -- The local controller can expose its possessed pawn before a class-wide
     -- lookup returns the pawn. This is a read-only property lookup.
     if not Safe.isValidObject(player) and Safe.isValidObject(controller) then
-        player = firstValid(
-            Safe.safeProperty(controller, "AcknowledgedPawn"),
-            Safe.safeProperty(controller, "Pawn")
-        )
+        local acknowledgedPawn = Safe.safeProperty(controller, "AcknowledgedPawn")
+        local pawn = Safe.safeProperty(controller, "Pawn")
+        player = firstValid(acknowledgedPawn, pawn)
         if Safe.isValidObject(player) then playerSource = "controller pawn property" end
     end
 
     local movement = nil
     if Safe.isValidObject(player) then
-        movement = firstValid(
-            Safe.safeProperty(player, "CharMoveComp"),
-            Safe.safeProperty(player, "CharacterMovement")
-        )
+        local charMoveComp = Safe.safeProperty(player, "CharMoveComp")
+        local characterMovement = Safe.safeProperty(player, "CharacterMovement")
+        movement = firstValid(charMoveComp, characterMovement)
     end
     if not Safe.isValidObject(movement) then
         movement = Safe.findFirst("Biped_MovementComponent")
