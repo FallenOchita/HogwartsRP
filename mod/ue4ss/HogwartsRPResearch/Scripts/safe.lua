@@ -21,7 +21,9 @@ local function callMethod(object, methodName, ...)
     local unpackArgs = table.unpack or unpack
     local result = { pcall(function() return method(object, unpackArgs(args)) end) }
     if not result[1] then
-        return false, conciseError(result[2]), "CALL_ERROR"
+        -- Preserve the original error for callers that produce bounded,
+        -- structured diagnostics. Most callers still use conciseError.
+        return false, tostring(result[2]), "CALL_ERROR"
     end
     table.remove(result, 1)
     return true, unpackArgs(result), "OK"
