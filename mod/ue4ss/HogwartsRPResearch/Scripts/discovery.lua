@@ -133,7 +133,8 @@ function M.components(actor)
         }
     end
 
-    local returnedCount, matchedCount, unresolvedCount = 0, 0, 0
+    local returnedCount, matchedCount = 0, 0
+    local unresolvedCount, nonMatchingCount, depthLimitCount = 0, 0, 0
     local items = {}
     for _, component in pairs(objects) do
         if Safe.isValidObject(component) then
@@ -152,8 +153,13 @@ function M.components(actor)
                         outer_chain = outerChain
                     }
                 end
-            elseif relationshipStatus ~= "OUTER_DEPTH_LIMIT" then
+            elseif relationshipStatus == "OUTER_CHAIN_UNAVAILABLE" or
+                relationshipStatus == "OUTER_IDENTITY_UNAVAILABLE" then
                 unresolvedCount = unresolvedCount + 1
+            elseif relationshipStatus == "OUTER_DEPTH_LIMIT" then
+                depthLimitCount = depthLimitCount + 1
+            else
+                nonMatchingCount = nonMatchingCount + 1
             end
         end
     end
@@ -167,6 +173,8 @@ function M.components(actor)
         component_objects_returned = returnedCount,
         player_owned_matches = matchedCount,
         unresolved_outer_chains = unresolvedCount,
+        non_matching_outer_chains = nonMatchingCount,
+        outer_depth_limit_count = depthLimitCount,
         items = items,
         max_reported = MAX_COMPONENT_REPORTS,
         truncated = matchedCount > MAX_COMPONENT_REPORTS,
