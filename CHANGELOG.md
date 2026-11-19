@@ -4,45 +4,23 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
-### Added — Read-only player object relationship validation
+### Improved — Read-only UE4SS reflection and component diagnostics
 
-- Added a dedicated relationship report for the local PlayerController, player pawn, and movement component.
-- Compare the controller `AcknowledgedPawn` and `Pawn` property references against the independently discovered `BP_Biped_Player_C` using object full names.
-- Compare the movement component outer against the discovered player pawn and report class metadata resolution separately from object discovery.
-- Keep owner resolution explicitly `NOT_PROBED`; do not invoke `GetOwner`, gameplay UFunctions, or setters.
-- Add `RelationshipReport.txt` and document that `Outer`, `World`, and owner are distinct relationships.
-- Preserve partial results and label missing, mismatched, or unresolved references rather than inferring success.
-
-### Fixed — Delayed player/controller discovery
-
-- Avoid running the one-shot object lookup during early mod initialization, when the Hogwarts Legacy world and local player may not exist yet.
-- Retry the known player/controller class lookups on the game thread every 2.5 seconds, up to 24 attempts.
-- Use the controller's read-only `AcknowledgedPawn`/`Pawn` references as a fallback for local pawn discovery.
-- Resolve the movement component from the known `CharMoveComp`/`CharacterMovement` properties before trying its class lookup.
-- Add a `FindAllOf` fallback, explicit discovery-source diagnostics, and a `hogwartsrp_research` console command for manual retries.
-- Keep the final no-player result explicit after the bounded retry window; do not claim reflection was tested when no target object was found.
-
-### Added — Read-only UE4SS reflection metadata discovery
-
-- Added a bounded reflection pass for the discovered player, controller, and movement objects using UE4SS 4.0.0 `UStruct:ForEachProperty`, `UStruct:ForEachFunction`, and `GetSuperStruct`.
-- Recorded property names, full paths, property classes, function names, full paths, raw function flags, and UFunction-owned property descriptors.
-- Extended PropertyReport.txt and FunctionReport.txt with reflection metadata and superclass-chain information.
-- Kept metadata enumeration separate from the existing allowlisted candidate value probes.
-- Enforced explicit limits for superclass depth, properties, functions, and UFunction-owned property descriptors.
-
-### Safety and validation boundary
-
-- Reflection enumeration reads metadata only. It does not invoke UFunctions, call ProcessEvent, write properties, install gameplay hooks, or communicate over a network.
-- Parameter direction and full callable signatures are not inferred from metadata the documented Lua API does not expose.
-- The implementation is committed for live UE4SS validation; successful execution and useful metadata output must still be confirmed in Hogwarts Legacy.
+- Normalized UE4SS method failures into concise statuses (`METHOD_UNAVAILABLE`, `CALL_ERROR`, and related states) so unsupported UFunction descriptor wrappers no longer flood reports with repeated tracebacks.
+- Preserved per-function identity and flags when UFunction-owned property enumeration is unavailable; recorded the metadata-enumeration status without invoking any gameplay function.
+- Made class-name diagnostics distinguish invalid source objects, unavailable/failed `GetClass`, invalid class wrappers, and unavailable class full names.
+- Kept complete component enumeration explicitly `UNAVAILABLE` because this UE4SS build does not expose `GetComponents` as a Lua table.
+- Added a bounded allowlist of previously observed player component-reference properties and expanded read-only relationship checks for `Player`, `CharacterOwner`, `PawnOwner`, and `UpdatedComponent`.
+- Updated the reflection research guide and runtime diagnostics. No property writes, gameplay UFunction calls, hooks, or network activity were added.
 
 ### Fixed — HogwartsRP research report output paths
 
-- Resolve report output from the installed research module's absolute script location instead of the game's current working directory.
-- Use UE4SS's documented `IterateGameDirectories()` API as a fallback when the Lua chunk source is not absolute.
-- Include the `Scripts/reports/` directory in the packaged mod.
-- Write all eight text reports and the generated adapter to the same resolved output directory.
-- Log the resolved directory and report success/failure counts.
+- Resolve the report directory from the research mod's installed script location instead of the game's current working directory.
+- Added a documented UE4SS `IterateGameDirectories()` fallback for installations where the Lua chunk source is not an absolute path.
+- Added the packaged `Scripts/reports/` directory marker required by the report writer.
+- Report generation now returns successful/failed file counts and logs the resolved absolute output directory.
+- Adapter generation now uses the same resolved output directory as the text reports.
+- Kept report output read-only with respect to game state; only local report files are written.
 
 
 ### Added — Browser account session foundation

@@ -40,20 +40,14 @@ end
 
 local function functionRecord(fn, maxFields)
     local fields = {}
-    local enumerationError = nil
-    local ok, err = pcall(function()
-        local result, callError = Safe.safeMethod(fn, "ForEachProperty", function(property)
-            if #fields >= maxFields then return true end
-            if Safe.isValidObject(property) then
-                fields[#fields + 1] = propertyRecord(property)
-            end
-            return false
-        end)
-        if result == nil and callError ~= nil then
-            enumerationError = tostring(callError)
+    local _, enumerationError, enumerationStatus = Safe.safeMethod(fn, "ForEachProperty", function(property)
+        if #fields >= maxFields then return true end
+        if Safe.isValidObject(property) then
+            fields[#fields + 1] = propertyRecord(property)
         end
+        return false
     end)
-    if not ok then enumerationError = tostring(err) end
+    local metadataStatus = enumerationStatus or (enumerationError and "CALL_ERROR" or "OK")
 
     return {
         name = fieldName(fn),
@@ -61,7 +55,8 @@ local function functionRecord(fn, maxFields)
         function_flags = Safe.safeMethod(fn, "GetFunctionFlags") or "UNAVAILABLE",
         owned_property_metadata = fields,
         owned_property_metadata_truncated = #fields >= maxFields,
-        owned_property_metadata_note = "UFunction-owned property records are listed without decoding parameter direction or invoking the function.",
+        owned_property_metadata_status = metadataStatus,
+        owned_property_metadata_note = "Metadata-only attempt. UE4SS may not expose UFunction property iteration for every descriptor; no function is invoked.",
         enumeration_error = enumerationError
     }
 end
@@ -125,7 +120,7 @@ function M.inspect(object, options)
     local properties, functions, classChain = {}, {}, {}
     local seenClasses = {}
     local current = class
-    local propertyError, functionError = nil, nil
+    local propertyErrors, functionErrors = {}, {}
 
     for _ = 1, limits.max_super_depth do
         if not Safe.isValidObject(current) then break end
@@ -136,10 +131,16 @@ function M.inspect(object, options)
         classChain[#classChain + 1] = classFullName
 
         if #properties < limits.max_properties then
-            propertyError = enumerateProperties(current, properties, limits.max_properties)
+            local err = enumerateProperties(current, properties, limits.max_properties)
+            if err then propertyErrors[#propertyErrors + 1] = {
+                class = classFullName, status = "PARTIAL_OR_FAILED", detail = err
+            } end
         end
         if #functions < limits.max_functions then
-            functionError = enumerateFunctions(current, functions, limits.max_functions, limits.max_function_fields)
+            local err = enumerateFunctions(current, functions, limits.max_functions, limits.max_function_fields)
+            if err then functionErrors[#functionErrors + 1] = {
+                class = classFullName, status = "PARTIAL_OR_FAILED", detail = err
+            } end
         end
 
         if #properties >= limits.max_properties and #functions >= limits.max_functions then
@@ -159,8 +160,8 @@ function M.inspect(object, options)
         limits = limits,
         properties_truncated = #properties >= limits.max_properties,
         functions_truncated = #functions >= limits.max_functions,
-        property_enumeration_error = propertyError,
-        function_enumeration_error = functionError,
+        property_enumeration_errors = propertyErrors,
+        function_enumeration_errors = functionErrors,
         safety = "METADATA_ONLY_NO_PROPERTY_VALUE_READS_NO_UFUNCTION_INVOCATION"
     }
 end

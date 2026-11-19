@@ -33,6 +33,20 @@ The reflection pass is metadata-only:
 
 The existing allowlisted candidate probes in `discovery.lua` remain separate. Those probes read only the explicitly listed candidate properties and report their observed Lua type/value; they do not invoke candidate functions.
 
+## Partial UFunction metadata and class diagnostics
+
+Some UFunction descriptor wrappers in the target UE4SS build expose a method-shaped `ForEachProperty` member but fail when that wrapper is called. The toolkit now records the failure as a concise per-function status (`CALL_ERROR`, `METHOD_UNAVAILABLE`, or `OK`) and preserves the function's other metadata. It does not emit the repeated Lua traceback for each descriptor. A successful metadata enumeration on one descriptor does not imply that every descriptor supports the same operation.
+
+Class-name reporting now distinguishes an unavailable `GetClass` method, a failed `GetClass` call, an invalid returned class object, and an unavailable class full name. These statuses avoid presenting an unresolved class name as evidence that the discovered player/controller object itself is invalid.
+
+## Component discovery boundary
+
+The target UE4SS build reports that `GetComponents` is not exposed as a Lua table. The toolkit therefore keeps `ComponentReport.status = UNAVAILABLE` for complete component enumeration. It separately probes only these previously observed player properties: `CharMoveComp`, `CharacterMovement`, `Mesh`, `ConversationComponent`, `ToolSetComponent`, and `AnimationArchitectComponent`.
+
+A candidate is recorded as `REFERENCE_FOUND` only when its value can be identified by a valid full object name. Other results remain unresolved or unavailable. This allowlisted reference catalog is not a complete component list and does not claim that every candidate is a component. No arbitrary property scan or `GetComponents` workaround is attempted.
+
+The relationship report also checks the named `Player`, `CharacterOwner`, `PawnOwner`, and `UpdatedComponent` references alongside the existing controller pawn and movement outer checks. These are read-only property-reference checks; owner resolution remains unprobed.
+
 ## Output
 
 The existing reports are extended:

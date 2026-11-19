@@ -1,16 +1,30 @@
 -- Safe UE4SS access helpers. All engine-facing operations are protected.
 local M = {}
 
+local function conciseError(value)
+    local message = tostring(value or "unknown error")
+    message = message:match("([^\r\n]+)") or message
+    if #message > 180 then message = message:sub(1, 177) .. "..." end
+    return message
+end
+
 local function callMethod(object, methodName, ...)
-    if object == nil or type(methodName) ~= "string" then return false, "invalid input" end
+    if object == nil or type(methodName) ~= "string" then
+        return false, "invalid input", "INVALID_INPUT"
+    end
     local ok, method = pcall(function() return object[methodName] end)
-    if not ok or type(method) ~= "function" then return false, "method unavailable" end
+    if not ok then return false, conciseError(method), "LOOKUP_ERROR" end
+    if type(method) ~= "function" then
+        return false, "method unavailable", "METHOD_UNAVAILABLE"
+    end
     local args = {...}
     local unpackArgs = table.unpack or unpack
     local result = { pcall(function() return method(object, unpackArgs(args)) end) }
-    if not result[1] then return false, tostring(result[2]) end
+    if not result[1] then
+        return false, conciseError(result[2]), "CALL_ERROR"
+    end
     table.remove(result, 1)
-    return true, unpackArgs(result)
+    return true, unpackArgs(result), "OK"
 end
 
 function M.isValidObject(object)
@@ -24,9 +38,9 @@ end
 
 function M.safeMethod(object, methodName, ...)
     if not M.isValidObject(object) then return nil, "invalid object" end
-    local ok, value = callMethod(object, methodName, ...)
-    if not ok then return nil, value end
-    return value
+    local ok, value, status = callMethod(object, methodName, ...)
+    if not ok then return nil, value, status end
+    return value, nil, status
 end
 
 function M.safeProperty(object, propertyName)
@@ -54,11 +68,18 @@ function M.safeFullName(object)
 end
 
 function M.safeClassName(object)
-    if not M.isValidObject(object) then return "INVALID" end
-    local classObject = M.safeProperty(object, "Class")
-    if classObject == nil then classObject = M.safeMethod(object, "GetClass") end
-    if classObject == nil then return "UNAVAILABLE" end
-    return M.safeFullName(classObject)
+    if not M.isValidObject(object) then return "INVALID_OBJECT" end
+    local classObject, classError, classStatus = M.safeMethod(object, "GetClass")
+    if classObject == nil then
+        return classStatus == "CALL_ERROR" and "GETCLASS_CALL_ERROR: " .. conciseError(classError)
+            or "GETCLASS_UNAVAILABLE"
+    end
+    if not M.isValidObject(classObject) then return "CLASS_OBJECT_INVALID" end
+    local fullName = M.safeFullName(classObject)
+    if fullName == "INVALID" or fullName:match("^UNAVAILABLE") then
+        return "CLASS_FULL_NAME_UNAVAILABLE"
+    end
+    return fullName
 end
 
 function M.capability(name)

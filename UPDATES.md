@@ -1,3 +1,25 @@
+## 2026-11-18 — UE4SS reflection reliability and component-reference diagnostics
+
+### Improved
+
+- Normalized method lookup and invocation failures into concise statuses, retaining the first diagnostic line rather than repeating full Lua stack traces for every unsupported UFunction descriptor.
+- Preserved UFunction name, full name, and raw flags when owned-property enumeration fails; each descriptor now reports `OK`, `METHOD_UNAVAILABLE`, or `CALL_ERROR` metadata status.
+- Improved class-name diagnostics so unresolved class metadata is distinguished from an invalid player/controller/movement object.
+- Kept `ComponentReport.status = UNAVAILABLE` for full component enumeration because `GetComponents` is not exposed as a Lua table by this UE4SS build.
+- Added bounded, allowlisted probes for the previously observed player properties `CharMoveComp`, `CharacterMovement`, `Mesh`, `ConversationComponent`, `ToolSetComponent`, and `AnimationArchitectComponent`. Only candidates with a valid full object name are reported as `REFERENCE_FOUND`.
+- Expanded read-only relationship validation to include controller `Player` and movement `CharacterOwner`, `PawnOwner`, and `UpdatedComponent` references.
+- Updated the reflection guide, runtime log, and `CHANGELOG.md`.
+
+### Validation boundary
+
+- This is a source update on the existing research-toolkit pull request. It has not yet been installed or tested in the live Hogwarts Legacy/UE4SS process.
+- Component property candidates are not a complete component list. `GetComponents` remains unavailable and the report says so explicitly.
+- No gameplay UFunction is invoked; no property is written; no ProcessEvent, hook, network, or multiplayer behavior is added.
+
+### Next validation
+
+Install the PR branch, run one research pass, and share the updated `ComponentReport.txt`, `RelationshipReport.txt`, `FunctionReport.txt`, and the three object reports. Confirm whether class metadata now resolves and which allowlisted references produce `REFERENCE_FOUND`.
+
 ## 2026-11-18 — Read-only player object relationship validation
 
 ### Added
@@ -53,6 +75,16 @@
 
 ### Fixed
 
+- Corrected report output resolution: the writer no longer assumes `Mods/HogwartsRPResearch/reports` is relative to the game's working directory.
+- The output directory is now resolved from the installed `reports.lua` module path, with the documented UE4SS `IterateGameDirectories()` API as a fallback.
+- Added `mod/ue4ss/HogwartsRPResearch/Scripts/reports/.gitkeep` so the reports directory is included when the mod is packaged or checked out.
+- Adapter output and all eight text reports now share the same resolved absolute directory.
+- Added a clear diagnostic when the reports folder is missing, plus a written/failed report count.
+
+### Validation boundary
+
+- The user's log confirms the mod loads and reaches the research pass; it showed only report/adapter output-path failures.
+- The corrected path resolver is committed for the next in-game test. Actual file creation still needs confirmation from a fresh UE4SS.log and the generated files on the user's installation.
 - Corrected report output resolution so the writer no longer assumes `Mods/HogwartsRPResearch/reports` is relative to the game's working directory.
 - Resolve the output directory from the installed `reports.lua` module path, with UE4SS `IterateGameDirectories()` as a fallback.
 - Added `mod/ue4ss/HogwartsRPResearch/Scripts/reports/.gitkeep` so the output directory is included in packaged checkouts.

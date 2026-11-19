@@ -12,10 +12,11 @@ end
 
 local function classInfo(object)
     if not Safe.isValidObject(object) then return { status = "OBJECT_NOT_FOUND" } end
-    local classObject, err = Safe.safeMethod(object, "GetClass")
+    local classObject, err, callStatus = Safe.safeMethod(object, "GetClass")
     if not Safe.isValidObject(classObject) then
-        return { status = err and "GETCLASS_UNAVAILABLE" or "CLASS_OBJECT_INVALID",
-            class_full_name = "UNAVAILABLE", detail = err }
+        local status = callStatus == "CALL_ERROR" and "GETCLASS_CALL_ERROR"
+            or (classObject == nil and "GETCLASS_UNAVAILABLE" or "CLASS_OBJECT_INVALID")
+        return { status = status, class_full_name = "UNAVAILABLE", detail = err }
     end
     local name = identity(classObject)
     return name and { status = "RESOLVED", class_full_name = name }
@@ -30,10 +31,18 @@ local function propertyReference(source, propertyName, expected)
             reference = "UNAVAILABLE", detail = err }
     end
     local actualName, expectedName = identity(value), identity(expected)
-    local status = actualName and expectedName and
-        (actualName == expectedName and "MATCH" or "MISMATCH") or "IDENTITY_UNRESOLVED"
+    local status
+    if not actualName then
+        status = "IDENTITY_UNRESOLVED"
+    elseif expected == nil then
+        status = "REFERENCE_FOUND"
+    elseif expectedName then
+        status = actualName == expectedName and "MATCH" or "MISMATCH"
+    else
+        status = "EXPECTED_IDENTITY_UNAVAILABLE"
+    end
     return { status = status, reference = actualName or "UNAVAILABLE",
-        expected = expectedName or "UNAVAILABLE" }
+        expected = expectedName or (expected == nil and "NOT_APPLICABLE" or "UNAVAILABLE") }
 end
 
 local function outerReference(source, expected)
@@ -69,6 +78,10 @@ function M.inspect(player, controller, movement)
         relationships = {
             controller_acknowledged_pawn = ack,
             controller_pawn = pawn,
+            controller_player_property = propertyReference(controller, "Player", nil),
+            movement_character_owner = propertyReference(movement, "CharacterOwner", player),
+            movement_pawn_owner = propertyReference(movement, "PawnOwner", player),
+            movement_updated_component = propertyReference(movement, "UpdatedComponent", nil),
             movement_outer_is_player = outerReference(movement, player)
         },
         owner_resolution = {

@@ -3,6 +3,11 @@
 -- READ-ONLY: no setters, gameplay UFunction invocation, hooks, or network writes.
 
 local MOD = "HogwartsRPResearch"
+
+local function log(message)
+    pcall(function()
+        print("[" .. MOD .. "] " .. tostring(message) .. "\n")
+    end)
 local MAX_ATTEMPTS = 24
 local RETRY_DELAY_MS = 2500
 local attemptCount = 0
@@ -175,6 +180,8 @@ local function runResearch(targets, finalAttempt)
             ", controller: " .. tostring(catalog.reflection.controller.status) ..
             ", movement: " .. tostring(catalog.reflection.movement.status))
         log("Relationship validation status: " .. tostring(catalog.relationships.status))
+        log("Component discovery status: " .. tostring(catalog.components.status) ..
+            " (allowlisted property references only; complete enumeration unsupported)")
 
         local written, failed = Reports.writeAll(reportDir, catalog)
 
