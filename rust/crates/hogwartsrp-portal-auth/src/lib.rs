@@ -271,7 +271,7 @@ const DEFAULT_TRANSACTION_CAPACITY: usize = 4096;
 
 /// Public values safe to use when redirecting the browser to the OIDC provider.
 /// The PKCE verifier and nonce remain exclusively on the server.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct AuthorizationRequest {
     state: String,
     code_challenge: String,
@@ -293,6 +293,15 @@ pub struct ConsumedAuthorizationTransaction {
 impl ConsumedAuthorizationTransaction {
     pub fn nonce(&self) -> &str { &self.nonce }
     pub fn code_verifier(&self) -> &str { &self.code_verifier }
+}
+
+impl std::fmt::Debug for ConsumedAuthorizationTransaction {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.debug_struct("ConsumedAuthorizationTransaction")
+            .field("nonce", &"[REDACTED]")
+            .field("code_verifier", &"[REDACTED]")
+            .finish()
+    }
 }
 
 struct PendingAuthorization {
