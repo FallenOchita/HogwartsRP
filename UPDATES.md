@@ -1,3 +1,8 @@
+## 2026-11-19 — Rust launcher CI compile fix
+
+- Fixed the Windows release-build error in `save_profiles`: `NamedTempFile::persist` returns the persisted file handle, while the function contract returns `()`. The result is now explicitly mapped to unit.
+- The two failing workflow runs were both Windows jobs at the launcher release-build step; Ubuntu jobs passed. New CI runs will verify this correction.
+
 ## 2026-11-18 — Native Rust desktop launcher migration
 
 ### Changed
