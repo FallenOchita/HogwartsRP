@@ -174,9 +174,23 @@ local function runResearch(targets, finalAttempt)
                 }
             ),
             related_reference_audit = Discovery.relatedObjectReferenceAudit(controller, {
-                { root_property = "Player", target = "local_player", properties = { "PlayerController" } },
-                { root_property = "PlayerState", target = "player_state", properties = { "PawnPrivate" } }
-            }),
+                {
+                    root_property = "Player",
+                    target = "local_player",
+                    properties = { "PlayerController" },
+                    metadata_properties = { "PlayerController", "AspectRatioAxisConstraint", "Origin", "Size" }
+                },
+                {
+                    root_property = "PlayerState",
+                    target = "player_state",
+                    properties = {
+                        "PawnPrivate", "PlayerId", "PlayerNamePrivate", "bIsSpectator",
+                        "bIsABot", "bIsInactive", "Score", "Ping"
+                    }
+                }
+            }, Reflection and function(object, names)
+                return Reflection.lookupNamedProperties(object, names)
+            end or nil),
             targeted_property_metadata = {
                 player = Reflection and Reflection.lookupNamedProperties(player, {
                     "CharacterMovement", "CharMoveComp", "Mesh",
