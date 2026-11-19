@@ -1,4 +1,4 @@
-use hogwartsrp_portal_auth::{portal_router, JsonPortalAccountStore, PortalHttpState, PortalOidcConfig};
+use hogwartsrp_portal_auth::{portal_router, JsonAccountLinkStore, JsonPortalAccountStore, PortalHttpState, PortalOidcConfig};
 use std::{env, fs, net::SocketAddr, sync::Arc};
 
 #[tokio::main]
@@ -13,7 +13,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let account_path = env::var("HOGWARTSRP_PORTAL_ACCOUNTS_PATH")
         .unwrap_or_else(|_| "data/portal-accounts.json".to_owned());
     let accounts = Arc::new(JsonPortalAccountStore::open(account_path)?);
-    let state = PortalHttpState::new(config, metadata, accounts);
+    let link_path = env::var("HOGWARTSRP_PORTAL_ACCOUNT_LINKS_PATH")
+        .unwrap_or_else(|_| "data/portal-account-links.json".to_owned());
+    let account_links = Arc::new(JsonAccountLinkStore::open(link_path)?);
+    let state = PortalHttpState::new(config, metadata, accounts, account_links);
 
     let address: SocketAddr = env::var("HOGWARTSRP_PORTAL_LISTEN")
         .unwrap_or_else(|_| "127.0.0.1:8787".to_owned())
