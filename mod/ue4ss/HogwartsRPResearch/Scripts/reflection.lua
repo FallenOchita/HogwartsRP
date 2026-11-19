@@ -68,14 +68,38 @@ local function functionRecord(fn, maxFields)
     }
 end
 
+local function conciseDiagnostic(value)
+    local message = tostring(value or "unknown error")
+    message = message:match("([^\\r\\n]+)") or message
+    if #message > 180 then message = message:sub(1, 177) .. "..." end
+    return message
+end
+
 local function enumerateProperties(struct, output, limit, namedPropertyAudit, declaringClass)
-    local errorMessage = nil
-    local ok, err = pcall(function()
-        local result, callError = Safe.safeMethod(struct, "ForEachProperty", function(property)
-            if #output >= limit then return true end
+    local diagnostic = {
+        class = declaringClass,
+        method = "ForEachProperty",
+        status = "NOT_STARTED",
+        properties_before = #output,
+        properties_after = #output,
+        properties_captured = 0,
+        callback_invocations = 0,
+        last_property_name = "UNAVAILABLE"
+    }
+
+    local callbackError = nil
+    local result, callError, callStatus = Safe.safeMethod(struct, "ForEachProperty", function(property)
+        diagnostic.callback_invocations = diagnostic.callback_invocations + 1
+        local callbackOk, shouldStop = pcall(function()
+            if #output >= limit then
+                diagnostic.stop_reason = "PROPERTY_LIMIT_REACHED"
+                return true
+            end
             if Safe.isValidObject(property) then
                 local record = propertyRecord(property)
                 output[#output + 1] = record
+                diagnostic.last_property_name = record.name
+                diagnostic.properties_captured = #output - diagnostic.properties_before
                 if namedPropertyAudit and record.name == namedPropertyAudit.property then
                     namedPropertyAudit.status = "FOUND"
                     namedPropertyAudit.descriptor = record
@@ -91,14 +115,38 @@ local function enumerateProperties(struct, output, limit, namedPropertyAudit, de
             end
             return false
         end)
-        if result == nil and callError ~= nil then errorMessage = tostring(callError) end
+        if not callbackOk then
+            callbackError = conciseDiagnostic(shouldStop)
+            diagnostic.callback_error = callbackError
+            diagnostic.stop_reason = "CALLBACK_ERROR"
+            return true
+        end
+        return shouldStop
     end)
-    if not ok then errorMessage = tostring(err) end
-    if errorMessage and namedPropertyAudit and namedPropertyAudit.status ~= "FOUND" then
-        namedPropertyAudit.status = "ENUMERATION_INCOMPLETE"
-        namedPropertyAudit.enumeration_error = errorMessage
+
+    diagnostic.properties_after = #output
+    diagnostic.properties_captured = #output - diagnostic.properties_before
+    diagnostic.invocation_status = callStatus or (callError and "CALL_ERROR" or "OK")
+    if callbackError then
+        diagnostic.status = "CALLBACK_ERROR"
+    elseif callStatus == "CALL_ERROR" and diagnostic.callback_invocations > 0 then
+        diagnostic.status = "CALL_ERROR_AFTER_CALLBACK"
+    elseif callStatus == "CALL_ERROR" then
+        diagnostic.status = "CALL_ERROR_BEFORE_CALLBACK"
+    elseif callStatus == "LOOKUP_ERROR" or callStatus == "METHOD_UNAVAILABLE" then
+        diagnostic.status = callStatus
+    elseif callStatus == "OK" then
+        diagnostic.status = diagnostic.stop_reason or "OK"
+    else
+        diagnostic.status = callStatus or "UNKNOWN"
     end
-    return errorMessage
+    if callError ~= nil then diagnostic.error = conciseDiagnostic(callError) end
+
+    if callError and namedPropertyAudit and namedPropertyAudit.status ~= "FOUND" then
+        namedPropertyAudit.status = "ENUMERATION_INCOMPLETE"
+        namedPropertyAudit.enumeration_error = diagnostic.error
+    end
+    return callError and tostring(callError) or nil, diagnostic
 end
 
 local function enumerateFunctions(struct, output, limit, maxFields)
@@ -184,7 +232,7 @@ function M.inspect(object, options)
     end
     local seenClasses = {}
     local current = class
-    local propertyErrors, functionErrors = {}, {}
+    local propertyErrors, functionErrors, propertyDiagnostics = {}, {}, {}
 
     for _ = 1, limits.max_super_depth do
         if not Safe.isValidObject(current) then break end
@@ -195,9 +243,13 @@ function M.inspect(object, options)
         classChain[#classChain + 1] = classFullName
 
         if #properties < limits.max_properties then
-            local err = enumerateProperties(current, properties, limits.max_properties, namedPropertyAudit, classFullName)
+            local err, diagnostic = enumerateProperties(current, properties, limits.max_properties, namedPropertyAudit, classFullName)
+            propertyDiagnostics[#propertyDiagnostics + 1] = diagnostic
             if err then propertyErrors[#propertyErrors + 1] = {
-                class = classFullName, status = "PARTIAL_OR_FAILED", detail = err
+                class = classFullName, status = diagnostic.status, detail = err,
+                callback_invocations = diagnostic.callback_invocations,
+                properties_captured = diagnostic.properties_captured,
+                last_property_name = diagnostic.last_property_name
             } end
         end
         if #functions < limits.max_functions then
@@ -214,9 +266,20 @@ function M.inspect(object, options)
         current = Safe.safeMethod(current, "GetSuperStruct")
     end
 
-    if namedPropertyAudit and namedPropertyAudit.status == "PROPERTY_NOT_FOUND"
-        and #properties >= limits.max_properties then
-        namedPropertyAudit.status = "ENUMERATION_LIMIT_REACHED"
+    if namedPropertyAudit then
+        namedPropertyAudit.enumeration_diagnostics = propertyDiagnostics
+        if namedPropertyAudit.status == "PROPERTY_NOT_FOUND"
+            and #properties >= limits.max_properties then
+            namedPropertyAudit.status = "ENUMERATION_LIMIT_REACHED"
+        elseif namedPropertyAudit.status == "PROPERTY_NOT_FOUND" then
+            for _, diagnostic in ipairs(propertyDiagnostics) do
+                if diagnostic.status ~= "OK" and diagnostic.status ~= "PROPERTY_LIMIT_REACHED" then
+                    namedPropertyAudit.status = "ENUMERATION_INCOMPLETE"
+                    namedPropertyAudit.enumeration_error = diagnostic.error or diagnostic.callback_error or diagnostic.status
+                    break
+                end
+            end
+        end
     end
 
     return {
@@ -232,6 +295,7 @@ function M.inspect(object, options)
         property_enumeration_errors = propertyErrors,
         function_enumeration_errors = functionErrors,
         named_property_audit = namedPropertyAudit,
+        property_enumeration_diagnostics = propertyDiagnostics,
         safety = "METADATA_ONLY_NO_PROPERTY_VALUE_READS_NO_UFUNCTION_INVOCATION"
     }
 end
