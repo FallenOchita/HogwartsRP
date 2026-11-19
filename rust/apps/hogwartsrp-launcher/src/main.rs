@@ -3,6 +3,7 @@ use eframe::egui;
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
+    io::Write,
     path::PathBuf,
     sync::mpsc::{self, Receiver},
     thread,
@@ -62,9 +63,10 @@ impl HogwartsRpLauncher {
             fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
         let json = serde_json::to_vec_pretty(&self.saved_servers).map_err(|e| e.to_string())?;
-        let temporary = path.with_extension("json.tmp");
-        fs::write(&temporary, json).map_err(|e| e.to_string())?;
-        fs::rename(&temporary, &path).map_err(|e| e.to_string())
+        let parent = path.parent().ok_or_else(|| "Invalid profile path.".to_owned())?;
+        let mut temporary = tempfile::NamedTempFile::new_in(parent).map_err(|e| e.to_string())?;
+        temporary.write_all(&json).map_err(|e| e.to_string())?;
+        temporary.persist(&path).map_err(|e| e.error.to_string())
     }
 
     fn save_current_server(&mut self) {
