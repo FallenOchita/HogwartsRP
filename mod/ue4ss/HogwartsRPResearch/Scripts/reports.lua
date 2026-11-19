@@ -120,7 +120,10 @@ function M.writeAll(directory, catalog)
         MovementReport = catalog.objects and catalog.objects.movement,
         NPCReport = { status = "NOT_YET_DISCOVERED", note = "NPC class catalog is not yet validated." },
         ComponentReport = catalog.components,
-        ComponentPropertyCatalog = catalog.components and catalog.components.component_property_catalog,
+        ComponentPropertyCatalog = (catalog.components and catalog.components.component_property_catalog) or {
+            status = "NOT_ATTEMPTED", classes = {}, unique_class_count = 0,
+            note = "Component discovery did not produce a property catalog."
+        },
         PropertyReport = catalog.properties,
         FunctionReport = catalog.functions,
         GameplayStateReport = catalog.states,
