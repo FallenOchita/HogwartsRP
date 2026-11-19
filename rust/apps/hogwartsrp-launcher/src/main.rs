@@ -341,7 +341,7 @@ impl eframe::App for HogwartsRpLauncher {
             });
             ui.horizontal(|ui| {
                 ui.label("Loopback development ticket");
-                ui.text_edit_singleline(&mut self.join_credential);
+                ui.add(egui::TextEdit::singleline(&mut self.join_credential).password(true));
                 if ui.button("Connect with ticket").clicked() { self.connect_with_ticket(); }
             });
 
