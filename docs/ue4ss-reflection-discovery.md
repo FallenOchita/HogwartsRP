@@ -93,3 +93,12 @@ Status interpretation:
 - OK means the method call returned without a recorded error. A limit stop is separately labeled PROPERTY_LIMIT_REACHED.
 
 These diagnostics do not retry enumeration, invoke a second ForEachProperty pass, inspect property values, dereference opaque userdata, invoke gameplay functions, or infer that a property is absent from a failed/incomplete pass. Callback counts and partial counts are diagnostic evidence only; they do not establish why the UE4SS binding failed internally.
+
+
+## Direct named-property metadata lookup
+
+The MovementMode audit now supplements the class-by-class ForEachProperty inventory with the documented UE4SS UObjectReflection path: UObject:Reflection() followed by UObjectReflection:GetProperty(propertyName). This performs a targeted metadata lookup for the requested property on each class in the already established superclass chain. It records the lookup scope class and the returned descriptor identity without reading the property's value.
+
+The direct lookup has its own per-class diagnostics and an independent direct_lookup_status. Outcomes distinguish a descriptor found, a property not found on a queried class, and an incomplete lookup caused by an unavailable or failing reflection method. A descriptor's full name is retained as the evidence for its declaring type; lookup_scope_class is not automatically treated as the declaring class because the API documentation does not specify whether GetProperty includes inherited descriptors.
+
+This API returns property metadata only. It does not provide a documented property-to-UEnum accessor or enumerator list, so enum association remains unverified unless separately established. The existing ForEachProperty inventory and its diagnostics remain intact; a failed enumeration does not invalidate a successful direct lookup.

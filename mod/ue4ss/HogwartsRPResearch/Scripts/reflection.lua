@@ -149,6 +149,40 @@ local function enumerateProperties(struct, output, limit, namedPropertyAudit, de
     return callError and tostring(callError) or nil, diagnostic
 end
 
+-- Resolve one named descriptor through UE4SS's documented UObjectReflection API.
+-- This avoids depending on ForEachProperty callback iteration for the named-property audit.
+local function lookupNamedProperty(struct, propertyName, lookupClass)
+    local diagnostic = {
+        lookup_class = lookupClass,
+        method = "Reflection:GetProperty",
+        property = propertyName,
+        status = "NOT_STARTED"
+    }
+
+    local reflection, reflectionError, reflectionStatus = Safe.safeMethod(struct, "Reflection")
+    if not Safe.isValidObject(reflection) then
+        diagnostic.status = reflectionStatus or "REFLECTION_UNAVAILABLE"
+        diagnostic.error = reflectionError and conciseDiagnostic(reflectionError) or nil
+        return nil, diagnostic
+    end
+
+    local property, propertyError, propertyStatus = Safe.safeMethod(reflection, "GetProperty", propertyName)
+    if Safe.isValidObject(property) then
+        diagnostic.status = "FOUND"
+        local record = propertyRecord(property)
+        diagnostic.descriptor = record
+        return record, diagnostic
+    end
+
+    if propertyError == nil and propertyStatus == "OK" then
+        diagnostic.status = "NOT_FOUND_ON_LOOKUP_CLASS"
+    else
+        diagnostic.status = propertyStatus or "LOOKUP_ERROR"
+        diagnostic.error = propertyError and conciseDiagnostic(propertyError) or nil
+    end
+    return nil, diagnostic
+end
+
 local function enumerateFunctions(struct, output, limit, maxFields)
     local errorMessage = nil
     local ok, err = pcall(function()
@@ -227,7 +261,9 @@ function M.inspect(object, options)
             object = Safe.safeFullName(object),
             enum_association_status = "NOT_ESTABLISHED",
             enum_entries = {},
-            safety = "REFLECTION_PROPERTY_ENUMERATION_METADATA_ONLY_NO_VALUE_READS_NO_ENUMERATION_OF_ENUM_VALUES"
+            direct_lookup_diagnostics = {},
+            direct_lookup_status = "NOT_ATTEMPTED",
+            safety = "DIRECT_REFLECTION_METADATA_LOOKUP_AND_PROPERTY_ENUMERATION_ONLY_NO_VALUE_READS_NO_ENUMERATION_OF_ENUM_VALUES"
         }
     end
     local seenClasses = {}
@@ -241,6 +277,20 @@ function M.inspect(object, options)
         if seenClasses[classFullName] then break end
         seenClasses[classFullName] = true
         classChain[#classChain + 1] = classFullName
+
+        if namedPropertyAudit and namedPropertyAudit.status ~= "FOUND" then
+            local descriptor, lookupDiagnostic = lookupNamedProperty(current, namedPropertyAudit.property, classFullName)
+            namedPropertyAudit.direct_lookup_diagnostics[#namedPropertyAudit.direct_lookup_diagnostics + 1] = lookupDiagnostic
+            if descriptor then
+                namedPropertyAudit.status = "FOUND"
+                namedPropertyAudit.descriptor = descriptor
+                namedPropertyAudit.lookup_scope_class = classFullName
+                namedPropertyAudit.enum_association_status = descriptor.property_class == "EnumProperty"
+                    and "ENUM_PROPERTY_TYPE_CONFIRMED_ENUM_REFERENCE_UNAVAILABLE"
+                    or (descriptor.property_class == "ByteProperty" and "BYTE_PROPERTY_ENUM_ASSOCIATION_UNVERIFIED"
+                    or "NOT_AN_ENUM_PROPERTY_CLASS")
+            end
+        end
 
         if #properties < limits.max_properties then
             local err, diagnostic = enumerateProperties(current, properties, limits.max_properties, namedPropertyAudit, classFullName)
@@ -268,17 +318,20 @@ function M.inspect(object, options)
 
     if namedPropertyAudit then
         namedPropertyAudit.enumeration_diagnostics = propertyDiagnostics
-        if namedPropertyAudit.status == "PROPERTY_NOT_FOUND"
-            and #properties >= limits.max_properties then
-            namedPropertyAudit.status = "ENUMERATION_LIMIT_REACHED"
-        elseif namedPropertyAudit.status == "PROPERTY_NOT_FOUND" then
-            for _, diagnostic in ipairs(propertyDiagnostics) do
-                if diagnostic.status ~= "OK" and diagnostic.status ~= "PROPERTY_LIMIT_REACHED" then
-                    namedPropertyAudit.status = "ENUMERATION_INCOMPLETE"
-                    namedPropertyAudit.enumeration_error = diagnostic.error or diagnostic.callback_error or diagnostic.status
-                    break
-                end
+        local directLookupIncomplete = false
+        local directLookupFound = false
+        for _, diagnostic in ipairs(namedPropertyAudit.direct_lookup_diagnostics) do
+            if diagnostic.status == "FOUND" then
+                directLookupFound = true
+                break
+            elseif diagnostic.status ~= "NOT_FOUND_ON_LOOKUP_CLASS" then
+                directLookupIncomplete = true
             end
+        end
+        namedPropertyAudit.direct_lookup_status = directLookupFound and "FOUND"
+            or (directLookupIncomplete and "LOOKUP_INCOMPLETE" or "NOT_FOUND")
+        if namedPropertyAudit.status == "PROPERTY_NOT_FOUND" then
+            namedPropertyAudit.status = directLookupIncomplete and "LOOKUP_INCOMPLETE" or "PROPERTY_NOT_FOUND"
         end
     end
 
