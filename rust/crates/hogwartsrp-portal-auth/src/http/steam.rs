@@ -228,9 +228,13 @@ async fn verify_assertion(
     {
         return Err(());
     }
-    let body = response.bytes().await.map_err(|_| ())?;
-    if body.len() > MAX_PROVIDER_RESPONSE_BYTES {
-        return Err(());
+    let mut response = response;
+    let mut body = Vec::with_capacity(MAX_PROVIDER_RESPONSE_BYTES);
+    while let Some(chunk) = response.chunk().await.map_err(|_| ())? {
+        if body.len().saturating_add(chunk.len()) > MAX_PROVIDER_RESPONSE_BYTES {
+            return Err(());
+        }
+        body.extend_from_slice(&chunk);
     }
     let body = std::str::from_utf8(&body).map_err(|_| ())?;
     let has_namespace = body.lines().any(|line| line.trim() == format!("ns:{OPENID_NAMESPACE}"));
