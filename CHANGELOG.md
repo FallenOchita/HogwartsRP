@@ -6,6 +6,13 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Fixed — Player metadata candidate classification
+
+- Removed `CharMoveComp` from the player's reflected property-descriptor allowlist because the live report completed lookup across the full class chain and returned `NOT_FOUND`.
+- Kept `CharacterMovement` as the reflected player property; the live report identifies its descriptor as `ObjectProperty /Script/Engine.Character:CharacterMovement`.
+- Documented `CharMoveComp` as the movement-component instance name/path, not a confirmed reflected property name. Existing discovery/value probes remain unchanged.
+- This removes a known false-negative metadata candidate without changing runtime discovery or reading additional property values.
+
 ### Fixed — PlayerState metadata route
 
 - Corrected the PlayerState route so only `PawnPrivate` is read as a second-hop object reference; the PlayerState candidate list is now passed to the descriptor-only metadata lookup.
