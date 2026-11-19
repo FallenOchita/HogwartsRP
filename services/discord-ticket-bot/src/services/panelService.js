@@ -6,7 +6,10 @@ async function createPanels(guild){
   if(!channel)channel=await guild.channels.create({name,reason:"HogwartsRP ticket panel setup"});
   const options=Object.values(types).filter(t=>t.group===group).map(t=>({label:t.label,value:t.id,description:t.description.slice(0,100)}));
   const row=new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("ticket:select").setPlaceholder("Choose a ticket type…").addOptions(options));
-  await channel.send({embeds:[new EmbedBuilder().setColor(0x5b4b8a).setTitle("HogwartsRP — "+group+" Tickets").setDescription("Select the ticket type that best matches your request. A private channel and short form will be created.")],components:[row]});
+  const embed=new EmbedBuilder().setColor(0x5b4b8a).setTitle("HogwartsRP — "+group+" Tickets").setDescription("Select the ticket type that best matches your request. A private channel and short form will be created.");
+  const recent=await channel.messages.fetch({limit:50});
+  const existing=recent.find(m=>m.author.id===guild.members.me.id&&m.embeds.some(e=>e.title===embed.data.title));
+  if(existing)await existing.edit({embeds:[embed],components:[row]});else await channel.send({embeds:[embed],components:[row]});
   created.push(channel);
  }
  return created;
