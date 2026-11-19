@@ -4,6 +4,16 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Added — Component class hierarchy inventory
+
+- Added read-only `GetClass()` and `GetSuperStruct()` metadata collection for confirmed player-Outer-matched component instances.
+- Added a per-class hierarchy cache so repeated component instances share one class-chain record rather than repeating reflection work.
+- Added explicit `COMPLETE`, `PARTIAL`, and `DEPTH_LIMIT_REACHED` outcomes, plus aggregate complete/partial counts.
+- Preserved the existing Outer ownership boundary, duplicate class groups, unusual class metadata review flags, and unresolved Outer counts.
+- Deliberately deferred broad component property enumeration: the live UE4SS 4.0.0 `ForEachProperty` path has shown callback-continuation errors, so this change does not imply a complete property catalog.
+- No component property values, gameplay UFunctions, setters, hooks, or network operations are accessed.
+## [Unreleased]
+
 ### Added — ByteProperty enum-association capability audit
 
 - Added a metadata-only capability record for the MovementMode descriptor, including its property-class identity and exposure of documented generic Property methods.
