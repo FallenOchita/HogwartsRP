@@ -6,6 +6,7 @@
 - Add an authenticated WebSocket client for server session handshake, bounded event messages, and correlated character submission.
 - Wire OIDC sign-in, server connection, character form, status checks, and game launch into the Rust desktop UI.
 - Add Rust unit tests for profile persistence, character validation, endpoint policy, OIDC endpoint constraints, and network-message validation.
+- Add a Windows CI step to execute the launcher crate's unit tests, in addition to its release build.
 
 ## Boundaries
 - The server remains authoritative for ID-token validation, player identity, permissions, character validation, and persistence.
