@@ -17,7 +17,11 @@ public static class BrowserAccountSessionEndpoints
         application.MapDelete("/account/session", (HttpContext context) => RevokeSession(context, sessions));
     }
 
-    /// <summary>Sets the opaque session cookie after a trusted sign-in handler issues the session.</summary>
+    /// <summary>
+    /// Sets the opaque session cookie after trusted sign-in. Lax permits the cookie on a
+    /// top-level GET return from an external OAuth/OpenID provider; state and session binding
+    /// are still required before a provider callback may complete an account link.
+    /// </summary>
     public static void SetSessionCookie(HttpContext context, IssuedBrowserAccountSession issued)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -26,7 +30,7 @@ public static class BrowserAccountSessionEndpoints
         {
             HttpOnly = true,
             Secure = true,
-            SameSite = SameSiteMode.Strict,
+            SameSite = SameSiteMode.Lax,
             Path = "/account",
             Expires = issued.Info.ExpiresAtUtc,
             IsEssential = true
@@ -65,7 +69,7 @@ public static class BrowserAccountSessionEndpoints
         {
             HttpOnly = true,
             Secure = true,
-            SameSite = SameSiteMode.Strict,
+            SameSite = SameSiteMode.Lax,
             Path = "/account"
         });
         return Results.NoContent();
