@@ -4,6 +4,15 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Added — Read-only player object relationship validation
+
+- Added a dedicated relationship report for the local PlayerController, player pawn, and movement component.
+- Compare the controller `AcknowledgedPawn` and `Pawn` property references against the independently discovered `BP_Biped_Player_C` using object full names.
+- Compare the movement component outer against the discovered player pawn and report class metadata resolution separately from object discovery.
+- Keep owner resolution explicitly `NOT_PROBED`; do not invoke `GetOwner`, gameplay UFunctions, or setters.
+- Add `RelationshipReport.txt` and document that `Outer`, `World`, and owner are distinct relationships.
+- Preserve partial results and label missing, mismatched, or unresolved references rather than inferring success.
+
 ### Fixed — Delayed player/controller discovery
 
 - Avoid running the one-shot object lookup during early mod initialization, when the Hogwarts Legacy world and local player may not exist yet.
