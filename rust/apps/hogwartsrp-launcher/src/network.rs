@@ -232,7 +232,6 @@ fn validate_arguments(arguments: &[Value]) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use url::Url;
 
     #[test]
     fn validates_network_event_names_and_arguments() {
