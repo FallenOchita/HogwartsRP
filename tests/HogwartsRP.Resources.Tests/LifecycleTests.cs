@@ -14,7 +14,7 @@ public class LifecycleTests
         {
             await File.WriteAllTextAsync(Path.Combine(dir, "fxmanifest.lua"), "fx_version 'cerulean'\ngame 'hogwartslegacy'\nserver_script 'main.lua'");
             await File.WriteAllTextAsync(Path.Combine(dir, "main.lua"), "loaded = true");
-            var manager = new ResourceManager(root, _ => new NativeLua54Runtime()); await manager.StartAllAsync();
+            manager = new ResourceManager(root, _ => new NativeLua54Runtime()); await manager.StartAllAsync();
             Assert.Equal(ResourceState.Started, Assert.Single(manager.Status).State); await manager.StopAllAsync(); Assert.Equal(ResourceState.Stopped, Assert.Single(manager.Status).State);
         }
         finally { Directory.Delete(root, true); }
@@ -28,6 +28,7 @@ public class LifecycleTests
         Assert.True(File.Exists(workerPath));
 
         var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        ResourceManager? manager = null;
         var resourceDirectory = Path.Combine(root, "rust_sample");
         var binaryDirectory = Path.Combine(resourceDirectory, "bin");
         Directory.CreateDirectory(binaryDirectory);
@@ -58,10 +59,33 @@ public class LifecycleTests
         }
         finally
         {
-            if (Directory.Exists(root)) Directory.Delete(root, true);
+            try
+            {
+                if (manager is not null) await manager.StopAllAsync();
+            }
+            finally
+            {
+                if (Directory.Exists(root)) await DeleteDirectoryWithRetriesAsync(root);
+            }
         }
     }
 
+    private static async Task DeleteDirectoryWithRetriesAsync(string path)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                Directory.Delete(path, recursive: true);
+                return;
+            }
+            catch (Exception ex) when (attempt < 5 && (ex is IOException || ex is UnauthorizedAccessException))
+            {
+                // Windows may briefly retain an executable-file lock after process exit.
+                await Task.Delay(TimeSpan.FromMilliseconds(Math.Min(100 * (1 << attempt), 1_000)));
+            }
+        }
+    }
 
     [Fact]
     public void RustWorkerRestartPolicyUsesCappedExponentialBackoff()
