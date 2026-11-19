@@ -6,8 +6,11 @@ license = "MIT"
 description = "Rust central-account portal OpenID Connect configuration and discovery"
 
 [dependencies]
+base64 = "0.22"
 openidconnect = "4"
+rand = "0.8"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
+sha2 = "0.10"
 thiserror = "2"
 url = "2"
