@@ -139,4 +139,44 @@ equal(discovered.component_property_catalog.unique_class_count, 1, "cached class
 equal(discovered.component_property_catalog.classes[1].component_count, 2, "catalog instance count")
 equal(discovered.class_inventory.classes[1].count, 2, "duplicate class inventory count")
 
+-- Named-property resolution is independent from the intentionally partial
+-- first-property descriptor sample. A completed direct lookup across the class
+-- chain may report NOT_FOUND; an unavailable lookup must remain inconclusive.
+local function namedAuditClass(fullName, properties, parent, lookupFails)
+    local result = class(fullName, properties, parent)
+    result.Reflection = function()
+        if lookupFails then error("synthetic direct lookup failure") end
+        return {
+            GetProperty = function() return nil end
+        }
+    end
+    result.ForEachFunction = function() return false end
+    return result
+end
+
+local absentClass = namedAuditClass("Class /Script/Test.AbsentFieldComponent", {
+    property("ExistingField", "BoolProperty /Script/Test.AbsentFieldComponent:ExistingField")
+}, nil, false)
+local absentObject = {
+    GetFullName = function() return "AbsentFieldComponent /Game/Test.Actor.AbsentFieldComponent" end,
+    GetClass = function() return absentClass end
+}
+local absentAudit = Reflection.inspect(absentObject, { named_property = "MissingField" }).named_property_audit
+equal(absentAudit.direct_lookup_status, "NOT_FOUND", "completed direct lookup status")
+equal(absentAudit.status, "NOT_FOUND", "completed named-property audit status")
+equal(absentAudit.enumeration_status, "FIRST_PROPERTY_SAMPLE_ONLY",
+    "named-property sample enumeration status")
+equal(absentAudit.enumeration_complete, false, "named-property sample completeness")
+
+local unavailableClass = namedAuditClass("Class /Script/Test.UnavailableLookupComponent", {
+    property("ExistingField", "BoolProperty /Script/Test.UnavailableLookupComponent:ExistingField")
+}, nil, true)
+local unavailableObject = {
+    GetFullName = function() return "UnavailableLookupComponent /Game/Test.Actor.UnavailableLookupComponent" end,
+    GetClass = function() return unavailableClass end
+}
+local unavailableAudit = Reflection.inspect(unavailableObject, { named_property = "MissingField" }).named_property_audit
+equal(unavailableAudit.direct_lookup_status, "LOOKUP_INCOMPLETE", "failed direct lookup status")
+equal(unavailableAudit.status, "LOOKUP_INCOMPLETE", "failed named-property audit status")
+
 print("component_property_catalog_spec: PASS")
