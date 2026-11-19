@@ -10,7 +10,7 @@ async function createTicket({client,guild,user,typeId,answers}){
   for(const id of config.adminRoleIds)if(!guild.roles.cache.has(id))throw new Error("An ADMIN_ROLE_IDS entry does not exist in this server.");
  }
  let channel=null,ticket=null;
- const ticketId=ticketNumber(),name=(type.group==="APPEALS"?"appeal":type.group==="REPORTS"?"report":"ticket")+"-"+slug(user.username)+"-"+ticketId;
+ const ticketId=ticketNumber(),name=(type.group==="APPEALS"?"appeal":type.group==="REPORTS"?"report":"ticket")+"-"+slug(user.username)+"-"+ticketId.toLowerCase();
  const overwrites=[
  {id:guild.roles.everyone.id,deny:[PermissionFlagsBits.ViewChannel]},
  {id:user.id,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ReadMessageHistory,PermissionFlagsBits.AttachFiles,PermissionFlagsBits.EmbedLinks]},
