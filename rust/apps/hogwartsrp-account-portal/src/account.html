@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>HogwartsRP — Account</title>
+  <style>
+    :root { color-scheme: dark; --bg:#100e19; --panel:#1b1728; --panel2:#241e34; --gold:#d6b66b; --muted:#b9b2c8; --line:#393149; --text:#f5f1fa; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(ellipse at 50% -15%,#38294c 0,transparent 55%),var(--bg); color:var(--text); font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+    main { width:min(920px,calc(100% - 32px)); margin:0 auto; padding:56px 0 72px; }
+    header { text-align:center; margin-bottom:34px; }
+    .crest { width:56px; height:56px; margin:0 auto 14px; border:1px solid var(--gold); border-radius:16px; display:grid; place-items:center; color:var(--gold); font-size:27px; background:#201a2c; }
+    .eyebrow { color:var(--gold); letter-spacing:.2em; text-transform:uppercase; font-size:12px; font-weight:700; }
+    h1 { margin:8px 0 6px; font-family:Georgia,serif; font-size:clamp(30px,5vw,44px); font-weight:500; }
+    .intro { color:var(--muted); margin:0; }
+    .panel { background:linear-gradient(145deg,#211b30,var(--panel)); border:1px solid var(--line); border-radius:18px; padding:26px; box-shadow:0 18px 50px #0004; margin-top:20px; }
+    .panel h2 { margin:0 0 5px; font-family:Georgia,serif; font-size:24px; font-weight:500; }
+    .sub { margin:0 0 20px; color:var(--muted); font-size:14px; }
+    .account-line { display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between; }
+    .account-id { color:var(--gold); font:13px ui-monospace,SFMono-Regular,Consolas,monospace; overflow-wrap:anywhere; }
+    button,.button { display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--gold); border-radius:10px; padding:10px 17px; background:var(--gold); color:#211a29; font-weight:700; text-decoration:none; cursor:pointer; }
+    button.secondary,.button.secondary { background:transparent; color:var(--text); border-color:#75698a; }
+    button:disabled { opacity:.48; cursor:not-allowed; }
+    .status { display:inline-flex; align-items:center; gap:8px; color:var(--muted); font-size:14px; }
+    .dot { width:8px; height:8px; border-radius:50%; background:#9c91aa; }
+    .dot.good { background:#83c69a; }
+    .providers { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+    .provider { background:var(--panel2); border:1px solid var(--line); border-radius:13px; padding:17px; }
+    .provider h3 { margin:0 0 4px; font-size:17px; }
+    .provider p { min-height:42px; margin:0 0 14px; color:var(--muted); font-size:13px; }
+    .provider .state { color:var(--gold); font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+    .notice { border-left:3px solid var(--gold); padding:10px 14px; background:#d6b66b12; color:var(--muted); font-size:13px; margin-top:18px; }
+    #message { min-height:24px; color:var(--muted); font-size:14px; margin-top:14px; }
+    footer { text-align:center; color:#8e879b; font-size:12px; margin-top:28px; }
+    [hidden] { display:none !important; }
+    @media(max-width:560px) { main{padding-top:32px}.panel{padding:20px}.account-line{align-items:flex-start} }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="crest" aria-hidden="true">H</div>
+      <div class="eyebrow">Hogwarts Roleplay</div>
+      <h1>Your Account</h1>
+      <p class="intro">One identity for your HogwartsRP community experience.</p>
+    </header>
+
+    <section class="panel" aria-labelledby="account-heading">
+      <h2 id="account-heading">HogwartsRP Identity</h2>
+      <p class="sub">Your central account is separate from individual game-server sign-ins.</p>
+      <div id="signed-out">
+        <p class="status"><span class="dot"></span>You are not signed in.</p>
+        <p><a class="button" href="/account/login">Sign in</a></p>
+      </div>
+      <div id="signed-in" hidden>
+        <div class="account-line">
+          <div>
+            <div class="status"><span class="dot good"></span>Signed in</div>
+            <div class="account-id" id="account-id"></div>
+            <div class="sub" id="expiry"></div>
+          </div>
+          <button class="secondary" id="logout" type="button">Sign out</button>
+        </div>
+      </div>
+      <div id="message" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="connections-heading">
+      <h2 id="connections-heading">Connected Accounts</h2>
+      <p class="sub">These optional links verify that you control the external account.</p>
+      <div class="providers">
+        <article class="provider">
+          <h3>Discord</h3>
+          <p>Connect your Discord identity to your HogwartsRP account.</p>
+          <div class="state">Linking integration pending</div>
+        </article>
+        <article class="provider">
+          <h3>Steam</h3>
+          <p>Connect your Steam identity to your HogwartsRP account.</p>
+          <div class="state">Linking integration pending</div>
+        </article>
+        <article class="provider">
+          <h3>Epic Games</h3>
+          <p>Connect your Epic Games identity to your HogwartsRP account.</p>
+          <div class="state">Linking integration pending</div>
+        </article>
+      </div>
+      <div class="notice">Account linking is being added separately. A linked account will prove identity only; it will not grant game ownership, server access, permissions, or Discord server membership.</div>
+    </section>
+    <footer>HogwartsRP · Central account portal</footer>
+  </main>
+  <script>
+    (() => {
+      const signedOut = document.getElementById("signed-out");
+      const signedIn = document.getElementById("signed-in");
+      const message = document.getElementById("message");
+      let csrfToken = "";
+
+      async function loadSession() {
+        try {
+          const response = await fetch("/account/session", { credentials: "same-origin", cache: "no-store" });
+          if (!response.ok) {
+            signedOut.hidden = false;
+            signedIn.hidden = true;
+            return;
+          }
+          const session = await response.json();
+          if (typeof session.accountId !== "string" || typeof session.csrfToken !== "string") {
+            throw new Error("Invalid session response");
+          }
+          csrfToken = session.csrfToken;
+          document.getElementById("account-id").textContent = "Account ID: " + session.accountId;
+          const expiry = new Date(session.expiresAt * 1000);
+          document.getElementById("expiry").textContent = "Session expires: " + expiry.toLocaleString();
+          signedOut.hidden = true;
+          signedIn.hidden = false;
+        } catch (_) {
+          message.textContent = "Could not check your sign-in status. Refresh the page to try again.";
+        }
+      }
+
+      document.getElementById("logout").addEventListener("click", async () => {
+        const button = document.getElementById("logout");
+        button.disabled = true;
+        message.textContent = "";
+        try {
+          const response = await fetch("/account/logout", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "X-HogwartsRP-CSRF": csrfToken }
+          });
+          if (!response.ok) throw new Error("Sign-out failed");
+          csrfToken = "";
+          signedIn.hidden = true;
+          signedOut.hidden = false;
+          message.textContent = "You have been signed out.";
+        } catch (_) {
+          message.textContent = "Sign-out could not be completed. Please try again.";
+        } finally {
+          button.disabled = false;
+        }
+      });
+
+      loadSession();
+    })();
+  </script>
+</body>
+</html>
