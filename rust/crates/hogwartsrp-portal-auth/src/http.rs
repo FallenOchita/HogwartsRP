@@ -1,6 +1,8 @@
 use crate::{
     AccountLinkProvider, AuthorizationTransactionStore, BrowserSessionStore, JsonAccountLinkStore, JsonPortalAccountStore, PortalOidcConfig,
 };
+mod discord;
+pub use discord::DiscordLinkConfig;
 use axum::{
     extract::{Path, Query, State},
     http::{header, HeaderMap, HeaderValue, StatusCode},
@@ -29,6 +31,7 @@ pub struct PortalHttpState {
     accounts: Arc<JsonPortalAccountStore>,
     sessions: Arc<BrowserSessionStore>,
     account_links: Arc<JsonAccountLinkStore>,
+    discord_link: Option<Arc<DiscordLinkConfig>>,
 }
 
 impl PortalHttpState {
@@ -37,6 +40,7 @@ impl PortalHttpState {
         metadata: CoreProviderMetadata,
         accounts: Arc<JsonPortalAccountStore>,
         account_links: Arc<JsonAccountLinkStore>,
+        discord_link: Option<DiscordLinkConfig>,
     ) -> Self {
         Self {
             config: Arc::new(config),
@@ -45,6 +49,7 @@ impl PortalHttpState {
             accounts,
             sessions: Arc::new(BrowserSessionStore::default()),
             account_links,
+            discord_link: discord_link.map(Arc::new),
         }
     }
 }
@@ -60,6 +65,7 @@ pub fn router(state: PortalHttpState) -> Router {
         .route("/account/links", get(account_links_status))
         .route("/account/links/{provider}", axum::routing::delete(unlink_account))
         .route("/account/logout", axum::routing::post(logout))
+        .merge(discord::router())
         .with_state(state)
 }
 

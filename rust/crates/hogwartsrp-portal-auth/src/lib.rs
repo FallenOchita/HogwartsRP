@@ -516,4 +516,4 @@ mod http;
 pub use accounts::{JsonPortalAccountStore, PortalAccountStoreError};
 pub use account_links::{AccountLinkProvider, AccountLinkStatus, AccountLinkStoreError, JsonAccountLinkStore};
 pub use sessions::{BrowserSessionError, BrowserSessionStore, IssuedBrowserSession};
-pub use http::{router as portal_router, PortalHttpState};
+pub use http::{router as portal_router, DiscordLinkConfig, PortalHttpState};
