@@ -761,3 +761,22 @@ This file records implementation details and milestone status. For user-facing f
 
 - The new probe is read-only reflection metadata enumeration. It does not inspect descriptor fields, read property values, invoke gameplay UFunctions, write properties, or change game state.
 - Automated regression tests are included; hosted CI and a fresh live UE4SS 4.0.0 report are required before diagnosing the underlying runtime failure.
+
+
+## 2026-11-19 — ForEachProperty early-stop comparison
+
+### Added
+
+- Added a count-only early-stop probe that returns `true` on its first callback, alongside the existing count-only `false`-return probe and detailed descriptor enumeration.
+- Recorded the early-stop result under `iteration_stop_probe`, including callback mode, invocation count, status, and bounded error details where applicable.
+- Extended the synthetic iterator regression test to verify that immediate early-stop succeeds while continued iteration reproduces the synthetic failure.
+
+### Diagnostic interpretation
+
+- If the early-stop probe succeeds while the continue probe fails, the failure is associated with continued iteration or its subsequent handling.
+- If both probes fail after the first callback, the failure occurs even when the callback requests immediate termination; this narrows the issue but does not by itself identify the nil function or prove a UE4SS defect.
+- This remains read-only reflection metadata inspection. It does not read property values, invoke gameplay functions, write properties, or modify game state.
+
+### Validation boundary
+
+- Regression assertions are included. Hosted CI and a fresh live UE4SS 4.0.0 `ComponentPropertyCatalog` report are required to validate runtime behavior.
