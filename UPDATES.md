@@ -1,3 +1,17 @@
+## 2026-11-19 — LocalPlayer and PlayerState second-hop reference audit
+
+### Added
+
+- Added a bounded follow-up from the controller's Player reference to LocalPlayer.PlayerController.
+- Added a bounded follow-up from the controller's PlayerState reference to PlayerState.PawnPrivate.
+- The child allowlist is read only when its parent is a validated UObject userdata reference; reports full-name identity only.
+
+### Safety and validation boundary
+
+- Opaque userdata, Lua tables, and non-object values are not expanded. No other properties are read and no gameplay UFunctions are invoked.
+- Regression tests cover both reference paths and confirm opaque parent values are not followed. A fresh live UE4SS PropertyReport is still required to establish runtime results.
+
+
 ## 2026-11-19 — Controller and movement object-reference audit
 
 ### Added
