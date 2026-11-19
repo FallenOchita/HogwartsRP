@@ -3,7 +3,7 @@
 
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use rand::{rngs::OsRng, RngCore};
-use reqwest::blocking::{Client, Response};
+use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
@@ -138,9 +138,8 @@ impl OidcJoinCredentialProvider {
     }
 
     fn discover_provider(&self) -> Result<ProviderEndpoints, String> {
-        let mut discovery = self.issuer.clone();
-        let base = self.issuer.as_str().trim_end_matches('/').to_owned() + "/.well-known/openid-configuration";
-        discovery = Url::parse(&base).map_err(|e| e.to_string())?;
+        let discovery_url = self.issuer.as_str().trim_end_matches('/').to_owned() + "/.well-known/openid-configuration";
+        let discovery = Url::parse(&discovery_url).map_err(|e| e.to_string())?;
         let metadata: ProviderMetadata = self.http.get(discovery).send().map_err(|e| e.to_string())?
             .error_for_status().map_err(|_| "OIDC provider discovery failed.".to_owned())?
             .json().map_err(|e| e.to_string())?;
@@ -208,7 +207,10 @@ fn receive_authorization_code(
                     continue;
                 }
                 match parse_callback(&mut stream, redirect_uri, expected_state) {
-                    Ok(code) => return Ok(code),
+                    Ok(code) => {
+                        write_response(&mut stream, 200, "Sign-in received. You may return to HogwartsRP and close this page.");
+                        return Ok(code);
+                    },
                     Err(CallbackError::Retry(status, message)) => {
                         write_response(&mut stream, status, message);
                     }
@@ -232,7 +234,6 @@ enum CallbackError {
 }
 
 fn parse_callback(stream: &mut TcpStream, redirect_uri: &Url, expected_state: &str) -> Result<String, CallbackError> {
-    use std::io::Read;
     let mut reader = BufReader::new(stream.try_clone().map_err(|_| CallbackError::Retry(400, "Invalid callback."))?);
     let mut request_line = String::new();
     reader.read_line(&mut request_line).map_err(|_| CallbackError::Retry(400, "Invalid callback."))?;
