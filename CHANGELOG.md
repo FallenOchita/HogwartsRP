@@ -6,6 +6,13 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Added — ForEachProperty callback diagnostics
+
+- Added a count-only `ForEachProperty` probe that returns `false` and performs no property descriptor inspection, allowing the UE4SS iterator/callback bridge to be compared with the normal metadata callback.
+- Preserved the full method-call error for component property enumeration, bounded to 2,048 characters with the original error length and an explicit truncation flag.
+- Added regression coverage for successful probes, callback-continuation failures, and preservation of errors longer than the previous 180-character diagnostic limit.
+- The probe enumerates reflection metadata only; it does not read property values, invoke gameplay functions, or modify game objects.
+
 ### Added — Read-only component property descriptor catalog
 
 - Added a separate `ComponentPropertyCatalog.txt` for classes represented by confirmed player-Outer-matched components.
