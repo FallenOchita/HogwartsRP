@@ -4,6 +4,11 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Fixed — Research toolkit Lua startup syntax
+
+- Removed a stray, incomplete duplicate `log()` declaration that caused `main.lua` to fail parsing at end-of-file before the research toolkit could initialize.
+- Kept the existing valid logger and all discovery/report behavior unchanged. This is a syntax-only correction; live UE4SS validation is still required.
+
 ### Improved — Read-only UE4SS reflection and component diagnostics
 
 - Normalized UE4SS method failures into concise statuses (`METHOD_UNAVAILABLE`, `CALL_ERROR`, and related states) so unsupported UFunction descriptor wrappers no longer flood reports with repeated tracebacks.
