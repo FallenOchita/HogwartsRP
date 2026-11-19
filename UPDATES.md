@@ -1,5 +1,19 @@
 # Detailed Updates
 
+## 2026-11-18 — Character submission protocol regression tests
+
+### Added
+
+- Added a dedicated `HogwartsRP.Networking.Client.Tests` test project and included it in the solution.
+- Added a local in-process WebSocket test server so the launcher protocol can be tested without a live Hogwarts Legacy installation or external server.
+- Verified concurrent character submissions are correlated correctly when server responses arrive in reverse order.
+- Verified a pending submission fails with a connection-closed error when the server disconnects before returning a result.
+- Updated `CHANGELOG.md` and launcher/character documentation.
+
+### Validation status
+
+- Awaiting Windows and Ubuntu GitHub Actions for this branch. The tests use a local synthetic WebSocket server and do not establish game compatibility or in-game multiplayer.
+
 ## 2026-11-18 — Launcher character submission client
 
 ### Added
@@ -17,9 +31,8 @@
 
 ### Validation status
 
-- PR #10 was merged after its Windows and Ubuntu CI runs completed successfully.
-- This branch's CI is pending; the client implementation is not yet considered verified until both runners pass.
-
+- PR #10 and PR #11 were merged after their Windows and Ubuntu CI runs completed successfully.
+- The regression-test branch is pending hosted CI.
 
 ## 2026-11-18 — PR #9 build correction
 

@@ -6,6 +6,7 @@ All notable HogwartsRP changes are recorded here.
 
 ### Added
 
+- Added dedicated WebSocket client protocol tests covering concurrent character submissions with out-of-order responses and connection loss before a response.
 - Added authenticated WebSocket character submissions backed by the JSON character repository, with server-derived account ownership and correlated results.
 - Wired the character repository into server startup with a configurable `Storage:CharactersPath`.
 

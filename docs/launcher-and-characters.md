@@ -54,3 +54,8 @@ The server responds with `type: "character_submission_result"`, echoing the requ
 ## Launcher character submission client
 
 The authenticated launcher connection exposes `SubmitCharacterAsync(CharacterSubmission)`. It sends a `submit_character` message with a generated request ID and waits for the matching `character_submission_result`. The network receive loop routes results by request ID, so an unrelated or late response cannot complete a different submission. If the connection closes before a result arrives, pending submissions fail rather than hanging. Cancellation is supported while sending or waiting. The server remains authoritative for validation and ownership; the launcher does not send an account/owner identifier. This flow persists roleplay character data only and does not apply the data to Hogwarts Legacy.
+
+
+## Character submission client regression tests
+
+The solution now includes `HogwartsRP.Networking.Client.Tests`. Its in-process WebSocket server tests the launcher protocol without requiring a real game or remote server. Coverage includes concurrent submissions whose responses arrive out of order and the connection closing before a submission result is returned. These are transport/protocol tests only; they do not prove Hogwarts Legacy integration or multiplayer functionality.
