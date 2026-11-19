@@ -1,3 +1,5 @@
+- Fixed a missing Lua string-concatenation operator in the component discovery status log, which could abort the research pass after discovery completed.
+
 # Changelog
 
 All notable HogwartsRP changes are recorded here.
