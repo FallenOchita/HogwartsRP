@@ -25,6 +25,7 @@ end
 
 local function propertyReferences(actor)
     local items = {}
+    local referenceObjects = {}
     for _, propertyName in ipairs(PROPERTY_CANDIDATES) do
         local value, readError = Safe.safeProperty(actor, propertyName)
         local item = {
@@ -39,6 +40,7 @@ local function propertyReferences(actor)
                 item.status = "REFERENCE_FOUND"
                 item.full_path = fullName
                 item.class = Safe.safeClassName(value)
+                referenceObjects[propertyName] = value
             else
                 item.status = "VALUE_NOT_IDENTIFIED_AS_OBJECT"
             end
@@ -50,7 +52,7 @@ local function propertyReferences(actor)
         end
         items[#items + 1] = item
     end
-    return items
+    return items, referenceObjects
 end
 
 local function belongsToActor(object, actorName)
@@ -207,7 +209,78 @@ local function crossCheckPropertyReferences(propertyCandidates, items)
     return checks
 end
 
-function M.components(actor, propertyCataloger)
+-- Inspect only the already-allowlisted object references. Reflection.inspect
+-- reads class/property/function descriptors; it does not read component
+-- property values or invoke gameplay UFunctions.
+local function inspectPropertyReferences(candidates, referenceObjects, inspector)
+    local report = {
+        status = "NOT_ATTEMPTED",
+        unique_class_count = 0,
+        items = {},
+        safety = "REFLECTION_METADATA_ONLY_NO_COMPONENT_PROPERTY_VALUE_READS_NO_GAMEPLAY_UFUNCTION_INVOCATION"
+    }
+    if type(inspector) ~= "function" then
+        report.note = "No component metadata inspector was supplied."
+        return report
+    end
+
+    local cache = {}
+    local failed = 0
+    for _, candidate in ipairs(candidates or {}) do
+        if candidate.status == "REFERENCE_FOUND" then
+            local object = referenceObjects and referenceObjects[candidate.property]
+            local classKey = candidate.class or candidate.full_path
+            local metadata = cache[classKey]
+            if metadata == nil and Safe.isValidObject(object) then
+                local ok, result = pcall(inspector, object, {
+                    max_super_depth = 16,
+                    max_properties = 128,
+                    max_functions = 128,
+                    max_function_fields = 32
+                })
+                if ok and type(result) == "table" then
+                    metadata = result
+                else
+                    metadata = {
+                        status = "INSPECTION_FAILED",
+                        error = tostring(result),
+                        safety = "NO_PROPERTY_VALUE_READS_NO_GAMEPLAY_UFUNCTION_INVOCATION"
+                    }
+                    failed = failed + 1
+                end
+                cache[classKey] = metadata
+            elseif metadata == nil then
+                metadata = {
+                    status = "REFERENCE_OBJECT_UNAVAILABLE",
+                    safety = "NO_PROPERTY_VALUE_READS_NO_GAMEPLAY_UFUNCTION_INVOCATION"
+                }
+                cache[classKey] = metadata
+                failed = failed + 1
+            end
+
+            report.items[#report.items + 1] = {
+                property = candidate.property,
+                reference_full_path = candidate.full_path,
+                class = candidate.class,
+                status = metadata.status or "INSPECTED",
+                metadata = metadata
+            }
+        end
+    end
+
+    for _ in pairs(cache) do report.unique_class_count = report.unique_class_count + 1 end
+    if #report.items == 0 then
+        report.status = "NO_REFERENCES_FOUND"
+    elseif failed > 0 then
+        report.status = "PARTIAL"
+    else
+        report.status = "INSPECTED"
+    end
+    report.note = "Only confirmed references from the fixed property allowlist are inspected. Metadata is cached by reflected class; each item retains its own reference path. Property values and gameplay functions are not accessed."
+    return report
+end
+
+function M.components(actor, propertyCataloger, componentInspector)
     if not Safe.isValidObject(actor) then
         return {
             status = "PLAYER_NOT_FOUND",
@@ -218,14 +291,18 @@ function M.components(actor, propertyCataloger)
     end
 
     local actorName = objectIdentity(actor)
-    local propertyCandidates = propertyReferences(actor)
+    local propertyCandidates, propertyReferenceObjects = propertyReferences(actor)
+    local propertyReferenceMetadata = inspectPropertyReferences(
+        propertyCandidates, propertyReferenceObjects, componentInspector
+    )
     if not actorName then
         return {
             status = "PLAYER_IDENTITY_UNAVAILABLE",
             discovery_mode = "FIND_OBJECTS_ACTOR_COMPONENT",
             reason = "The player pawn full name could not be resolved, so component ownership cannot be validated.",
             items = {},
-            property_reference_candidates = propertyCandidates
+            property_reference_candidates = propertyCandidates,
+            property_reference_metadata = propertyReferenceMetadata
         }
     end
 
@@ -236,7 +313,8 @@ function M.components(actor, propertyCataloger)
             discovery_mode = "ALLOWLISTED_PROPERTY_REFERENCE_PROBES",
             reason = "FindObjects is not exposed by this UE4SS runtime. Property references are candidates only, not a complete component list.",
             items = {},
-            property_reference_candidates = propertyCandidates
+            property_reference_candidates = propertyCandidates,
+            property_reference_metadata = propertyReferenceMetadata
         }
     end
 
@@ -253,7 +331,8 @@ function M.components(actor, propertyCataloger)
             discovery_mode = "FIND_OBJECTS_ACTOR_COMPONENT",
             reason = tostring(objects),
             items = {},
-            property_reference_candidates = propertyCandidates
+            property_reference_candidates = propertyCandidates,
+            property_reference_metadata = propertyReferenceMetadata
         }
     end
     if type(objects) ~= "table" then
@@ -262,7 +341,8 @@ function M.components(actor, propertyCataloger)
             discovery_mode = "FIND_OBJECTS_ACTOR_COMPONENT",
             reason = "FindObjects did not return a Lua table.",
             items = {},
-            property_reference_candidates = propertyCandidates
+            property_reference_candidates = propertyCandidates,
+            property_reference_metadata = propertyReferenceMetadata
         }
     end
 
@@ -386,6 +466,7 @@ function M.components(actor, propertyCataloger)
         max_reported = MAX_COMPONENT_REPORTS,
         truncated = matchedCount > MAX_COMPONENT_REPORTS,
         property_reference_candidates = propertyCandidates,
+        property_reference_metadata = propertyReferenceMetadata,
         property_reference_crosscheck = crossCheckPropertyReferences(propertyCandidates, items),
         class_inventory = inventory,
         class_hierarchy = {

@@ -139,6 +139,49 @@ equal(discovered.component_property_catalog.unique_class_count, 1, "cached class
 equal(discovered.component_property_catalog.classes[1].component_count, 2, "catalog instance count")
 equal(discovered.class_inventory.classes[1].count, 2, "duplicate class inventory count")
 
+-- Confirmed allowlisted component references receive descriptor/function
+-- metadata only. The inspector must never be given permission to read values.
+local referenceActor = {
+    GetFullName = function() return "BP_Biped_Player_C /Game/Test.Root.ReferencePlayer" end
+}
+local referenceComponent = {
+    GetFullName = function() return "Biped_MovementComponent /Game/Test.Root.ReferencePlayer.CharMoveComp" end,
+    GetClass = function() return derived end,
+    GetOuter = function() return referenceActor end
+}
+referenceActor.CharacterMovement = referenceComponent
+local referenceFindObjects = _G.FindObjects
+_G.FindObjects = function() return { referenceComponent } end
+local inspectorCalls = 0
+local referenceDiscovery = Discovery.components(
+    referenceActor,
+    Reflection.catalogComponentProperties,
+    function(object, options)
+        inspectorCalls = inspectorCalls + 1
+        equal(object, referenceComponent, "component reference object passed to inspector")
+        equal(options.max_properties, 128, "bounded component property metadata")
+        equal(options.max_functions, 128, "bounded component function metadata")
+        return {
+            status = "ENUMERATED",
+            properties = { { name = "DescriptorOnly" } },
+            functions = { { name = "MetadataOnlyFunction" } },
+            safety = "METADATA_ONLY"
+        }
+    end
+)
+_G.FindObjects = referenceFindObjects
+equal(referenceDiscovery.property_reference_metadata.status, "INSPECTED",
+    "component reference metadata status")
+equal(referenceDiscovery.property_reference_metadata.unique_class_count, 1,
+    "component reference metadata class cache count")
+equal(#referenceDiscovery.property_reference_metadata.items, 1,
+    "confirmed component reference metadata item count")
+equal(referenceDiscovery.property_reference_metadata.items[1].property, "CharacterMovement",
+    "component reference metadata source property")
+equal(referenceDiscovery.property_reference_metadata.items[1].metadata.properties[1].name,
+    "DescriptorOnly", "component descriptor metadata retained")
+equal(inspectorCalls, 1, "component metadata inspector call count")
+
 -- Named-property resolution is independent from the intentionally partial
 -- first-property descriptor sample. A completed direct lookup across the class
 -- chain may report NOT_FOUND; an unavailable lookup must remain inconclusive.
