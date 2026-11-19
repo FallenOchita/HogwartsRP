@@ -71,7 +71,7 @@ public static class AccountLinkEndpoints
         application.MapGet("/account/links", (HttpContext context) =>
             GetLinks(context, sessions, identities));
         application.MapPost("/account/links/{provider}/start", (string provider, HttpContext context) =>
-            Start(provider, context, options, sessions, transactions));
+            Start(provider, context, options, sessions, transactions, discord, steam, epic));
         application.MapGet("/account/links/discord/callback", (HttpContext context) =>
             CompleteDiscordAsync(context, options, sessions, transactions, discord));
         application.MapGet("/account/links/steam/callback", (HttpContext context) =>
@@ -114,7 +114,10 @@ public static class AccountLinkEndpoints
         HttpContext context,
         AccountLinkEndpointOptions options,
         BrowserAccountSessionStore sessions,
-        AccountLinkAuthorizationStore transactions)
+        AccountLinkAuthorizationStore transactions,
+        DiscordAccountLinkClient? discord,
+        SteamOpenIdAccountLinkClient? steam,
+        EpicGamesAccountLinkClient? epic)
     {
         SetNoStore(context);
         if (!TryGetSession(context, sessions, out var sessionToken, out var session))
