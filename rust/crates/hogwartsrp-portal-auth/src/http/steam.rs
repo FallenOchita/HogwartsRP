@@ -149,7 +149,7 @@ async fn callback(
     let Some(provider) = state.steam_link.as_ref() else {
         return callback_redirect(false);
     };
-    let steam_id = match verify_assertion(provider, &values).await {
+    let steam_id = match verify_assertion(provider, &values, &callback_state).await {
         Ok(value) => value,
         Err(_) => return callback_redirect(false),
     };
@@ -166,6 +166,7 @@ async fn callback(
 async fn verify_assertion(
     config: &SteamLinkConfig,
     values: &BTreeMap<String, String>,
+    callback_state: &str,
 ) -> Result<String, ()> {
     if values.iter().any(|(key, value)| {
         !key.starts_with("openid.") || key.len() > 64 || value.is_empty()
@@ -186,22 +187,10 @@ async fn verify_assertion(
     }
     require(values, "openid.identity", claimed_id)?;
 
-    let callback = Url::parse(&config.redirect_uri).map_err(|_| ())?;
-    let mut expected_return_to = callback;
-    // Steam must return the exact callback URL with the state value bound to this browser session.
-    // The state is recovered by the caller and is included in the original return_to.
+    let mut expected_return_to = Url::parse(&config.redirect_uri).map_err(|_| ())?;
+    expected_return_to.query_pairs_mut().append_pair("state", callback_state);
     let returned = values.get("openid.return_to").ok_or(())?;
-    let returned_url = Url::parse(returned).map_err(|_| ())?;
-    if returned_url.origin() != expected_return_to.origin()
-        || returned_url.path() != expected_return_to.path()
-        || returned_url.query_pairs().count() != 1
-        || returned_url.query_pairs().any(|(key, _)| key != "state")
-    {
-        return Err(());
-    }
-    // Compare all fixed callback components; the state itself was independently consumed above.
-    expected_return_to.set_query(returned_url.query());
-    if expected_return_to.as_str() != returned {
+    if returned != expected_return_to.as_str() {
         return Err(());
     }
 
@@ -287,7 +276,7 @@ fn parse_timestamp(value: &str) -> Option<u64> {
     let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
     let days_in_month = [31, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
     if day == 0 || day > days_in_month[(month - 1) as usize] { return None; }
-    let adjusted_year = year - i64::from(month <= 2);
+    let adjusted_year = year - if month <= 2 { 1 } else { 0 };
     let era = adjusted_year.div_euclid(400);
     let year_of_era = adjusted_year - era * 400;
     let adjusted_month = month as i64 + if month > 2 { -3 } else { 9 };
@@ -373,7 +362,7 @@ mod tests {
     fn steam_id_must_be_exactly_seventeen_digits() {
         assert!("76561198002516729".parse::<u64>().is_ok());
         assert!(!"7656119800251672x".bytes().all(|b| b.is_ascii_digit()));
-        assert!(!"123".len() == 17);
+        assert_ne!("123".len(), 17);
     }
 
     #[test]
