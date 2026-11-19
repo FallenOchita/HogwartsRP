@@ -47,7 +47,7 @@ public static partial class ManifestParser
     }
 }
 
-public enum ResourceState { Discovered, Starting, Started, Stopping, Stopped, Failed }
+public enum ResourceState { Discovered, Starting, Started, Restarting, Stopping, Stopped, Failed }
 public sealed record ResourceInfo(ResourceManifest Manifest, string Directory, ResourceState State, string? Error = null);
 
 public static class DependencyResolver

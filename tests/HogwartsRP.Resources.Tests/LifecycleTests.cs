@@ -88,6 +88,66 @@ public class LifecycleTests
     }
 
     [Fact]
+    public async Task UnexpectedRustWorkerExitRestartsWithinConfiguredBudget()
+    {
+        var workerPath = Environment.GetEnvironmentVariable("HOGWARTSRP_TEST_WORKER_PATH");
+        Assert.False(string.IsNullOrWhiteSpace(workerPath), "CI must provide the compiled Rust test worker path.");
+        Assert.True(File.Exists(workerPath));
+
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        ResourceManager? manager = null;
+        var resourceDirectory = Path.Combine(root, "rust_sample");
+        var binaryDirectory = Path.Combine(resourceDirectory, "bin");
+        Directory.CreateDirectory(binaryDirectory);
+        var executable = Path.Combine(binaryDirectory, OperatingSystem.IsWindows() ? "test-worker.exe" : "test-worker");
+        File.Copy(workerPath!, executable);
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(executable, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(resourceDirectory, "fxmanifest.lua"),
+                "fx_version 'cerulean'\ngame 'hogwartslegacy'\nrust_script 'bin/" + Path.GetFileName(executable) + "'");
+            manager = new ResourceManager(root, _ => new NativeLua54Runtime(),
+                restartPolicy: new RustWorkerRestartPolicy(2, TimeSpan.FromMilliseconds(25), TimeSpan.FromMilliseconds(50)));
+            await manager.StartAllAsync();
+            Assert.Equal(ResourceState.Started, Assert.Single(manager.Status).State);
+
+            await Assert.ThrowsAnyAsync<Exception>(async () =>
+                await manager.InvokeRustCommandAsync("rust_sample", "restart_once", []));
+
+            var deadline = DateTime.UtcNow.AddSeconds(5);
+            string? response = null;
+            while (DateTime.UtcNow < deadline && response is null)
+            {
+                try
+                {
+                    response = await manager.InvokeRustCommandAsync("rust_sample", "hello", ["Hogwarts"]);
+                }
+                catch (Exception) when (DateTime.UtcNow < deadline)
+                {
+                    await Task.Delay(25);
+                }
+            }
+
+            Assert.True(File.Exists(Path.Combine(resourceDirectory, "restart-once.marker")));
+            Assert.Equal("Hello, Hogwarts!", response);
+            Assert.Equal(ResourceState.Started, Assert.Single(manager.Status).State);
+        }
+        finally
+        {
+            try
+            {
+                if (manager is not null) await manager.StopAllAsync();
+            }
+            finally
+            {
+                if (Directory.Exists(root)) await DeleteDirectoryWithRetriesAsync(root);
+            }
+        }
+    }
+
+    [Fact]
     public void RustWorkerRestartPolicyUsesCappedExponentialBackoff()
     {
         var policy = new RustWorkerRestartPolicy(4, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(250));
