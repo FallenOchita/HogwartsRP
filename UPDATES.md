@@ -1,3 +1,41 @@
+## 2026-11-19 — Rust launcher CI compile fix
+
+- Fixed the Windows release-build error in `save_profiles`: `NamedTempFile::persist` returns the persisted file handle, while the function contract returns `()`. The result is now explicitly mapped to unit.
+- The two failing workflow runs were both Windows jobs at the launcher release-build step; Ubuntu jobs passed. New CI runs will verify this correction.
+
+## 2026-11-18 — Native Rust desktop launcher migration
+
+### Changed
+
+- Added the native eframe/egui application at rust/apps/hogwartsrp-launcher.
+- Made the Rust binary the active desktop launcher; removed the WinForms launcher project, UI source files, and solution entry.
+- Ported saved server profiles, read-only server status checks, configured account-portal browser opening, and Steam launch requests to Rust.
+- Added Windows CI release compilation for hogwartsrp-launcher.
+- Updated README.md, docs/launcher-and-characters.md, and added docs/rust-launcher.md.
+
+### Remaining migration work
+
+- The Rust app does not invoke the legacy C# launcher library. The C# library remains temporarily in the solution for existing contracts and tests only.
+- OIDC authorization-code + PKCE, join-ticket acquisition, authenticated WebSocket session lifecycle, character creation/submission, expanded Steam library discovery, Epic launch, and auto-update have not yet been ported to Rust.
+- No live game multiplayer behavior is implied by this launcher migration.
+
+## 2026-11-19 — Rust resource SDK and native-core foundation
+
+### Added
+
+- Created the Rust workspace under rust/.
+- Added hogwartsrp-native-core with bounded resource-name, event-name, argument-count, and JSON-lines frame validation plus unit tests.
+- Added hogwartsrp-resource-sdk with Rust resource command/event registration and a bounded stdin/stdout JSON-lines worker loop.
+- Added the rust_greeter example resource.
+- Added docs/rust-support.md with the two Rust roles, build instructions, trust boundary, and integration roadmap.
+- Added stable Rust setup, workspace formatting, and Cargo tests to Ubuntu/Windows CI.
+
+### Integration boundary
+
+- The current C# ResourceManager still starts Lua workers only. Rust worker discovery, process supervision, command/event routing, lifecycle integration, and deployment packaging are not implemented in this milestone.
+- The native-core crate is currently a Rust library only; the .NET host does not yet load it through FFI. No native acceleration or runtime performance gain is claimed.
+- Rust resources are intended to run as separate processes. A process boundary alone is not a complete OS sandbox; the host must retain authority over player identity, permissions, event allowlists, networking, and persistence.
+
 ## 2026-11-19 — Read-only UE4SS reflection-provider capability audit
 
 ### Added and improved

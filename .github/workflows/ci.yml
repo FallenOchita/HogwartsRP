@@ -8,9 +8,20 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Install stable Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+      - name: Format Rust workspace
+        run: cargo fmt --manifest-path rust/Cargo.toml --all
+      - name: Test Rust workspace
+        run: cargo test --manifest-path rust/Cargo.toml --workspace --exclude hogwartsrp-launcher
+      - name: Build native Rust launcher (Windows)
+        if: runner.os == 'Windows'
+        run: cargo build --manifest-path rust/Cargo.toml --release -p hogwartsrp-launcher
       - run: dotnet restore HogwartsRP.slnx
       - run: dotnet build HogwartsRP.slnx --no-restore
       - run: dotnet test HogwartsRP.slnx --no-build

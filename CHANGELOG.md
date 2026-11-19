@@ -4,6 +4,36 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Fixed — Rust launcher Windows build
+
+- Fixed the Windows-only Rust launcher compile error in atomic server-profile persistence by mapping the successful temporary-file persist result to unit. The underlying atomic replacement behavior is retained.
+
+### Changed — Native Rust desktop launcher
+
+- Added `rust/apps/hogwartsrp-launcher`, an eframe/egui desktop application built and launched entirely from Rust.
+- Ported saved server profiles, server status checks, configured browser account-portal opening, and Steam launch requests to the Rust application.
+- Removed the WinForms launcher executable project and its C# UI source files from the repository and .NET solution.
+- Added a Windows CI release build for the Rust launcher; Rust workspace library tests continue on Ubuntu and Windows.
+- Updated the README and launcher documentation to identify the Rust binary as the only active desktop launcher.
+
+### Migration boundary
+
+- The Rust launcher does not call the legacy C# launcher library. That library remains temporarily in the .NET solution for its existing tests/contracts, but is not used to start or operate the Rust UI.
+- OIDC + PKCE join authentication, authenticated WebSocket sessions, character creation/submission, broader Steam library discovery, Epic launch, and auto-update still need Rust implementations. These features are not claimed as ported.
+
+### Added — Rust resource SDK and native-core foundation
+
+- Added a Rust workspace with a process-oriented resource SDK, an example Rust resource, and a native-core crate for bounded validation primitives.
+- Added resource/event name validation, argument-count limits, and protocol-frame size limits with unit tests.
+- Added a JSON-lines worker SDK with command/event registration and an explicit server-authoritative trust boundary.
+- Added Ubuntu and Windows CI steps to format and test the Rust workspace.
+- Documented the Rust resource and native-component architecture, security boundaries, and staged integration requirements.
+
+### Scope and integration status
+
+- This is a foundation milestone, not end-to-end Rust resource hosting. The current C# ResourceManager still launches Lua workers only; Rust worker discovery, build/deployment, process supervision, command/event routing, and shutdown integration remain future work.
+- The Rust native-core crate is not yet loaded by .NET through FFI and is not yet on the framework hot path. No performance improvement is claimed.
+
 ### Improved — UE4SS reflection-provider capability audit
 
 - Added read-only member-exposure checks for reflected class enumeration methods, without invoking those methods.

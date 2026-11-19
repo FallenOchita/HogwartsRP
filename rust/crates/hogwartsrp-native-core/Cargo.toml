@@ -1,0 +1,9 @@
+[package]
+name = "hogwartsrp-native-core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Rust-native bounded validation primitives for HogwartsRP"
+
+[lib]
+crate-type = ["rlib"]
