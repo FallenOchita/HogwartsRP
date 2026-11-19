@@ -28,6 +28,7 @@ public class LifecycleTests
         Assert.True(File.Exists(workerPath));
 
         var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        ResourceManager? manager = null;
         var resourceDirectory = Path.Combine(root, "rust_sample");
         var binaryDirectory = Path.Combine(resourceDirectory, "bin");
         Directory.CreateDirectory(binaryDirectory);
@@ -40,7 +41,7 @@ public class LifecycleTests
         {
             await File.WriteAllTextAsync(Path.Combine(resourceDirectory, "fxmanifest.lua"),
                 "fx_version 'cerulean'\ngame 'hogwartslegacy'\nrust_script 'bin/" + Path.GetFileName(executable) + "'");
-            var manager = new ResourceManager(root, _ => new NativeLua54Runtime());
+            manager = new ResourceManager(root, _ => new NativeLua54Runtime());
             var exited = new TaskCompletionSource<int?>(TaskCreationOptions.RunContinuationsAsynchronously);
             manager.RustWorkerExited += (_, code) => exited.TrySetResult(code);
 
@@ -58,8 +59,51 @@ public class LifecycleTests
         }
         finally
         {
-            if (Directory.Exists(root)) Directory.Delete(root, true);
+            try
+            {
+                if (manager is not null) await manager.StopAllAsync();
+            }
+            finally
+            {
+                if (Directory.Exists(root)) await DeleteDirectoryWithRetriesAsync(root);
+            }
         }
+    }
+
+    private static async Task DeleteDirectoryWithRetriesAsync(string path)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                Directory.Delete(path, recursive: true);
+                return;
+            }
+            catch (Exception ex) when (attempt < 5 && (ex is IOException || ex is UnauthorizedAccessException))
+            {
+                // Windows may briefly retain an executable-file lock after process exit.
+                await Task.Delay(TimeSpan.FromMilliseconds(Math.Min(100 * (1 << attempt), 1_000)));
+            }
+        }
+    }
+
+    [Fact]
+    public void RustWorkerRestartPolicyUsesCappedExponentialBackoff()
+    {
+        var policy = new RustWorkerRestartPolicy(4, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(250));
+        Assert.Equal(TimeSpan.FromMilliseconds(100), policy.GetDelay(1));
+        Assert.Equal(TimeSpan.FromMilliseconds(200), policy.GetDelay(2));
+        Assert.Equal(TimeSpan.FromMilliseconds(250), policy.GetDelay(3));
+        Assert.Equal(TimeSpan.FromMilliseconds(250), policy.GetDelay(4));
+        Assert.Throws<ArgumentOutOfRangeException>(() => policy.GetDelay(5));
+    }
+
+    [Fact]
+    public void RustWorkerRestartPolicyRejectsUnsafeRetryBudgets()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new RustWorkerRestartPolicy(11));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new RustWorkerRestartPolicy(1, TimeSpan.FromSeconds(31)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new RustWorkerRestartPolicy(1, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(1)));
     }
 
     [Fact]

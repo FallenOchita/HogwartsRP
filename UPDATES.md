@@ -1,3 +1,22 @@
+## 2026-11-19 — Windows Rust worker test cleanup correction
+
+### Fixed
+
+- Made the ResourceManager stop the Rust worker from the test cleanup path, even when an assertion fails.
+- Added bounded retries when removing the temporary worker directory to handle transient Windows executable-file locks after process termination.
+- The retry is limited to cleanup; process exit and resource-failure assertions remain unchanged.
+
+## 2026-11-19 — Rust worker restart policy primitive
+
+### Added
+
+- Added an opt-in Rust worker restart policy with a maximum of ten retries and capped exponential backoff.
+- Added validation for retry budgets and delay bounds, with unit coverage for exponential progression and cap behavior.
+
+### Boundary
+
+- This milestone defines the retry policy only. Automatic worker replacement and resource lifecycle integration are not yet included.
+
 ## 2026-11-19 — Rust resource health supervision
 
 ### Improved

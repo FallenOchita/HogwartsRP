@@ -4,6 +4,19 @@ All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]
 
+### Fixed — Windows Rust worker integration-test cleanup
+
+- Ensure the ResourceManager stops its Rust worker in the test cleanup path, including when an assertion fails.
+- Retry temporary-directory removal for a bounded period to tolerate transient Windows executable-file locks after process exit.
+
+
+### Added — Rust worker restart policy primitive
+
+- Added an opt-in bounded retry policy with capped exponential backoff and strict configuration limits.
+- Added tests for delay progression, maximum-delay capping, retry-budget bounds, and invalid configurations.
+- This commit defines and validates the recovery policy; automatic process replacement remains the next integration step.
+
+
 ### Improved — Rust resource health supervision
 
 - Propagate unexpected Rust worker exits into the owning resource's lifecycle status and mark the resource Failed with its exit code when available.
