@@ -32,7 +32,7 @@ jobs:
       - name: Format Rust workspace
         run: cargo fmt --manifest-path rust/Cargo.toml --all
       - name: Test Rust workspace
-        run: cargo test --manifest-path rust/Cargo.toml --workspace --exclude hogwartsrp-launcher
+        run: cargo test --manifest-path rust/Cargo.toml --workspace --exclude wizardnet-launcher
       - name: Build Rust worker integration fixture
         run: cargo build --manifest-path rust/Cargo.toml -p hogwartsrp-test-worker
       - name: Configure Rust worker integration fixture path
@@ -42,7 +42,7 @@ jobs:
           "HOGWARTSRP_TEST_WORKER_PATH=$env:GITHUB_WORKSPACE/rust/target/debug/hogwartsrp-test-worker$suffix" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: Build native Rust launcher (Windows)
         if: runner.os == 'Windows'
-        run: cargo build --manifest-path rust/Cargo.toml --release -p hogwartsrp-launcher
+        run: cargo build --manifest-path rust/Cargo.toml --release -p wizardnet-launcher
       - run: dotnet restore HogwartsRP.slnx
       - run: dotnet build HogwartsRP.slnx --no-restore
       - run: dotnet test HogwartsRP.slnx --no-build
