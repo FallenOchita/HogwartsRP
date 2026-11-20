@@ -64,6 +64,11 @@ bool HasType(const std::string& json, const std::string& type) {
     return std::regex_search(json, pattern);
 }
 
+bool HasSequence(const std::string& json, std::int64_t sequence) {
+    const std::regex pattern("\\\"sequence\\\"\\s*:\\s*" + std::to_string(sequence) + "(?:\\D|$)");
+    return std::regex_search(json, pattern);
+}
+
 bool IsLoopbackHost(const std::wstring& host) {
     return _wcsicmp(host.c_str(), L"localhost") == 0 ||
            _wcsicmp(host.c_str(), L"127.0.0.1") == 0 ||
@@ -205,7 +210,7 @@ void RunTransport(std::string endpointText, std::string credential,
             const std::string heartbeat = "{\"type\":\"game_adapter_heartbeat\",\"sequence\":" +
                 std::to_string(++sequence) + "}";
             if (!SendText(socket, heartbeat) || !ReceiveText(socket, response) ||
-                !HasType(response, "game_adapter_heartbeat_ack"))
+                !HasType(response, "game_adapter_heartbeat_ack") || !HasSequence(response, sequence))
                 throw std::runtime_error("Heartbeat failed or was rejected by the server.");
         }
         SetStatus("disconnected", "Transport stopped.");
