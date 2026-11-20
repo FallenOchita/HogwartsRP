@@ -48,7 +48,7 @@ local catalog = {
 }
 local map = Discovery.buildRuntimeMetadataMap(catalog)
 equal(map.status, "ASSEMBLED_FROM_EXISTING_AUDITS", "map status")
-equal(map.object_count, 3, "discovered object count")
+equal(map.object_count, 4, "discovered and reference-identified object count")
 equal(map.confirmed_reference_count, 4, "confirmed reference count")
 equal(map.descriptor_count, 2, "confirmed descriptor count")
 equal(map.unresolved_count, 2, "unresolved evidence count")
