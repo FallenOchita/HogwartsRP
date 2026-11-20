@@ -55,6 +55,10 @@ std::string JsonEscape(const std::string& value) {
     return out;
 }
 
+std::string JsonOptional(const std::string& value) {
+    return value.empty() ? "null" : "\"" + JsonEscape(value) + "\"";
+}
+
 bool HasType(const std::string& json, const std::string& type) {
     const std::regex pattern("\\\"type\\\"\\s*:\\s*\\\"" + type + "\\\"");
     return std::regex_search(json, pattern);
@@ -152,8 +156,7 @@ void RunTransport(std::string endpointText, std::string credential,
         Endpoint endpoint;
         if (!ParseEndpoint(endpointText, endpoint)) {
             wipeCredential();
-            SetStatus("error", "Endpoint must be HTTPS/WSS; HTTP/WS is allowed only for loopback.");
-            goto cleanup;
+            throw std::runtime_error("Endpoint must be HTTPS; HTTP is allowed only for loopback.");
         }
         session = WinHttpOpen(L"HogwartsRP-UE4SS/0.1", WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
             WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
@@ -187,8 +190,8 @@ void RunTransport(std::string endpointText, std::string credential,
 
         const std::string hello =
             "{\"type\":\"game_adapter_hello\",\"protocolVersion\":1,\"adapterVersion\":\"" +
-            JsonEscape(adapterVersion) + "\",\"gameBuild\":\"" + JsonEscape(gameBuild) +
-            "\",\"ue4ssVersion\":\"" + JsonEscape(ue4ssVersion) +
+            JsonEscape(adapterVersion) + "\",\"gameBuild\":" + JsonOptional(gameBuild) +
+            ",\"ue4ssVersion\":" + JsonOptional(ue4ssVersion) +
             "\",\"capabilities\":[\"local_position_read\",\"camera_rotation_read\"]}";
         if (!SendText(socket, hello) || !ReceiveText(socket, response) ||
             !HasType(response, "game_adapter_ready"))
@@ -214,7 +217,6 @@ void RunTransport(std::string endpointText, std::string credential,
         SetStatus("error", exception.what());
     }
 
-cleanup:
     CloseHandles(socket, request, connection, session);
     {
         std::lock_guard lock(g_state.mutex);
