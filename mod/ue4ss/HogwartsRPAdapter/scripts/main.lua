@@ -1,117 +1,110 @@
 -- HogwartsRP UE4SS player-state adapter entry point
 -- Hogwarts Legacy / Steam PC / UE4SS 4.0.0 / Lua 5.4
 --
--- Read-only diagnostics. This entry point does not write game state,
--- spawn actors, create remote players, or connect to the server.
+-- Read-only first-stage adapter. It discovers the local player and reads
+-- candidate telemetry state. It does not write game state, spawn actors,
+-- create remote players, or connect to the HogwartsRP server.
+--
+-- Confirmed in live testing:
+--   Controller class: BP_Phoenix_Player_Controller_C
+--   Pawn class:       BP_Biped_Player_C
+--   Control rotation: Controller:GetControlRotation() (numeric Pitch/Yaw/Roll)
+--
+-- Location, rotation, and velocity are extracted from UE4SS-wrapped FVector
+-- values using the numeric extraction strategies defined in adapter.lua.
 
 local MOD_NAME = "HogwartsRPAdapter"
-local MOD_VERSION = "0.3.0"
+local MOD_VERSION = "0.2.0"
 local POLL_INTERVAL_MS = 3000
 
 local Adapter = require("adapter")
 
-_G.HogwartsLegacyAdapter = Adapter
+----------------------------------------------------------------------
+-- Logging
+----------------------------------------------------------------------
 
 local function log(message)
     print("[" .. MOD_NAME .. "] " .. tostring(message) .. "\n")
 end
 
-local function formatVector(value)
-    if type(value) ~= "table" then return "unavailable" end
-    if type(value.x) ~= "number" or
-       type(value.y) ~= "number" or
-       type(value.z) ~= "number" then
+local function formatLocation(loc)
+    if not loc then
         return "unavailable"
     end
-    return string.format(
-        "X=%.2f Y=%.2f Z=%.2f",
-        value.x, value.y, value.z
-    )
+    return string.format("X=%.2f Y=%.2f Z=%.2f", loc.x, loc.y, loc.z)
 end
 
-local function formatRotator(value)
-    if type(value) ~= "table" then return "unavailable" end
-    if type(value.pitch) ~= "number" or
-       type(value.yaw) ~= "number" or
-       type(value.roll) ~= "number" then
+local function formatRotator(rot)
+    if not rot then
         return "unavailable"
     end
-    return string.format(
-        "Pitch=%.2f Yaw=%.2f Roll=%.2f",
-        value.pitch, value.yaw, value.roll
-    )
+    return string.format("Pitch=%.2f Yaw=%.2f Roll=%.2f", rot.pitch, rot.yaw, rot.roll)
 end
 
-local function formatNumber(value)
-    if type(value) ~= "number" then return "unavailable" end
-    return string.format("%.2f", value)
+local function formatSpeed(speed)
+    if speed == nil then
+        return "unavailable"
+    end
+    return string.format("%.2f", speed)
 end
 
-local pollQueued = false
+----------------------------------------------------------------------
+-- UE4SS entry point
+----------------------------------------------------------------------
 
--- Keep a stable callback reference instead of constructing a new game-thread
--- closure on every asynchronous LoopAsync tick. The guard also prevents this
--- mod from queuing another poll while its previous poll is still pending.
-local function pollOnGameThread()
-    pollQueued = false
+_G.HogwartsLegacyAdapter = Adapter
 
-    local ok, snapshotOrError = pcall(function()
-        return Adapter:getSnapshot()
+log("Loaded. Adapter version: " .. MOD_VERSION)
+log("Read-only mode; no game state is modified.")
+
+----------------------------------------------------------------------
+-- Polling callbacks (named references stored in a persistent table
+-- to prevent Lua GC and UE4SS C++ callback collector from freeing
+-- closures that UE4SS's callback system references.)
+----------------------------------------------------------------------
+
+local CallbackRefs = {}
+
+local function telemetryPass()
+    local ok, err = pcall(function()
+        local controller = Adapter:getController()
+        local player = Adapter:getPlayer()
+
+        if controller and player then
+            local location = Adapter:getLocation()
+            local rotation = Adapter:getRotation()
+            local controlRotation = Adapter:getControlRotation()
+            local velocity = Adapter:getVelocity()
+            local speed = Adapter:getSpeed()
+            local movementMode = Adapter:getMovementMode()
+            local movementState = Adapter:getMovementState()
+
+            log("Movement state: " .. tostring(movementState))
+            log("Location: " .. formatLocation(location))
+            log("Rotation: " .. formatRotator(rotation))
+            log("Control rotation: " .. formatRotator(controlRotation))
+            log("Velocity: " .. formatLocation(velocity))
+            log("Speed: " .. formatSpeed(speed))
+            log("Movement mode: " .. tostring(movementMode))
+        else
+            log("Waiting for a confirmed local controller and acknowledged pawn.")
+        end
     end)
 
     if not ok then
-        log("Snapshot failed safely: " .. tostring(snapshotOrError))
-        return
-    end
-
-    local snapshot = snapshotOrError
-    if type(snapshot) ~= "table" then
-        log("Snapshot unavailable.")
-        return
-    end
-
-    if not snapshot.controllerFound or not snapshot.playerFound then
-        log(
-            "Waiting for local controller/pawn. Controller=" ..
-            tostring(snapshot.controllerFound) ..
-            " Pawn=" .. tostring(snapshot.playerFound)
-        )
-        return
-    end
-
-    log("Movement state: " .. tostring(snapshot.movementState))
-    log("Location: " .. formatVector(snapshot.location))
-    log("Rotation: " .. formatRotator(snapshot.rotation))
-    log("Control rotation: " .. formatRotator(snapshot.controlRotation))
-    log("Velocity: " .. formatVector(snapshot.velocity))
-    log("Speed: " .. formatNumber(snapshot.speed))
-    log("Movement mode: " .. tostring(snapshot.movementMode))
-end
-
-local function asyncPollCallback()
-    if pollQueued then return end
-    if type(ExecuteInGameThread) ~= "function" then
-        log("ExecuteInGameThread is unavailable.")
-        return
-    end
-
-    pollQueued = true
-    local ok, err = pcall(ExecuteInGameThread, pollOnGameThread)
-    if not ok then
-        pollQueued = false
-        log("Could not queue game-thread snapshot: " .. tostring(err))
+        log("Diagnostic pass failed safely: " .. tostring(err))
     end
 end
 
-log("Loaded. Adapter version: " .. MOD_VERSION)
-log("Read-only telemetry mode enabled.")
+CallbackRefs.telemetryPass = telemetryPass
 
-if type(LoopAsync) == "function" and
-   type(ExecuteInGameThread) == "function" then
-    -- asyncPollCallback and pollOnGameThread remain strongly referenced
-    -- for the lifetime of this Lua module.
-    LoopAsync(POLL_INTERVAL_MS, asyncPollCallback)
-    log("Snapshot polling scheduled every " .. POLL_INTERVAL_MS .. " ms.")
+local function gameThreadPoll()
+    ExecuteInGameThread(CallbackRefs.telemetryPass)
+end
+CallbackRefs.gameThreadPoll = gameThreadPoll
+
+if type(LoopAsync) == "function" then
+    LoopAsync(POLL_INTERVAL_MS, CallbackRefs.gameThreadPoll)
 else
     log("Polling APIs unavailable; adapter loaded without automatic diagnostics.")
 end
