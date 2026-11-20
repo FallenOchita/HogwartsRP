@@ -184,9 +184,12 @@ void RunTransport(std::string endpointText, std::string credential,
         WinHttpCloseHandle(request); request = nullptr;
 
         SetStatus("authenticating", "WebSocket connected; authenticating one-use join ticket.");
-        const std::string auth = "{\"type\":\"authenticate\",\"credential\":\"" + JsonEscape(credential) + "\"}";
+        std::string auth = "{\\"type\\":\\"authenticate\\",\\"credential\\":\\"" + JsonEscape(credential) + "\\"}";
         wipeCredential();
-        if (!SendText(socket, auth)) throw std::runtime_error("Authentication frame could not be sent.");
+        const bool authSent = SendText(socket, auth);
+        if (!auth.empty()) SecureZeroMemory(auth.data(), auth.size());
+        auth.clear();
+        if (!authSent) throw std::runtime_error("Authentication frame could not be sent.");
         std::string response;
         if (!ReceiveText(socket, response) || !HasType(response, "connected"))
             throw std::runtime_error("Server rejected the join ticket or returned an invalid session response.");
