@@ -291,16 +291,21 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
             var message = JsonSerializer.Deserialize<WireMessage>(bytes, JsonOptions);
             if (message?.Type == "game_adapter_hello")
             {
-                if (client.GameAdapterReady ||
-                    !GameAdapterProtocol.TryValidateHello(
-                        message.ProtocolVersion,
-                        message.AdapterVersion,
-                        message.GameBuild,
-                        message.Ue4ssVersion,
-                        message.Capabilities,
-                        out var helloError))
+                if (client.GameAdapterReady)
                 {
-                    await RejectAdapterAsync(client.Socket, helloError ?? "The game adapter handshake was already completed.", cancellationToken);
+                    await RejectAdapterAsync(client.Socket, "The game-adapter handshake was already completed.", cancellationToken);
+                    return;
+                }
+
+                if (!GameAdapterProtocol.TryValidateHello(
+                    message.ProtocolVersion,
+                    message.AdapterVersion,
+                    message.GameBuild,
+                    message.Ue4ssVersion,
+                    message.Capabilities,
+                    out var helloError))
+                {
+                    await RejectAdapterAsync(client.Socket, helloError ?? "The game-adapter handshake is invalid.", cancellationToken);
                     return;
                 }
 
