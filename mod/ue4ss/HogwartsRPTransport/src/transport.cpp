@@ -100,10 +100,8 @@ bool ParseEndpoint(const std::string& input, Endpoint& endpoint) {
     if (endpoint.path.empty()) endpoint.path = L"/";
     if (endpoint.path != L"/" && endpoint.path != L"/connect") return false;
     if (parts.dwExtraInfoLength != 0) return false;
-    endpoint.secure = _wcsicmp(scheme.c_str(), L"https") == 0 ||
-                      _wcsicmp(scheme.c_str(), L"wss") == 0;
-    const bool insecure = _wcsicmp(scheme.c_str(), L"http") == 0 ||
-                          _wcsicmp(scheme.c_str(), L"ws") == 0;
+    endpoint.secure = _wcsicmp(scheme.c_str(), L"https") == 0;
+    const bool insecure = _wcsicmp(scheme.c_str(), L"http") == 0;
     if (!endpoint.secure && !(insecure && IsLoopbackHost(endpoint.host))) return false;
     endpoint.port = parts.nPort;
     endpoint.path = L"/connect";
@@ -192,7 +190,7 @@ void RunTransport(std::string endpointText, std::string credential,
             "{\"type\":\"game_adapter_hello\",\"protocolVersion\":1,\"adapterVersion\":\"" +
             JsonEscape(adapterVersion) + "\",\"gameBuild\":" + JsonOptional(gameBuild) +
             ",\"ue4ssVersion\":" + JsonOptional(ue4ssVersion) +
-            "\",\"capabilities\":[\"local_position_read\",\"camera_rotation_read\"]}";
+            ",\"capabilities\":[\"local_position_read\",\"camera_rotation_read\"]}";
         if (!SendText(socket, hello) || !ReceiveText(socket, response) ||
             !HasType(response, "game_adapter_ready"))
             throw std::runtime_error("Server rejected the game-adapter handshake.");
