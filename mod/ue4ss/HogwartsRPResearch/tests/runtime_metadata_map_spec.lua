@@ -34,6 +34,17 @@ local catalog = {
                       descriptor = { full_name = "ObjectProperty /Script/Engine.Player:PlayerController" } },
                     { property = "Origin", status = "NOT_FOUND" }
                 } }
+            },
+            {
+                root_property = "PlayerState", target = "player_state",
+                root_status = "OBJECT_REFERENCE_FOUND", root_reference = "PlayerState /Game/PlayerState",
+                items = {
+                    { property = "PawnPrivate", status = "OBJECT_REFERENCE_FOUND", summary = "BP_Biped_Player_C /Game/Player" }
+                },
+                metadata_audit = { items = {
+                    { property = "PlayerId", status = "FOUND", lookup_scope_class = "Class /Script/Engine.PlayerState",
+                      descriptor = { full_name = "IntProperty /Script/Engine.PlayerState:PlayerId" } }
+                } }
             }
         } },
         targeted_property_metadata = {
@@ -48,16 +59,17 @@ local catalog = {
 }
 local map = Discovery.buildRuntimeMetadataMap(catalog)
 equal(map.status, "ASSEMBLED_FROM_EXISTING_AUDITS", "map status")
-equal(map.object_count, 4, "discovered and reference-identified object count")
-equal(map.confirmed_reference_count, 4, "confirmed reference count")
-equal(map.descriptor_count, 2, "confirmed descriptor count")
-equal(map.unresolved_count, 2, "unresolved evidence count")
+equal(map.object_count, 5, "discovered and reference-identified object count")
+equal(map.confirmed_reference_count, 6, "confirmed reference count")
+equal(map.descriptor_count, 3, "confirmed descriptor count")
+equal(map.unresolved_count, 3, "unresolved evidence count")
 equal(map.references[1].target, "Biped_MovementComponent /Game/Player.CharMoveComp",
     "CharacterMovement observed target")
 equal(map.descriptors[1].declaring_class, "/Script/Engine.Character",
     "descriptor declaring class parsed from full name")
 equal(map.unresolved[1].property, "UpdatedComponent", "unavailable reference retained")
 equal(map.unresolved[2].property, "CharMoveComp", "not-found descriptor retained")
+equal(map.unresolved[3].property, "Origin", "second-hop not-found descriptor retained")
 equal(map.safety, "REPORT_ASSEMBLY_ONLY_REUSES_EXISTING_AUDIT_TABLES_NO_UOBJECT_ACCESS_NO_PROPERTY_READS_NO_UFUNCTION_INVOCATION",
     "map assembly safety boundary")
 print("runtime_metadata_map_spec: PASS")
