@@ -2,6 +2,17 @@
 
 # Changelog
 
+## [Unreleased]
+
+### Added — Consolidated player runtime metadata map
+
+- Added a normalized `runtime_metadata_map` to PropertyReport, assembled from existing object descriptions, targeted descriptor metadata, and bounded reference/value audits.
+- Separates discovered object identities, observed UObject references, confirmed descriptor identities/declaring classes, and unresolved findings.
+- Preserves `NOT_FOUND` and `LOOKUP_INCOMPLETE` as unresolved outcomes and distinguishes the `CharacterMovement` reflected property from the `CharMoveComp` movement instance name.
+- The map performs no UObject access, additional property reads, reflection calls, or gameplay-function invocation; includes regression coverage.
+
+# Changelog
+
 All notable HogwartsRP changes are recorded here.
 
 ## [Unreleased]

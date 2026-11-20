@@ -213,6 +213,9 @@ local function runResearch(targets, finalAttempt)
                 enum_entries = {},
                 safety = "NO_PROPERTY_VALUE_READS_NO_GAMEPLAY_FUNCTION_INVOCATION"
             }
+        catalog.properties.runtime_metadata_map =
+            Discovery.buildRuntimeMetadataMap(catalog)
+
 
         catalog.functions = {
             candidate_presence_probes = Discovery.functions(player, {

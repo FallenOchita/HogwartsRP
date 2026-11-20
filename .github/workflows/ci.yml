@@ -19,6 +19,7 @@ jobs:
         run: |
           lua5.4 tests/property_value_audit_spec.lua
           lua5.4 tests/component_property_catalog_spec.lua
+          lua5.4 tests/runtime_metadata_map_spec.lua
       - name: Install stable Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
