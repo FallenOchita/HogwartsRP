@@ -174,3 +174,10 @@ The PlayerState second-hop route reads only `PawnPrivate` to preserve the valida
 ### Player metadata candidate correction
 
 The player descriptor lookup no longer requests `CharMoveComp`. In the supplied live report, that name returned `NOT_FOUND` after direct lookup completed across the full player class chain. The reflected property is `CharacterMovement`; its descriptor full name is `ObjectProperty /Script/Engine.Character:CharacterMovement`. The value/reference audit separately identified the target movement object by its instance path ending in `.CharMoveComp`. These are different namespaces: the former is a reflected property name, while the latter is the observed component instance name. The separate discovery and candidate-value probes retain their existing behavior; this correction only removes the invalid descriptor candidate.
+
+
+## Consolidated player runtime metadata map
+
+`PropertyReport.txt` now includes `runtime_metadata_map`, a normalized summary assembled only from the player/controller/movement descriptions, targeted descriptor audits, controller/movement reference audit, existing player value audit, and the two bounded LocalPlayer/PlayerState routes. It records discovered object identities, previously observed UObject references, confirmed descriptor identities (including declaring class parsed from the descriptor full name), and unresolved outcomes.
+
+The map does not perform any UObject access, property reads, reflection calls, or gameplay-function calls. It does not infer that `CharMoveComp` is a reflected player property: the player descriptor is `CharacterMovement`, while the separately observed referenced movement object has an instance path ending in `.CharMoveComp`. `NOT_FOUND` and `LOOKUP_INCOMPLETE` remain distinct unresolved evidence. The map is a report convenience layer, not a new source of runtime facts or a multiplayer adapter contract.

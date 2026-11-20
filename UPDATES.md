@@ -1,3 +1,16 @@
+## 2026-11-20 — Consolidated player runtime metadata map
+
+### Added
+
+- Added `properties.runtime_metadata_map` to PropertyReport as a normalized summary of existing player, controller, movement, LocalPlayer, and PlayerState evidence.
+- Includes discovered object identities, observed UObject reference edges, confirmed descriptor identities and declaring classes, and explicit unresolved findings.
+- Keeps the `CharacterMovement` descriptor distinct from the observed `CharMoveComp` component instance path.
+
+### Safety and validation boundary
+
+- The map is assembled from already-produced report tables only. It performs no UObject access, property reads, reflection calls, gameplay-function invocation, writes, hooks, or network operations.
+- Added a Lua regression spec and CI invocation. A fresh live PropertyReport is still required to populate and validate the map against the user's current game session.
+
 ## 2026-11-19 — Correct player metadata candidate classification
 
 ### Fixed

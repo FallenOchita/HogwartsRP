@@ -714,4 +714,143 @@ function M.functions(object, candidates)
     }
 end
 
+
+-- Assemble a stable player-runtime map from audit results already collected by
+-- the caller. This function performs no UObject access and never reads values.
+function M.buildRuntimeMetadataMap(catalog)
+    catalog = type(catalog) == "table" and catalog or {}
+    local properties = type(catalog.properties) == "table" and catalog.properties or {}
+    local objects = type(catalog.objects) == "table" and catalog.objects or {}
+    local result = {
+        status = "ASSEMBLED_FROM_EXISTING_AUDITS",
+        schema_version = 1,
+        evidence_policy = {
+            observed_reference = "A previously completed allowlisted value audit returned a validated UObject identity.",
+            confirmed_descriptor = "A previous direct named-property lookup returned FOUND with descriptor identity.",
+            unresolved = "NOT_FOUND, LOOKUP_INCOMPLETE, unavailable, opaque, or unverified results remain explicit.",
+            inference = "No relationship is inferred from a descriptor name or matching instance name alone."
+        },
+        objects = {},
+        references = {},
+        descriptors = {},
+        unresolved = {},
+        safety = "REPORT_ASSEMBLY_ONLY_REUSES_EXISTING_AUDIT_TABLES_NO_UOBJECT_ACCESS_NO_PROPERTY_READS_NO_UFUNCTION_INVOCATION"
+    }
+
+    local function addObject(key, description, evidence)
+        if type(description) ~= "table" then return end
+        local fullName = description.full_name
+        if type(fullName) ~= "string" or fullName == "" or fullName == "UNAVAILABLE" then return end
+        result.objects[#result.objects + 1] = {
+            key = key, full_name = fullName,
+            class_name = description.class_name or "UNAVAILABLE",
+            discovery_status = description.status or "UNAVAILABLE",
+            evidence = evidence
+        }
+    end
+
+    addObject("player", objects.player, "DISCOVERED_OBJECT_DESCRIPTION")
+    addObject("controller", objects.controller, "DISCOVERED_OBJECT_DESCRIPTION")
+    addObject("movement", objects.movement, "DISCOVERED_OBJECT_DESCRIPTION")
+
+    local function addReference(source, propertyName, target, status, evidence)
+        local item = {
+            source = source, property = propertyName, target = target,
+            status = status or "UNAVAILABLE", evidence = evidence
+        }
+        result.references[#result.references + 1] = item
+        if item.status ~= "OBJECT_REFERENCE_FOUND" then
+            result.unresolved[#result.unresolved + 1] = {
+                kind = "REFERENCE", source = source, property = propertyName,
+                status = item.status, evidence = evidence
+            }
+        end
+    end
+
+    local valueAudit = type(properties.value_audit) == "table" and properties.value_audit.items or {}
+    for _, item in ipairs(valueAudit) do
+        if item.target == "player" and item.property == "CharacterMovement" then
+            local target = item.status == "OBJECT_REFERENCE_FOUND" and item.summary or nil
+            addReference("player", item.property, target, item.status, "EXISTING_PROPERTY_VALUE_AUDIT")
+        end
+    end
+
+    local referenceAudit = type(properties.reference_value_audit) == "table"
+        and properties.reference_value_audit.items or {}
+    for _, item in ipairs(referenceAudit) do
+        local target = item.status == "OBJECT_REFERENCE_FOUND" and item.summary or nil
+        addReference(item.target or "unknown", item.property or "unknown", target,
+            item.status, "EXISTING_REFERENCE_VALUE_AUDIT")
+    end
+
+    local related = type(properties.related_reference_audit) == "table"
+        and properties.related_reference_audit.routes or {}
+    for _, route in ipairs(related) do
+        local rootTarget = route.root_status == "OBJECT_REFERENCE_FOUND" and route.root_reference or nil
+        addReference("controller", route.root_property or "unknown", rootTarget,
+            route.root_status, "EXISTING_SECOND_HOP_REFERENCE_AUDIT")
+        for _, item in ipairs(route.items or {}) do
+            local target = item.status == "OBJECT_REFERENCE_FOUND" and item.summary or nil
+            addReference(route.target or "related_object", item.property or "unknown", target,
+                item.status, "EXISTING_SECOND_HOP_REFERENCE_AUDIT")
+        end
+    end
+
+    local function addDescriptors(target, audit, evidence)
+        if type(audit) ~= "table" then return end
+        for _, item in ipairs(audit.items or {}) do
+            local descriptor = item.descriptor
+            if item.status == "FOUND" and type(descriptor) == "table" then
+                local fullName = descriptor.full_name or "UNAVAILABLE"
+                local propertyClass = descriptor.property_class or fullName:match("^([^%s]+)") or "UNAVAILABLE"
+                local declaringClass = descriptor.declaring_class
+                if not declaringClass and type(fullName) == "string" then
+                    declaringClass = fullName:match("^[^%s]+%s+([^:]+):")
+                end
+                result.descriptors[#result.descriptors + 1] = {
+                    target = target, property = item.property,
+                    status = "CONFIRMED_DESCRIPTOR",
+                    descriptor_full_name = fullName,
+                    property_class = propertyClass,
+                    declaring_class = declaringClass or "UNAVAILABLE",
+                    lookup_scope_class = item.lookup_scope_class or "UNAVAILABLE",
+                    evidence = evidence
+                }
+            else
+                result.unresolved[#result.unresolved + 1] = {
+                    kind = "DESCRIPTOR", target = target, property = item.property,
+                    status = item.status or "UNAVAILABLE", evidence = evidence
+                }
+            end
+        end
+    end
+
+    local targeted = type(properties.targeted_property_metadata) == "table"
+        and properties.targeted_property_metadata or {}
+    addDescriptors("player", targeted.player, "EXISTING_TARGETED_PROPERTY_METADATA")
+    addDescriptors("controller", targeted.controller, "EXISTING_TARGETED_PROPERTY_METADATA")
+    addDescriptors("movement", targeted.movement, "EXISTING_TARGETED_PROPERTY_METADATA")
+
+    for _, route in ipairs(related) do
+        if type(route.metadata_audit) == "table" then
+            addDescriptors(route.target or "related_object", route.metadata_audit,
+                "EXISTING_SECOND_HOP_DESCRIPTOR_METADATA")
+        end
+    end
+
+    result.object_count = #result.objects
+    result.reference_count = #result.references
+    result.confirmed_reference_count = 0
+    for _, item in ipairs(result.references) do
+        if item.status == "OBJECT_REFERENCE_FOUND" then
+            result.confirmed_reference_count = result.confirmed_reference_count + 1
+        end
+    end
+    result.descriptor_count = #result.descriptors
+    result.confirmed_descriptor_count = #result.descriptors
+    result.unresolved_count = #result.unresolved
+    result.note = "This map is a normalized view of existing report sections. It does not upgrade incomplete evidence, does not imply that unlisted fields are absent, and does not perform any additional runtime inspection."
+    return result
+end
+
 return M
