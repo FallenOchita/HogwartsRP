@@ -32,7 +32,7 @@ struct ServerStatus {
     max_players: u32,
 }
 
-struct HogwartsRpLauncher {
+struct WizardNetLauncher {
     server_name: String,
     server_address: String,
     saved_servers: Vec<ServerProfile>,
@@ -49,11 +49,14 @@ struct HogwartsRpLauncher {
     directory_page_number: u32,
 }
 
-impl Default for HogwartsRpLauncher {
+impl Default for WizardNetLauncher {
     fn default() -> Self {
         let saved_servers = load_profiles();
-        let account_portal = std::env::var("HOGWARTSRP_ACCOUNT_PORTAL_URL").unwrap_or_default();
-        let directory_url = std::env::var("HOGWARTSRP_DIRECTORY_URL")
+        let account_portal = std::env::var("WIZARDNET_ACCOUNT_PORTAL_URL")
+            .or_else(|_| std::env::var("HOGWARTSRP_ACCOUNT_PORTAL_URL"))
+            .unwrap_or_default();
+        let directory_url = std::env::var("WIZARDNET_DIRECTORY_URL")
+            .or_else(|_| std::env::var("HOGWARTSRP_DIRECTORY_URL"))
             .unwrap_or_else(|_| "http://127.0.0.1:8790".into());
         Self {
             server_name: "Local development".into(),
@@ -74,7 +77,7 @@ impl Default for HogwartsRpLauncher {
     }
 }
 
-impl HogwartsRpLauncher {
+impl WizardNetLauncher {
     fn save_profiles(&self) -> Result<(), String> {
         let path = profile_path()?;
         if let Some(parent) = path.parent() {
@@ -186,7 +189,7 @@ impl HogwartsRpLauncher {
         }
         match Url::parse(&self.account_portal) {
             Ok(url) if matches!(url.scheme(), "https" | "http") => match open::that(url.as_str()) {
-                Ok(()) => self.status_message = "Opened the HogwartsRP account portal in your browser.".into(),
+                Ok(()) => self.status_message = "Opened the WizardNet account portal in your browser.".into(),
                 Err(error) => self.status_message = format!("Could not open account portal: {error}"),
             },
             _ => self.status_message = "Account portal configuration must be an absolute HTTP or HTTPS URL.".into(),
@@ -226,12 +229,12 @@ impl HogwartsRpLauncher {
     }
 }
 
-impl eframe::App for HogwartsRpLauncher {
+impl eframe::App for WizardNetLauncher {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.poll_status(ctx);
         self.poll_directory(ctx);
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("HOGWARTSRP");
+            ui.heading("WIZARDNET");
             ui.label("Native Rust launcher · Hogwarts Legacy roleplay framework");
             ui.add_space(14.0);
 
@@ -365,7 +368,7 @@ impl eframe::App for HogwartsRpLauncher {
 }
 
 fn profile_path() -> Result<PathBuf, String> {
-    let dirs = ProjectDirs::from("com", "FallenOchita", "HogwartsRP")
+    let dirs = ProjectDirs::from("com", "FallenOchita", "WizardNet")
         .ok_or_else(|| "Could not determine the application config directory.".to_owned())?;
     Ok(dirs.config_dir().join("server-profiles.json"))
 }
@@ -405,8 +408,8 @@ fn main() -> eframe::Result<()> {
         ..Default::default()
     };
     eframe::run_native(
-        "HogwartsRP Launcher",
+        "WizardNet Launcher",
         options,
-        Box::new(|_creation_context| Ok(Box::new(HogwartsRpLauncher::default()))),
+        Box::new(|_creation_context| Ok(Box::new(WizardNetLauncher::default()))),
     )
 }

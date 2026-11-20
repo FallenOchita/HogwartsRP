@@ -58,7 +58,7 @@ pub(crate) fn fetch_servers(
 
     let client = reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(8))
-        .user_agent(concat!("HogwartsRP-Launcher/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("WizardNet-Launcher/", env!("CARGO_PKG_VERSION")))
         .build()
         .map_err(|error| format!("Could not create directory client: {error}"))?;
     let response = client.get(endpoint)
