@@ -4,7 +4,7 @@ An independent, modular roleplay framework foundation for eventual Hogwarts Lega
 
 ## Quick start
 
-Install .NET 10, then run `dotnet run --project src/HogwartsRP.Server -- --Resources:Path=resources`. Build the native Rust launcher on Windows with `cargo build --manifest-path rust/Cargo.toml --release -p hogwartsrp-launcher`; the executable is produced under `rust/target/release/`. See [Rust launcher](docs/rust-launcher.md). See [installation](docs/installation.md), [architecture](docs/architecture.md), [Lua scripting](docs/lua-scripting.md), [manifest syntax](docs/resource-manifests.md), and [launcher/characters](docs/launcher-and-characters.md).
+Install .NET 10, then run `dotnet run --project src/HogwartsRP.Server -- --Resources:Path=resources`. Build the native Rust launcher on Windows with `cargo build --manifest-path rust/Cargo.toml --release -p wizardnet-launcher`; the executable is produced under `rust/target/release/`. See [Rust launcher](docs/rust-launcher.md). See [installation](docs/installation.md), [architecture](docs/architecture.md), [Lua scripting](docs/lua-scripting.md), [manifest syntax](docs/resource-manifests.md), and [launcher/characters](docs/launcher-and-characters.md).
 
 ## Status
 
