@@ -58,7 +58,7 @@ transport.disconnect()
 
 ## Security and limitations
 
-- Join credentials are accepted only as an in-memory argument, used for the first authentication frame, then the native worker's credential buffer is overwritten.
+- Join credentials are accepted as an in-memory Lua argument, copied into the native worker, used for the first authentication frame, and the worker's credential and frame buffers are overwritten. The Lua VM's original string cannot be securely erased by this module; callers must not persist or log it.
 - Remote endpoints require TLS. WinHTTP performs normal certificate validation; the module does not disable certificate checks.
 - Message size is bounded to 32 KiB.
 - The current response check recognizes expected protocol message types; it is not a general JSON client.
