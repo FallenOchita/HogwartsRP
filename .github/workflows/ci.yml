@@ -23,6 +23,8 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
+          cache-workspaces: |
+            rust -> target
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x

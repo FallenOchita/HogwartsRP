@@ -1,3 +1,5 @@
+mod directory;
+
 use directories::ProjectDirs;
 use eframe::egui;
 use serde::{Deserialize, Serialize};
@@ -10,6 +12,8 @@ use std::{
     time::Duration,
 };
 use url::Url;
+
+use directory::{DirectoryPage, fetch_servers};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct ServerProfile {
@@ -37,12 +41,20 @@ struct HogwartsRpLauncher {
     server_status: String,
     status_receiver: Option<Receiver<Result<String, String>>>,
     account_portal: String,
+    directory_url: String,
+    directory_search: String,
+    directory_page: Option<DirectoryPage>,
+    directory_status: String,
+    directory_receiver: Option<Receiver<Result<DirectoryPage, String>>>,
+    directory_page_number: u32,
 }
 
 impl Default for HogwartsRpLauncher {
     fn default() -> Self {
         let saved_servers = load_profiles();
         let account_portal = std::env::var("HOGWARTSRP_ACCOUNT_PORTAL_URL").unwrap_or_default();
+        let directory_url = std::env::var("HOGWARTSRP_DIRECTORY_URL")
+            .unwrap_or_else(|_| "http://127.0.0.1:8790".into());
         Self {
             server_name: "Local development".into(),
             server_address: "http://127.0.0.1:7777".into(),
@@ -52,6 +64,12 @@ impl Default for HogwartsRpLauncher {
             server_status: "Not checked".into(),
             status_receiver: None,
             account_portal,
+            directory_url,
+            directory_search: String::new(),
+            directory_page: None,
+            directory_status: "Not loaded. Configure the directory URL and select Refresh.".into(),
+            directory_receiver: None,
+            directory_page_number: 1,
         }
     }
 }
@@ -129,13 +147,35 @@ impl HogwartsRpLauncher {
         });
     }
 
-    fn launch_game(&mut self) {
-        match detect_steam_installation() {
-            Some(_) => match open::that("steam://run/990080") {
-                Ok(()) => self.status_message = "Steam launch request sent. Game startup is not yet confirmed.".into(),
-                Err(error) => self.status_message = format!("Could not open Steam: {error}"),
-            },
-            None => self.status_message = "Steam Hogwarts Legacy installation was not found in the standard library paths. Custom Steam library discovery is not implemented yet.".into(),
+    fn refresh_directory(&mut self) {
+        let directory_url = self.directory_url.trim().to_owned();
+        let search = self.directory_search.trim().to_owned();
+        let page = self.directory_page_number;
+        let (sender, receiver) = mpsc::channel();
+        self.directory_receiver = Some(receiver);
+        self.directory_status = "Loading public servers…".into();
+        thread::spawn(move || {
+            let _ = sender.send(fetch_servers(&directory_url, &search, page));
+        });
+    }
+
+    fn poll_directory(&mut self, ctx: &egui::Context) {
+        let Some(receiver) = &self.directory_receiver else { return; };
+        match receiver.try_recv() {
+            Ok(Ok(page)) => {
+                self.directory_status = format!("Loaded {} of {} public server(s).", page.servers.len(), page.total);
+                self.directory_page = Some(page);
+                self.directory_receiver = None;
+            }
+            Ok(Err(error)) => {
+                self.directory_status = format!("Could not load public servers: {error}");
+                self.directory_receiver = None;
+            }
+            Err(mpsc::TryRecvError::Disconnected) => {
+                self.directory_status = "Directory request stopped unexpectedly.".into();
+                self.directory_receiver = None;
+            }
+            Err(mpsc::TryRecvError::Empty) => ctx.request_repaint_after(Duration::from_millis(100)),
         }
     }
 
@@ -150,6 +190,16 @@ impl HogwartsRpLauncher {
                 Err(error) => self.status_message = format!("Could not open account portal: {error}"),
             },
             _ => self.status_message = "Account portal configuration must be an absolute HTTP or HTTPS URL.".into(),
+        }
+    }
+
+    fn launch_game(&mut self) {
+        match detect_steam_installation() {
+            Some(_) => match open::that("steam://run/990080") {
+                Ok(()) => self.status_message = "Steam launch request sent. Game startup is not yet confirmed.".into(),
+                Err(error) => self.status_message = format!("Could not open Steam: {error}"),
+            },
+            None => self.status_message = "Steam Hogwarts Legacy installation was not found in the standard library paths. Custom Steam library discovery is not implemented yet.".into(),
         }
     }
 
@@ -179,13 +229,75 @@ impl HogwartsRpLauncher {
 impl eframe::App for HogwartsRpLauncher {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.poll_status(ctx);
+        self.poll_directory(ctx);
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("HOGWARTSRP");
             ui.label("Native Rust launcher · Hogwarts Legacy roleplay framework");
             ui.add_space(14.0);
 
             ui.group(|ui| {
-                ui.heading("Server");
+                ui.heading("Public servers");
+                ui.horizontal(|ui| {
+                    ui.label("Directory");
+                    ui.text_edit_singleline(&mut self.directory_url);
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Search");
+                    ui.text_edit_singleline(&mut self.directory_search);
+                    if ui.button("Refresh").clicked() {
+                        self.directory_page_number = 1;
+                        self.refresh_directory();
+                    }
+                });
+                ui.label(&self.directory_status);
+
+                let mut chosen_server: Option<(String, String)> = None;
+                if let Some(page) = self.directory_page.clone() {
+                    egui::ScrollArea::vertical().max_height(220.0).show(ui, |ui| {
+                        for server in &page.servers {
+                            ui.group(|ui| {
+                                ui.horizontal(|ui| {
+                                    ui.strong(&server.name);
+                                    ui.label(format!("{} · {}/{} players", server.status, server.online_players, server.max_players));
+                                    if ui.button("Select").clicked() {
+                                        chosen_server = Some((server.name.clone(), server.endpoint.clone()));
+                                    }
+                                });
+                                if let Some(description) = &server.description {
+                                    ui.label(description);
+                                }
+                            });
+                        }
+                        if page.servers.is_empty() {
+                            ui.label("No public servers matched this search.");
+                        }
+                    });
+                    let total_pages = ((page.total + u64::from(page.page_size) - 1) / u64::from(page.page_size)).max(1) as u32;
+                    ui.horizontal(|ui| {
+                        if ui.add_enabled(page.page > 1, egui::Button::new("Previous")).clicked() {
+                            self.directory_page_number = page.page - 1;
+                            self.refresh_directory();
+                        }
+                        ui.label(format!("Page {} of {}", page.page, total_pages));
+                        if ui.add_enabled(page.page < total_pages, egui::Button::new("Next")).clicked() {
+                            self.directory_page_number = page.page + 1;
+                            self.refresh_directory();
+                        }
+                    });
+                } else {
+                    ui.label("The public directory has not been loaded.");
+                }
+                if let Some((name, endpoint)) = chosen_server {
+                    self.server_name = name;
+                    self.server_address = endpoint;
+                    self.server_status = "Not checked".into();
+                    self.status_message = "Selected a public listing. Check status or save it to your server profiles.".into();
+                }
+            });
+
+            ui.add_space(10.0);
+            ui.group(|ui| {
+                ui.heading("Server connection profile");
                 if !self.saved_servers.is_empty() {
                     let selected_text = self.selected_server
                         .and_then(|i| self.saved_servers.get(i))
@@ -247,7 +359,7 @@ impl eframe::App for HogwartsRpLauncher {
             ui.separator();
             ui.label(&self.status_message);
             ui.add_space(8.0);
-            ui.small("Migration notice: this Rust executable replaces the WinForms launcher shell. Authenticated server connection, character submission, custom Steam library discovery, launcher auto-update, and the public server directory still need their Rust implementations; this build does not invoke the legacy C# launcher.");
+            ui.small("This Rust launcher currently supports public directory browsing, saved server profiles, read-only status checks, account-portal opening, and Steam launch requests. Authenticated server connection, character submission, auto-update, and in-game multiplayer are not yet implemented in this executable.");
         });
     }
 }
@@ -288,8 +400,8 @@ fn detect_steam_installation() -> Option<PathBuf> {
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([820.0, 700.0])
-            .with_min_inner_size([640.0, 560.0]),
+            .with_inner_size([900.0, 820.0])
+            .with_min_inner_size([680.0, 620.0]),
         ..Default::default()
     };
     eframe::run_native(
