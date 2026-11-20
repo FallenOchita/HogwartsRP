@@ -233,6 +233,11 @@ int LuaConnect(lua_State* lua) {
         std::strlen(game) > 64 || std::strlen(ue4ss) > 64)
         return luaL_error(lua, "transport argument exceeds its size limit");
 
+    std::string endpointCopy(endpoint);
+    std::string credentialCopy(credential);
+    std::string adapterCopy(adapter);
+    std::string gameCopy(game);
+    std::string ue4ssCopy(ue4ss);
     std::lock_guard lock(g_state.mutex);
     if (g_state.running) return luaL_error(lua, "transport is already running");
     if (g_state.worker.joinable()) g_state.worker.join();
@@ -240,7 +245,8 @@ int LuaConnect(lua_State* lua) {
     g_state.running = true;
     g_state.status = "starting";
     g_state.detail = "Starting authenticated WebSocket transport.";
-    g_state.worker = std::thread(RunTransport, endpoint, credential, adapter, game, ue4ss);
+    g_state.worker = std::thread(RunTransport, std::move(endpointCopy), std::move(credentialCopy),
+        std::move(adapterCopy), std::move(gameCopy), std::move(ue4ssCopy));
     lua_pushboolean(lua, 1);
     return 1;
 }
