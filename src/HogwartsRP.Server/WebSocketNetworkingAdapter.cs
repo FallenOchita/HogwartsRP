@@ -289,6 +289,55 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
             var bytes = await ReceiveTextMessageAsync(client.Socket, cancellationToken);
             if (bytes is null) return;
             var message = JsonSerializer.Deserialize<WireMessage>(bytes, JsonOptions);
+            if (message?.Type == "game_adapter_hello")
+            {
+                if (client.GameAdapterReady ||
+                    !GameAdapterProtocol.TryValidateHello(
+                        message.ProtocolVersion,
+                        message.AdapterVersion,
+                        message.GameBuild,
+                        message.Ue4ssVersion,
+                        message.Capabilities,
+                        out var helloError))
+                {
+                    await RejectAdapterAsync(client.Socket, helloError ?? "The game adapter handshake was already completed.", cancellationToken);
+                    return;
+                }
+
+                client.GameAdapterReady = true;
+                client.LastHeartbeatSequence = -1;
+                await SendMessageAsync(client, new WireMessage(
+                    "game_adapter_ready",
+                    ProtocolVersion: GameAdapterProtocol.CurrentVersion,
+                    PlayerId: client.Session.Id,
+                    DisplayName: client.Session.DisplayName,
+                    ServerTimeUtc: DateTimeOffset.UtcNow), cancellationToken);
+                _logger.LogInformation(
+                    "Game adapter connected for player session {SessionId}; adapter {AdapterVersion}; {CapabilityCount} reported capabilities.",
+                    client.Session.Id,
+                    message.AdapterVersion,
+                    message.Capabilities?.Length ?? 0);
+                continue;
+            }
+
+            if (message?.Type == "game_adapter_heartbeat")
+            {
+                if (!client.GameAdapterReady ||
+                    !GameAdapterProtocol.IsValidHeartbeatSequence(message.Sequence, client.LastHeartbeatSequence))
+                {
+                    await RejectAdapterAsync(client.Socket, "A game-adapter heartbeat must follow a valid handshake and use a strictly increasing sequence.", cancellationToken);
+                    return;
+                }
+
+                client.LastHeartbeatSequence = message.Sequence!.Value;
+                await SendMessageAsync(client, new WireMessage(
+                    "game_adapter_heartbeat_ack",
+                    ProtocolVersion: GameAdapterProtocol.CurrentVersion,
+                    Sequence: client.LastHeartbeatSequence,
+                    ServerTimeUtc: DateTimeOffset.UtcNow), cancellationToken);
+                continue;
+            }
+
             if (message?.Type == "submit_character")
             {
                 if (message.Submission is null || string.IsNullOrWhiteSpace(message.RequestId) || message.RequestId.Length > 64)
@@ -400,6 +449,20 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
         await socket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, cancellationToken);
     }
 
+    private static async Task RejectAdapterAsync(WebSocket socket, string message, CancellationToken cancellationToken)
+    {
+        if (socket.State != WebSocketState.Open) return;
+        try
+        {
+            await SendMessageAsync(socket, new WireMessage(
+                "game_adapter_rejected",
+                ProtocolVersion: GameAdapterProtocol.CurrentVersion,
+                Error: message), cancellationToken);
+            await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Game adapter handshake rejected.", cancellationToken);
+        }
+        catch (WebSocketException) { }
+    }
+
     private static async Task RejectAsync(WebSocket socket, string message, WebSocketCloseStatus status)
     {
         if (socket.State != WebSocketState.Open) return;
@@ -442,7 +505,14 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
         string? Error = null,
         string? RequestId = null,
         CharacterSubmission? Submission = null,
-        CharacterSubmissionResult? SubmissionResult = null);
+        CharacterSubmissionResult? SubmissionResult = null,
+        int? ProtocolVersion = null,
+        string? AdapterVersion = null,
+        string? GameBuild = null,
+        string? Ue4ssVersion = null,
+        string[]? Capabilities = null,
+        long? Sequence = null,
+        DateTimeOffset? ServerTimeUtc = null);
 
     private sealed class UnavailableCharacterSubmissionService : ICharacterSubmissionService
     {
@@ -455,6 +525,8 @@ public sealed class WebSocketNetworkingAdapter : INetworkingAdapter
         public PlayerSession Session { get; } = session;
         public WebSocket Socket { get; } = socket;
         public SemaphoreSlim SendLock { get; } = new(1, 1);
+        public bool GameAdapterReady { get; set; }
+        public long LastHeartbeatSequence { get; set; } = -1;
         public void Dispose() => SendLock.Dispose();
     }
 }
