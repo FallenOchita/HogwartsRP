@@ -737,16 +737,24 @@ function M.buildRuntimeMetadataMap(catalog)
         safety = "REPORT_ASSEMBLY_ONLY_REUSES_EXISTING_AUDIT_TABLES_NO_UOBJECT_ACCESS_NO_PROPERTY_READS_NO_UFUNCTION_INVOCATION"
     }
 
+    local objectNames = {}
+    local function addIdentityObject(key, fullName, evidence, className)
+        if type(fullName) ~= "string" or fullName == "" or fullName == "UNAVAILABLE"
+            or objectNames[fullName] then return end
+        objectNames[fullName] = true
+        result.objects[#result.objects + 1] = {
+            key = key, full_name = fullName,
+            class_name = className or fullName:match("^(%S+)") or "UNAVAILABLE",
+            discovery_status = "IDENTITY_OBSERVED",
+            evidence = evidence
+        }
+    end
+
     local function addObject(key, description, evidence)
         if type(description) ~= "table" then return end
         local fullName = description.full_name
         if type(fullName) ~= "string" or fullName == "" or fullName == "UNAVAILABLE" then return end
-        result.objects[#result.objects + 1] = {
-            key = key, full_name = fullName,
-            class_name = description.class_name or "UNAVAILABLE",
-            discovery_status = description.status or "UNAVAILABLE",
-            evidence = evidence
-        }
+        addIdentityObject(key, fullName, evidence, description.class_name)
     end
 
     addObject("player", objects.player, "DISCOVERED_OBJECT_DESCRIPTION")
@@ -759,6 +767,10 @@ function M.buildRuntimeMetadataMap(catalog)
             status = status or "UNAVAILABLE", evidence = evidence
         }
         result.references[#result.references + 1] = item
+        if item.status == "OBJECT_REFERENCE_FOUND" then
+            addIdentityObject(target or (source .. "_" .. propertyName), target,
+                evidence, type(target) == "string" and target:match("^(%S+)") or nil)
+        end
         if item.status ~= "OBJECT_REFERENCE_FOUND" then
             result.unresolved[#result.unresolved + 1] = {
                 kind = "REFERENCE", source = source, property = propertyName,
